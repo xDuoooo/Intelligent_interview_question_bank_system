@@ -9,6 +9,8 @@ import com.xduo.springbootinit.model.vo.QuestionVO;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.List;
+
 /**
  * 题目服务
  */
@@ -56,4 +58,8 @@ public interface QuestionService extends IService<Question> {
      */
     Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest);
 
+    void batchDeleteQuestions(List<Long> questionIdList);
+
+    //分页查询题目
+    Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest);
 }

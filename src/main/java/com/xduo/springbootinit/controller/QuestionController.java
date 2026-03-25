@@ -10,10 +10,7 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
-import com.xduo.springbootinit.model.dto.question.QuestionAddRequest;
-import com.xduo.springbootinit.model.dto.question.QuestionEditRequest;
-import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
-import com.xduo.springbootinit.model.dto.question.QuestionUpdateRequest;
+import com.xduo.springbootinit.model.dto.question.*;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionVO;
@@ -250,5 +247,14 @@ public class QuestionController {
         Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
+    @PostMapping("/delete/batch")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchDeleteQuestions(@RequestBody QuestionBatchDeleteRequest questionBatchDeleteRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBatchDeleteRequest == null, ErrorCode.PARAMS_ERROR);
+        questionService.batchDeleteQuestions(questionBatchDeleteRequest.getQuestionIdList());
+        return ResultUtils.success(true);
+    }
+
 
 }

@@ -1,5 +1,7 @@
 package com.xduo.springbootinit.model.vo;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
@@ -52,6 +54,12 @@ public class QuestionBankVO implements Serializable {
      * 创建用户信息
      */
     private UserVO user;
+
+    /**
+     * 是否要关联查询题目列表
+     */
+    private Page<Question> questionPage;
+
 
     /**
      * 封装类转对象

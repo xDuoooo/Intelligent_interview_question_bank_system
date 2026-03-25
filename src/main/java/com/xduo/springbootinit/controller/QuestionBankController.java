@@ -9,14 +9,17 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankAddRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankEditRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankUpdateRequest;
+import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionBankVO;
 import com.xduo.springbootinit.service.QuestionBankService;
+import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -36,6 +39,8 @@ public class QuestionBankController {
     @Resource
     private QuestionBankService questionBankService;
 
+    @Resource
+    QuestionService questionService;
     @Resource
     private UserService userService;
 
@@ -117,21 +122,28 @@ public class QuestionBankController {
         return ResultUtils.success(true);
     }
 
-    /**
-     * 根据 id 获取题库（封装类）
-     *
-     * @param id
-     * @return
-     */
     @GetMapping("/get/vo")
-    public BaseResponse<QuestionBankVO> getQuestionBankVOById(long id, HttpServletRequest request) {
+    public BaseResponse<QuestionBankVO> getQuestionBankVOById(QuestionBankQueryRequest questionBankQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        Long id = questionBankQueryRequest.getId();
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         QuestionBank questionBank = questionBankService.getById(id);
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR);
+        // 查询题库封装类
+        QuestionBankVO questionBankVO = questionBankService.getQuestionBankVO(questionBank, request);
+        // 是否要关联查询题库下的题目列表
+        boolean needQueryQuestionList = questionBankQueryRequest.isNeedQueryQuestionList();
+        if (needQueryQuestionList) {
+            QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
+            questionQueryRequest.setQuestionBankId(id);
+            Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
+            questionBankVO.setQuestionPage(questionPage);
+        }
         // 获取封装类
-        return ResultUtils.success(questionBankService.getQuestionBankVO(questionBank, request));
+        return ResultUtils.success(questionBankVO);
     }
+
 
     /**
      * 分页获取题库列表（仅管理员可用）

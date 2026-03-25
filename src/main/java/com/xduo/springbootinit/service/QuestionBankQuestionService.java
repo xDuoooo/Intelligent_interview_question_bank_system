@@ -5,6 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
+import com.xduo.springbootinit.model.entity.User;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 /**
  * 题库题目关联服务
@@ -28,4 +32,11 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
      */
     Page<QuestionBankQuestion> listQuestionBankQuestionByPage(
             QuestionBankQuestionQueryRequest questionBankQuestionQueryRequest);
+
+    void batchAddQuestionsToBank(List<Long> questionIdList, Long questionBankId, User loginUser);
+
+    @Transactional(rollbackFor = Exception.class)
+    void batchRemoveQuestionsFromBank(List<Long> questionIdList, Long questionBankId);
+
+    void validQuestionBankQuestion(QuestionBankQuestion questionBankQuestion, boolean add);
 }
