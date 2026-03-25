@@ -1,50 +1,53 @@
-package com.xduo.springbootinit.job.once;
+package com.xduo.springbootinit.job.cycle;
 
 import cn.hutool.core.collection.CollUtil;
 import com.xduo.springbootinit.esdao.QuestionEsDao;
+import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.question.QuestionEsDTO;
 import com.xduo.springbootinit.model.entity.Question;
-import com.xduo.springbootinit.service.QuestionService;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
-
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 // todo 取消注释开启任务
 //@Component
 @Slf4j
-public class FullSyncQuestionToEs implements CommandLineRunner {
+public class IncSyncQuestionToEs {
 
     @Resource
-    private QuestionService questionService;
+    private QuestionMapper questionMapper;
 
     @Resource
     private QuestionEsDao questionEsDao;
 
-    @Override
-    public void run(String... args) {
-        // 全量获取题目（数据量不大的情况下使用）
-        List<Question> questionList = questionService.list();
+    /**
+     * 每分钟执行一次
+     */
+    @Scheduled(fixedRate = 60 * 1000)
+    public void run() {
+        // 查询近 5 分钟内的数据
+        long FIVE_MINUTES = 5 * 60 * 1000L;
+        Date fiveMinutesAgoDate = new Date(new Date().getTime() - FIVE_MINUTES);
+        List<Question> questionList = questionMapper.listQuestionWithDelete(fiveMinutesAgoDate);
         if (CollUtil.isEmpty(questionList)) {
+            log.info("no inc question");
             return;
         }
-        // 转为 ES 实体类
         List<QuestionEsDTO> questionEsDTOList = questionList.stream()
                 .map(QuestionEsDTO::objToDto)
                 .collect(Collectors.toList());
-        // 分页批量插入到 ES
         final int pageSize = 500;
         int total = questionEsDTOList.size();
-        log.info("FullSyncQuestionToEs start, total {}", total);
+        log.info("IncSyncQuestionToEs start, total {}", total);
         for (int i = 0; i < total; i += pageSize) {
-            // 注意同步的数据下标不能超过总数据量
             int end = Math.min(i + pageSize, total);
             log.info("sync from {} to {}", i, end);
             questionEsDao.saveAll(questionEsDTOList.subList(i, end));
         }
-        log.info("FullSyncQuestionToEs end, total {}", total);
+        log.info("IncSyncQuestionToEs end, total {}", total);
     }
 }
