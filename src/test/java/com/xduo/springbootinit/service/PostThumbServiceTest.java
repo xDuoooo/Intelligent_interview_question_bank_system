@@ -1,7 +1,7 @@
 package com.xduo.springbootinit.service;
 
 import com.xduo.springbootinit.model.entity.User;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

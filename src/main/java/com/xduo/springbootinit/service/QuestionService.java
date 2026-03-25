@@ -7,7 +7,7 @@ import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 题目服务
@@ -47,4 +47,13 @@ public interface QuestionService extends IService<Question> {
      * @return
      */
     Page<QuestionVO> getQuestionVOPage(Page<Question> questionPage, HttpServletRequest request);
+
+    /**
+     * 从 ES 查询题目
+     *
+     * @param questionQueryRequest
+     * @return
+     */
+    Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest);
+
 }

@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
 import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.vo.PostVO;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 帖子服务

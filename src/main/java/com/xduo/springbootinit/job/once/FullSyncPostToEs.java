@@ -6,7 +6,7 @@ import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.service.PostService;
 import java.util.List;
 import java.util.stream.Collectors;
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import cn.hutool.core.collection.CollUtil;
 import org.springframework.boot.CommandLineRunner;

@@ -12,15 +12,16 @@ spring:
     password: 123456
   # Redis 配置
   # todo 需替换配置
-  redis:
-    database: 1
-    host: localhost
-    port: 6379
-    timeout: 5000
-    password: 123456
+  data:
+    redis:
+      database: 1
+      host: localhost
+      port: 6379
+      timeout: 5000
+      password: 123456
   # Elasticsearch 配置
   # todo 需替换配置
   elasticsearch:
-    uris: http://localhost:9200
-    username: root
-    password: 123456
+    uris: https://localhost:9200
+    username: elastic
+    password: '*jJUA7k*ftJ36aEjqQG7'

@@ -21,10 +21,12 @@ import com.xduo.springbootinit.model.vo.LoginUserVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.UserService;
 
+import java.time.LocalDate;
 import java.util.List;
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.util.Map;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
@@ -315,4 +317,19 @@ public class UserController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+    /**
+     * 获取用户签到记录
+     *
+     * @param year    年份（为空表示当前年份）
+     * @param request
+     * @return 签到记录映射
+     */
+    @GetMapping("/get/sign_in")
+    public BaseResponse<List<Integer>> getUserSignInRecord(Integer year, HttpServletRequest request) {
+        // 必须要登录才能获取
+        User loginUser = userService.getLoginUser(request);
+        List<Integer>userSignInRecord = userService.getUserSignInRecord(loginUser.getId(), year);
+        return ResultUtils.success(userSignInRecord);
+    }
+
 }

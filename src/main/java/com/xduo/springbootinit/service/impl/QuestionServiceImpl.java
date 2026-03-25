@@ -21,8 +21,18 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import com.xduo.springbootinit.model.dto.question.QuestionEsDTO;
+import com.xduo.springbootinit.exception.BusinessException;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import java.util.ArrayList;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +47,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private ElasticsearchOperations elasticsearchOperations;
 
     /**
      * 校验数据
@@ -162,4 +175,86 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         questionVOPage.setRecords(questionVOList);
         return questionVOPage;
     }
+
+    @Override
+    public Page<Question> searchFromEs(QuestionQueryRequest questionQueryRequest) {
+        // 获取参数
+        Long id = questionQueryRequest.getId();
+        Long notId = questionQueryRequest.getNotId();
+        String searchText = questionQueryRequest.getSearchText();
+        List<String> tags = questionQueryRequest.getTags();
+        Long questionBankId = questionQueryRequest.getQuestionBankId();
+        Long userId = questionQueryRequest.getUserId();
+        // 注意，ES 的起始页为 0
+        int current = Math.max(0, questionQueryRequest.getCurrent() - 1);
+        int pageSize = questionQueryRequest.getPageSize();
+        String sortField = questionQueryRequest.getSortField();
+        String sortOrder = questionQueryRequest.getSortOrder();
+
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+        // 过滤
+        boolQueryBuilder.filter(f -> f.term(t -> t.field("isDelete").value(0)));
+        if (id != null) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("id").value(id)));
+        }
+        if (notId != null) {
+            boolQueryBuilder.mustNot(m -> m.term(t -> t.field("id").value(notId)));
+        }
+        if (userId != null) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("userId").value(userId)));
+        }
+        if (questionBankId != null) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("questionBankId").value(questionBankId)));
+        }
+        // 必须包含所有标签
+        if (CollUtil.isNotEmpty(tags)) {
+            for (String tag : tags) {
+                boolQueryBuilder.filter(f -> f.term(t -> t.field("tags").value(tag)));
+            }
+        }
+        // 按关键词检索
+        if (StringUtils.isNotBlank(searchText)) {
+            boolQueryBuilder.should(s -> s.match(m -> m.field("title").query(searchText)));
+            boolQueryBuilder.should(s -> s.match(m -> m.field("content").query(searchText)));
+            boolQueryBuilder.should(s -> s.match(m -> m.field("answer").query(searchText)));
+            boolQueryBuilder.minimumShouldMatch("1");
+        }
+        // 排序
+        SortOptions sortOptions;
+        if (StringUtils.isNotBlank(sortField)) {
+            sortOptions = SortOptions.of(s -> s.field(f -> f
+                    .field(sortField)
+                    .order(CommonConstant.SORT_ORDER_ASC.equals(sortOrder) ? SortOrder.Asc : SortOrder.Desc)));
+        } else {
+            sortOptions = SortOptions.of(s -> s.score(sc -> sc.order(SortOrder.Desc)));
+        }
+
+        // 构造 NativeQuery
+        NativeQuery nativeQuery = NativeQuery.builder()
+                .withQuery(q -> q.bool(boolQueryBuilder.build()))
+                .withSort(sortOptions)
+                .withPageable(org.springframework.data.domain.PageRequest.of(current, pageSize))
+                .build();
+
+        Page<Question> page = new Page<>();
+        List<Question> resourceList = new ArrayList<>();
+        try {
+            SearchHits<QuestionEsDTO> searchHits = elasticsearchOperations.search(nativeQuery, QuestionEsDTO.class);
+            page.setTotal(searchHits.getTotalHits());
+
+            if (searchHits.hasSearchHits()) {
+                List<SearchHit<QuestionEsDTO>> searchHitList = searchHits.getSearchHits();
+                for (SearchHit<QuestionEsDTO> hit : searchHitList) {
+                    resourceList.add(QuestionEsDTO.dtoToObj(hit.getContent()));
+                }
+            }
+        } catch (Exception e) {
+            log.error("es search error", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "查询 ES 失败");
+        }
+
+        page.setRecords(resourceList);
+        return page;
+    }
+    
 }

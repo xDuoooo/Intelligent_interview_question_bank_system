@@ -1,6 +1,6 @@
 package com.xduo.springbootinit.service;
 
-import javax.annotation.Resource;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

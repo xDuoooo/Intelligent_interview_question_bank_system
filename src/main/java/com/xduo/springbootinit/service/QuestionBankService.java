@@ -3,11 +3,13 @@ package com.xduo.springbootinit.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
+import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.vo.QuestionBankVO;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 题库服务
