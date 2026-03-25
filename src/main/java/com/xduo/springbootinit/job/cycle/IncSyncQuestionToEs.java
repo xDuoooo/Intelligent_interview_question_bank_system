@@ -1,6 +1,7 @@
 package com.xduo.springbootinit.job.cycle;
 
 import cn.hutool.core.collection.CollUtil;
+import com.xduo.springbootinit.annotation.DistributedLock;
 import com.xduo.springbootinit.esdao.QuestionEsDao;
 import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.question.QuestionEsDTO;
@@ -27,6 +28,7 @@ public class IncSyncQuestionToEs {
     /**
      * 每分钟执行一次
      */
+    @DistributedLock(key = "IncSyncQuestionToEs", leaseTime = 30000, waitTime = 10000)
     @Scheduled(fixedRate = 60 * 1000)
     public void run() {
         // 查询近 5 分钟内的数据
@@ -37,9 +39,7 @@ public class IncSyncQuestionToEs {
             log.info("no inc question");
             return;
         }
-        List<QuestionEsDTO> questionEsDTOList = questionList.stream()
-                .map(QuestionEsDTO::objToDto)
-                .collect(Collectors.toList());
+        List<QuestionEsDTO> questionEsDTOList = questionList.stream().map(QuestionEsDTO::objToDto).collect(Collectors.toList());
         final int pageSize = 500;
         int total = questionEsDTOList.size();
         log.info("IncSyncQuestionToEs start, total {}", total);
