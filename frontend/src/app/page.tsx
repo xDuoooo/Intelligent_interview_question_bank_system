@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
+import { headers } from "next/headers";
 import QuestionBankList from "@/components/QuestionBankList";
 import QuestionList from "@/components/QuestionList";
 import Image from "next/image";
-import { ArrowRight, Zap, Trophy, Flame } from "lucide-react";
+import { Trophy, Zap, ArrowRight } from "lucide-react";
 
 // 本页面使用服务端渲染，禁用静态生成
 export const dynamic = 'force-dynamic';
@@ -18,23 +19,31 @@ export default async function HomePage() {
   let questionList: API.QuestionVO[] = [];
   
   try {
-    const res = (await listQuestionBankVoByPageUsingPost({
+    const questionBankRes = (await listQuestionBankVoByPageUsingPost({
       pageSize: 12,
       sortField: "createTime",
       sortOrder: "descend",
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
     })) as unknown as API.BaseResponsePageQuestionBankVO_;
-    questionBankList = res.data?.records ?? [];
+    questionBankList = questionBankRes.data?.records ?? [];
   } catch (e) {
     console.error("获取题库列表失败", e);
   }
 
   try {
-    const res = (await listQuestionVoByPageUsingPost({
+    const latestQuestionListRes = (await listQuestionVoByPageUsingPost({
       pageSize: 12,
       sortField: "createTime",
       sortOrder: "descend",
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
     })) as unknown as API.BaseResponsePageQuestionVO_;
-    questionList = res.data?.records ?? [];
+    questionList = latestQuestionListRes.data?.records ?? [];
   } catch (e) {
     console.error("获取题目列表失败", e);
   }
@@ -132,7 +141,7 @@ export default async function HomePage() {
             <h2 className="text-3xl font-black tracking-tighter text-slate-900 sm:text-5xl">最新题目</h2>
           </div>
           <Link href="/questions" className="group flex items-center gap-2 text-sm font-black text-slate-400 hover:text-primary transition-all">
-             VIEW FEED <ArrowRight className="h-5 w-5 bg-white p-1 rounded-full group-hover:bg-orange-500 group-hover:text-white transition-all shadow-md" />
+            VIEW ALL <ArrowRight className="h-5 w-5 bg-white p-1 rounded-full group-hover:bg-primary group-hover:text-white transition-all shadow-md" />
           </Link>
         </div>
 

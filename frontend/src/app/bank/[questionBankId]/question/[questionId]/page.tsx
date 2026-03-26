@@ -1,12 +1,11 @@
-"use client";
-
 import React from "react";
 import Link from "next/link";
 import { getQuestionBankVoByIdUsingGet } from "@/api/questionBankController";
 import { getQuestionVoByIdUsingGet } from "@/api/questionController";
 import QuestionCard from "@/components/QuestionCard";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ListFilter, Bookmark } from "lucide-react";
+import { ChevronLeft, ListFilter, Bookmark, Sparkles } from "lucide-react";
+import { headers } from "next/headers";
 
 /**
  * 题库题目详情页
@@ -22,7 +21,11 @@ export default async function BankQuestionPage({ params }: { params: { questionB
       id: Number(questionBankId),
       needQueryQuestionList: true,
       pageSize: 200,
-    });
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
+    }) as unknown as API.BaseResponseQuestionBankVO_;
     bank = res.data;
   } catch (e) {
     console.error("获取题库详情失败", e);
@@ -31,7 +34,11 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   if (!bank) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+           <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
+        </div>
         <h1 className="text-xl font-bold text-foreground">获取题库详情失败</h1>
+        <p className="text-muted-foreground">该题库可能已被移除或权限不足</p>
         <Link href="/" className="text-primary font-bold hover:underline">返回首页</Link>
       </div>
     );
@@ -39,20 +46,43 @@ export default async function BankQuestionPage({ params }: { params: { questionB
 
   // 获取题目详情
   let question: API.QuestionVO | undefined = undefined;
+  let isNotLogin = false;
+  
   try {
     const res = await getQuestionVoByIdUsingGet({
       id: Number(questionId),
-    });
-    question = res.data;
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
+    }) as unknown as API.BaseResponseQuestionVO_;
+    
+    if (res.code === 40100) {
+      isNotLogin = true;
+    } else {
+      question = res.data;
+    }
   } catch (e) {
     console.error("获取题目详情失败", e);
   }
 
   if (!question) {
+    const errorTitle = isNotLogin ? "您还没有登录" : "获取题目详情失败";
+    const errorDesc = isNotLogin ? "请先登录后再查看题目详情" : "该题目可能已被移除或权限不足";
+    
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-        <h1 className="text-xl font-bold text-foreground">获取题目详情失败</h1>
-        <Link href={`/bank/${questionBankId}`} className="text-primary font-bold hover:underline">返回题库</Link>
+        <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
+           <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
+        </div>
+        <h1 className="text-xl font-bold text-foreground">{errorTitle}</h1>
+        <p className="text-muted-foreground">{errorDesc}</p>
+        <Link 
+          href={isNotLogin ? `/user/login?redirect=/bank/${questionBankId}/question/${questionId}` : `/bank/${questionBankId}`} 
+          className="h-11 px-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95"
+        >
+          {isNotLogin ? "立即登录" : "返回题库"}
+        </Link>
       </div>
     );
   }

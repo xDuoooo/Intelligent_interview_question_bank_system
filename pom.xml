@@ -127,12 +127,6 @@
             <artifactId>parsson</artifactId>
             <version>1.0.0</version>
         </dependency>
-        <!-- replace here with the latest version -->
-        <dependency>
-            <groupId>com.alibaba.csp</groupId>
-            <artifactId>sentinel-core</artifactId>
-            <version>1.8.9</version>
-        </dependency>
         <!-- 2. 引入 Sentinel Starter（无需指定版本，由 BOM 管理） -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
