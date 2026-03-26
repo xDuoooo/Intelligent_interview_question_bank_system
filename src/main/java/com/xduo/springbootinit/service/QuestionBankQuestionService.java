@@ -39,4 +39,7 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
     void batchRemoveQuestionsFromBank(List<Long> questionIdList, Long questionBankId);
 
     void validQuestionBankQuestion(QuestionBankQuestion questionBankQuestion, boolean add);
+
+    @Transactional(rollbackFor = Exception.class)
+    void batchAddQuestionsToBankInner(List<QuestionBankQuestion> questionBankQuestions);
 }
