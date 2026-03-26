@@ -6,7 +6,7 @@ import ClientLayout from "./ClientLayout";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "智面 (IntelliFace) - 智能面试刷题平台",
+  title: "智面 (IntelliFace) - 智能面试题库系统",
   description: "全方位面试官视角，深度技术解析，助你锁定大厂名额。",
 };
 

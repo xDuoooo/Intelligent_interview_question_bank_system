@@ -4,6 +4,7 @@ import TagList from "@/components/TagList";
 import MdViewer from "@/components/MdViewer";
 import useAddUserSignInRecord from "@/hooks/useAddUserSignInRecord";
 import { Sparkles, CheckCircle2 } from "lucide-react";
+import CommentSection from "@/components/CommentSection";
 
 interface Props {
   question: API.QuestionVO;
@@ -54,6 +55,9 @@ const QuestionCard = (props: Props) => {
            <MdViewer value={question.answer} />
         </div>
       </section>
+
+      {/* Discussion Section */}
+      <CommentSection questionId={Number(question.id)} />
     </div>
   );
 };
