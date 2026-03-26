@@ -53,9 +53,28 @@ spring:
       # 大小限制
       max-file-size: 10MB
   cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yml
+        shared-configs:
+          - data-id: common.yml
+            refresh: true
     sentinel:
       transport:
         dashboard: localhost:8138
+  # Spring Boot 3 推荐使用这种方式导入 Nacos 配置
+  config:
+    import:
+      - optional:nacos:Intelligent-interview-question-bank-system.yml
+
+# 自定义 Nacos 配置属性（给 NacosListener 使用）
+nacos:
+  config:
+    data-id: black-ip-list.yml
+    group: DEFAULT_GROUP
 server:
   address: 0.0.0.0
   port: 8101

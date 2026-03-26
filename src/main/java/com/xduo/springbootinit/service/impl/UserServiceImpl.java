@@ -113,9 +113,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.info("user login failed, userAccount cannot match userPassword");
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
         }
-        // TODO 移除 3. 记录用户的登录态（移除这行代码）
-        request.getSession().setAttribute(USER_LOGIN_STATE, user);
-
         // Sa-Token 登录，并指定设备，同端登录互斥
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -149,7 +146,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登录失败");
                 }
             }
-            // 记录用户的登录态
+            // TODO 记录用户的登录态
             request.getSession().setAttribute(USER_LOGIN_STATE, user);
             return getLoginUserVO(user);
         }
