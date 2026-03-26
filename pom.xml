@@ -144,6 +144,18 @@
             <artifactId>sa-token-spring-boot3-starter</artifactId>
             <version>1.44.0</version>
         </dependency>
+        <!-- Sa-Token 整合 Redis （使用 jackson 序列化方式） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-jackson</artifactId>
+            <version>1.44.0</version>
+        </dependency>
+        <!-- 提供Redis连接池 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
 
     </dependencies>
     <!-- 1. 引入 Spring Cloud Alibaba BOM，统一管理版本 -->

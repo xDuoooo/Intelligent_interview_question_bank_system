@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import Link from "next/link";
 import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Sparkles } from "lucide-react";
@@ -36,7 +36,7 @@ const QuestionTable: React.FC<Props> = (props) => {
   const fetchData = async (currentParams = params) => {
     setLoading(true);
     try {
-      const res = (await searchQuestionVoByPageUsingPost({
+      const res = (await listQuestionVoByPageUsingPost({
         ...currentParams,
         searchText: searchText || undefined,
       })) as unknown as API.BaseResponsePageQuestionVO_;

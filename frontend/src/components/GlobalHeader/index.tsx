@@ -41,15 +41,17 @@ export default function GlobalHeader() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="relative h-9 w-9 overflow-hidden rounded-xl bg-primary/10 flex items-center justify-center p-1.5 shadow-inner">
-               <Image
-                src="/assets/logo.png"
-                height={32}
-                width={32}
-                alt="智面"
-                className="object-contain"
-              />
+          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-md ring-2 ring-slate-50 transform group-hover:scale-105 transition-transform duration-300">
+               <div className="absolute inset-0 bg-white flex items-center justify-center p-1.5">
+                 <Image
+                  src="/assets/logo.png"
+                  height={28}
+                  width={28}
+                  alt="智面"
+                  className="object-contain transition-transform duration-500 group-hover:scale-110"
+                />
+              </div>
             </div>
             <span className="hidden sm:inline-block text-xl font-black tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
               智面

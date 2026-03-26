@@ -53,14 +53,16 @@ export default function UserLoginPage() {
         <div className="relative overflow-hidden rounded-[2.5rem] border bg-white/60 backdrop-blur-2xl shadow-2xl p-8 sm:p-10 transition-all hover:shadow-primary/5">
           {/* Header */}
           <div className="flex flex-col items-center text-center space-y-4 mb-10">
-            <div className="relative h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center p-4 shadow-inner group">
-               <Image
-                src="/assets/logo.png"
-                height={64}
-                width={64}
-                alt="Logo"
-                className="object-contain group-hover:scale-110 transition-transform duration-500"
-              />
+            <div className="relative h-24 w-24 rounded-3xl overflow-hidden shadow-xl ring-4 ring-slate-50 group transform hover:scale-105 transition-transform duration-500">
+               <div className="absolute inset-0 bg-white flex items-center justify-center p-4">
+                 <Image
+                  src="/assets/logo.png"
+                  height={64}
+                  width={64}
+                  alt="Logo"
+                  className="object-contain group-hover:scale-110 transition-transform duration-500"
+                />
+              </div>
             </div>
             <div className="space-y-1">
               <h1 className="text-3xl font-black tracking-tight text-foreground">欢迎回来</h1>
