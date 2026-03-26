@@ -1,4 +1,4 @@
-import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import QuestionTable from "@/components/QuestionTable";
 import { Sparkles } from "lucide-react";
 
@@ -14,7 +14,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
   let total = 0;
 
   try {
-    const res = (await searchQuestionVoByPageUsingPost({
+    const res = (await listQuestionVoByPageUsingPost({
       searchText,
       pageSize: 12,
       sortField: "createTime",

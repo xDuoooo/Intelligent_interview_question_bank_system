@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import { getQuestionVoByIdUsingGet } from "@/api/questionController";
 import QuestionCard from "@/components/QuestionCard";
