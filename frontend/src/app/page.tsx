@@ -20,7 +20,7 @@ export default async function HomePage() {
   
   try {
     const questionBankRes = (await listQuestionBankVoByPageUsingPost({
-      pageSize: 12,
+      pageSize: 8,
       sortField: "createTime",
       sortOrder: "descend",
     }, {
