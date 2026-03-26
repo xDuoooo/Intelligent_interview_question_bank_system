@@ -1,10 +1,7 @@
 /**
  * 题目评论 API 封装
- * 手写封装，调用后端 /question/comment/** 接口
  */
-import axios from "axios";
-
-const BASE_URL = typeof window !== "undefined" ? "/api" : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8101/api";
+import request from "@/libs/request";
 
 interface CommentAddRequest {
   questionId: number;
@@ -57,39 +54,42 @@ interface Page<T> {
   size: number;
 }
 
-const request = axios.create({ baseURL: BASE_URL, withCredentials: true });
+/**
+ * 注意：request (myAxios) 的响应拦截器已经返回了 data (BaseResponse)
+ * 我们进一步提取出 BaseResponse 中的数据部分返回给组件
+ */
 
 export async function addComment(data: CommentAddRequest): Promise<number> {
-  const res = await request.post("/question/comment/add", data);
-  return res.data.data;
+  const res = (await request.post("/api/question/comment/add", data)) as any;
+  return res.data;
 }
 
 export async function deleteComment(id: number): Promise<boolean> {
-  const res = await request.post("/question/comment/delete", { id });
-  return res.data.data;
+  const res = (await request.post("/api/question/comment/delete", { id })) as any;
+  return res.data;
 }
 
 export async function listCommentsByPage(data: CommentQueryRequest): Promise<Page<CommentVO>> {
-  const res = await request.post("/question/comment/list/page/vo", data);
-  return res.data.data;
+  const res = (await request.post("/api/question/comment/list/page/vo", data)) as any;
+  return res.data;
 }
 
 export async function likeComment(commentId: number): Promise<{ liked: boolean; likeNum: number }> {
-  const res = await request.post(`/question/comment/like?commentId=${commentId}`);
-  return res.data.data;
+  const res = (await request.post(`/api/question/comment/like?commentId=${commentId}`)) as any;
+  return res.data;
 }
 
 export async function reportComment(data: CommentReportRequest): Promise<boolean> {
-  const res = await request.post("/question/comment/report", data);
-  return res.data.data;
+  const res = (await request.post("/api/question/comment/report", data)) as any;
+  return res.data;
 }
 
 export async function pinComment(commentId: number, pinned: boolean): Promise<boolean> {
-  const res = await request.post(`/question/comment/pin?commentId=${commentId}&pinned=${pinned}`);
-  return res.data.data;
+  const res = (await request.post(`/api/question/comment/pin?commentId=${commentId}&pinned=${pinned}`)) as any;
+  return res.data;
 }
 
 export async function setOfficialAnswer(commentId: number, official: boolean): Promise<boolean> {
-  const res = await request.post(`/question/comment/official?commentId=${commentId}&official=${official}`);
-  return res.data.data;
+  const res = (await request.post(`/api/question/comment/official?commentId=${commentId}&official=${official}`)) as any;
+  return res.data;
 }
