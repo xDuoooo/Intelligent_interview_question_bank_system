@@ -1,6 +1,7 @@
 package com.xduo.springbootinit.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
@@ -10,6 +11,7 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.mapper.CounterManager;
 import com.xduo.springbootinit.model.dto.question.*;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
@@ -22,7 +24,9 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 题目接口
@@ -37,15 +41,19 @@ public class QuestionController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private CounterManager counterManager;
     /**
      * 创建题目
+     *
      * @param questionAddRequest
      * @param request
      * @return
      */
     @PostMapping("/add")
     public BaseResponse<Long> addQuestion(@RequestBody QuestionAddRequest questionAddRequest,
-            HttpServletRequest request) {
+                                          HttpServletRequest request) {
         //参数校验(非空)
         ThrowUtils.throwIf(questionAddRequest == null, ErrorCode.PARAMS_ERROR);
         //构建实例
@@ -133,6 +141,9 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        //爬虫检测
+        User loginUser = userService.getLoginUser(request);
+        crawlerDetect(loginUser.getId());
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
@@ -166,7 +177,7 @@ public class QuestionController {
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
-            HttpServletRequest request) {
+                                                               HttpServletRequest request) {
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
@@ -187,7 +198,7 @@ public class QuestionController {
      */
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listMyQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
-            HttpServletRequest request) {
+                                                                 HttpServletRequest request) {
         ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
         // 补充查询条件，只查询当前登录用户的数据
         User loginUser = userService.getLoginUser(request);
@@ -212,7 +223,7 @@ public class QuestionController {
      */
     @PostMapping("/edit")
     public BaseResponse<Boolean> editQuestion(@RequestBody QuestionEditRequest questionEditRequest,
-            HttpServletRequest request) {
+                                              HttpServletRequest request) {
         if (questionEditRequest == null || questionEditRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -238,6 +249,7 @@ public class QuestionController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+
     @PostMapping("/search/page/vo")
     public BaseResponse<Page<QuestionVO>> searchQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
                                                                  HttpServletRequest request) {
@@ -247,6 +259,7 @@ public class QuestionController {
         Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
+
     @PostMapping("/delete/batch")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> batchDeleteQuestions(@RequestBody QuestionBatchDeleteRequest questionBatchDeleteRequest,
@@ -256,5 +269,36 @@ public class QuestionController {
         return ResultUtils.success(true);
     }
 
+    /**
+     * 检测爬虫
+     *
+     * @param loginUserId
+     */
+    private void crawlerDetect(long loginUserId) {
+        // 调用多少次时告警
+        final int WARN_COUNT = 10;
+        // 超过多少次封号
+        final int BAN_COUNT = 20;
+        // 拼接访问 key
+        String key = String.format("user:access:%s", loginUserId);
+        // 一分钟内访问次数，180 秒过期
+        long count = counterManager.incrAndGetCounter(key, 1, TimeUnit.MINUTES, 180);
+        // 是否封号
+        if (count > BAN_COUNT) {
+            // 踢下线
+            StpUtil.kickout(loginUserId);
+            // 封号
+            User updateUser = new User();
+            updateUser.setId(loginUserId);
+            updateUser.setUserRole("ban");
+            userService.updateById(updateUser);
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "访问太频繁，已被封号");
+        }
+        // 是否告警
+        if (count == WARN_COUNT) {
+            // 可以改为向管理员发送邮件通知
+            throw new BusinessException(110, "警告访问太频繁");
+        }
+    }
 
 }
