@@ -1,6 +1,7 @@
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import QuestionBankList from "@/components/QuestionBankList";
 import { Compass } from "lucide-react";
+import { headers } from "next/headers";
 
 /**
  * 题库列表页面
@@ -15,6 +16,10 @@ export default async function BanksPage() {
       pageSize,
       sortField: "createTime",
       sortOrder: "descend",
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
     })) as unknown as API.BaseResponsePageQuestionBankVO_;
     const records = res.data?.records ?? [];
     questionBankList = records;

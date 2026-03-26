@@ -1,14 +1,19 @@
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import QuestionTable from "@/components/QuestionTable";
 import { Sparkles } from "lucide-react";
+import { headers } from "next/headers";
 
 /**
  * 题目列表页面
  * @constructor
  */
-export default async function QuestionsPage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function QuestionsPage({
+  searchParams,
+}: {
+  searchParams: { q: string };
+}) {
   // 获取 url 的查询参数
-  const { q: searchText } = searchParams;
+  const searchText = searchParams.q || "";
   // 题目列表和总数
   let questionList: API.QuestionVO[] = [];
   let total = 0;
@@ -19,6 +24,10 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
       pageSize: 12,
       sortField: "createTime",
       sortOrder: "descend",
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
     })) as unknown as API.BaseResponsePageQuestionVO_;
     questionList = res.data?.records ?? [];
     total = res.data?.total ?? 0;

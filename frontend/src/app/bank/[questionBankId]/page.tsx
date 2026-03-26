@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getQuestionBankVoByIdUsingGet } from "@/api/questionBankController";
 import QuestionList from "@/components/QuestionList";
 import { Play, BookOpen, Clock, Users, Sparkles } from "lucide-react";
+import { headers } from "next/headers";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,28 +13,47 @@ import { cn } from "@/lib/utils";
  */
 export default async function BankPage({ params }: { params: { questionBankId: string } }) {
   const { questionBankId } = params;
+  // 获取题库详情
   let bank: API.QuestionBankVO | undefined = undefined;
+  let isNotLogin = false;
 
   try {
     const res = (await getQuestionBankVoByIdUsingGet({
       id: Number(questionBankId),
       needQueryQuestionList: true,
       pageSize: 200,
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
     })) as unknown as API.BaseResponseQuestionBankVO_;
-    bank = res.data;
+    
+    if (res.code === 40100) {
+      isNotLogin = true;
+    } else {
+      bank = res.data;
+    }
   } catch (e) {
     console.error("获取题库详情失败", e);
   }
 
   if (!bank) {
+    const errorTitle = isNotLogin ? "您还没有登录" : "获取题库详情失败";
+    const errorDesc = isNotLogin ? "请先登录后再查看题库详情" : "该题库可能已被移除或权限不足";
+    
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
            <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
         </div>
-        <h1 className="text-xl font-bold text-foreground">获取题库详情失败</h1>
-        <p className="text-muted-foreground">该题库可能已被移除或权限不足</p>
-        <Link href="/" className="text-primary font-bold hover:underline">返回首页</Link>
+        <h1 className="text-xl font-bold text-foreground">{errorTitle}</h1>
+        <p className="text-muted-foreground">{errorDesc}</p>
+        <Link 
+          href={isNotLogin ? `/user/login?redirect=/bank/${questionBankId}` : "/"} 
+          className="h-11 px-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95"
+        >
+          {isNotLogin ? "立即登录" : "返回首页"}
+        </Link>
       </div>
     );
   }
