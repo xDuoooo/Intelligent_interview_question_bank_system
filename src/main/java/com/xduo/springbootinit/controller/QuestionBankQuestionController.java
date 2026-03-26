@@ -1,18 +1,16 @@
 package com.xduo.springbootinit.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.xduo.springbootinit.annotation.AuthCheck;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
-import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.dto.question.QuestionBatchDeleteRequest;
 import com.xduo.springbootinit.model.dto.questionbankquestion.*;
-import com.xduo.springbootinit.model.entity.Question;
-import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
@@ -31,7 +29,7 @@ import java.util.List;
  * 题库题目关联接口
  */
 @RestController
-@RequestMapping("/question_bank_question")
+@RequestMapping("/questionBankQuestion")
 @Slf4j
 public class QuestionBankQuestionController {
 
@@ -55,7 +53,7 @@ public class QuestionBankQuestionController {
      * @return
      */
     @PostMapping("/add")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addQuestionBankQuestion(
             @RequestBody QuestionBankQuestionAddRequest questionBankQuestionAddRequest,
             HttpServletRequest request) {
@@ -80,39 +78,13 @@ public class QuestionBankQuestionController {
     }
 
     /**
-     * 从题库移除题目（仅管理员）
-     *
-     * @param questionBankQuestionRemoveRequest
-     * @param request
-     * @return
-     */
-    @PostMapping("/remove")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> removeQuestionBankQuestion(
-            @RequestBody QuestionBankQuestionRemoveRequest questionBankQuestionRemoveRequest,
-            HttpServletRequest request) {
-        ThrowUtils.throwIf(questionBankQuestionRemoveRequest == null, ErrorCode.PARAMS_ERROR);
-        Long questionBankId = questionBankQuestionRemoveRequest.getQuestionBankId();
-        Long questionId = questionBankQuestionRemoveRequest.getQuestionId();
-        ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR);
-        ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR);
-        // 构造查询，硬删除
-        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
-        lambdaQueryWrapper.eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
-        lambdaQueryWrapper.eq(QuestionBankQuestion::getQuestionId, questionId);
-        boolean result = questionBankQuestionService.remove(lambdaQueryWrapper);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(true);
-    }
-
-    /**
      * 分页获取题库题目关联列表（仅管理员可用）
      *
      * @param questionBankQuestionQueryRequest
      * @return
      */
     @PostMapping("/list/page")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<QuestionBankQuestion>> listQuestionBankQuestionByPage(
             @RequestBody QuestionBankQuestionQueryRequest questionBankQuestionQueryRequest) {
         ThrowUtils.throwIf(questionBankQuestionQueryRequest == null, ErrorCode.PARAMS_ERROR);
@@ -122,7 +94,7 @@ public class QuestionBankQuestionController {
     }
 
     @PostMapping("/add/batch")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> batchAddQuestionsToBank(
             @RequestBody QuestionBankQuestionBatchAddRequest questionBankQuestionBatchAddRequest,
             HttpServletRequest request
@@ -137,7 +109,7 @@ public class QuestionBankQuestionController {
     }
 
     @PostMapping("/remove/batch")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> batchRemoveQuestionsFromBank(
             @RequestBody QuestionBankQuestionBatchRemoveRequest questionBankQuestionBatchRemoveRequest,
             HttpServletRequest request
@@ -151,7 +123,7 @@ public class QuestionBankQuestionController {
     }
 
     @PostMapping("/remove")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> removeQuestionBankQuestion(
             @RequestBody QuestionBankQuestionRemoveRequest questionBankQuestionRemoveRequest
     ) {
@@ -167,6 +139,12 @@ public class QuestionBankQuestionController {
         boolean result = questionBankQuestionService.remove(lambdaQueryWrapper);
         return ResultUtils.success(result);
     }
-
-
+    @PostMapping("/delete/batch")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> batchDeleteQuestions(@RequestBody QuestionBatchDeleteRequest questionBatchDeleteRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBatchDeleteRequest == null, ErrorCode.PARAMS_ERROR);
+        questionService.batchDeleteQuestions(questionBatchDeleteRequest.getQuestionIdList());
+        return ResultUtils.success(true);
+    }
 }

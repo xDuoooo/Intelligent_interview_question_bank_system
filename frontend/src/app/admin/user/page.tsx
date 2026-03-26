@@ -1,0 +1,212 @@
+"use client";
+
+import React, { useRef, useState } from "react";
+import CreateModal from "./components/CreateModal";
+import UpdateModal from "./components/UpdateModal";
+import { deleteUserUsingPost, listUserByPageUsingPost } from "@/api/userController";
+import { Plus, Trash2, Edit3, UserCog } from "lucide-react";
+import { ProTable } from "@ant-design/pro-components";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
+import { Button, message, Space, Typography, Tag, Avatar } from "antd";
+
+/**
+ * 用户管理页面
+ * @constructor
+ */
+const UserAdminPage: React.FC = () => {
+  const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
+  const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
+  const actionRef = useRef<ActionType>();
+  const [currentRow, setCurrentRow] = useState<API.User>();
+
+  /**
+   * 删除节点
+   */
+  const handleDelete = async (row: API.User) => {
+    const hide = message.loading("正在删除");
+    if (!row) return true;
+    try {
+      await deleteUserUsingPost({ id: row.id as any });
+      hide();
+      message.success("删除成功");
+      actionRef?.current?.reload();
+      return true;
+    } catch (error: any) {
+      hide();
+      message.error("删除失败，" + error.message);
+      return false;
+    }
+  };
+
+  /**
+   * 表格列配置
+   */
+  const columns: ProColumns<API.User>[] = [
+    {
+      title: "ID",
+      dataIndex: "id",
+      valueType: "text",
+      hideInForm: true,
+      width: 80,
+    },
+    {
+      title: "账号",
+      dataIndex: "userAccount",
+      valueType: "text",
+      render: (text) => <span className="font-bold text-slate-700">{text}</span>,
+    },
+    {
+      title: "用户名",
+      dataIndex: "userName",
+      valueType: "text",
+    },
+    {
+      title: "头像",
+      dataIndex: "userAvatar",
+      valueType: "image",
+      fieldProps: { width: 48 },
+      hideInSearch: true,
+      render: (_, record) => (
+        <Avatar src={record.userAvatar} size="large" className="border border-slate-100 shadow-sm" />
+      ),
+    },
+    {
+      title: "角色",
+      dataIndex: "userRole",
+      valueEnum: {
+        user: { text: "用户", status: "Default" },
+        admin: { text: "管理员", status: "Success" },
+      },
+      render: (_, record) => {
+        const isAdmin = record.userRole === "admin";
+        return (
+          <Tag color={isAdmin ? "gold" : "blue"} className="rounded-lg font-bold border-none px-3 py-1">
+            {isAdmin ? "管理员" : "用户"}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "创建时间",
+      sorter: true,
+      dataIndex: "createTime",
+      valueType: "dateTime",
+      hideInSearch: true,
+      hideInForm: true,
+    },
+    {
+      title: "操作",
+      dataIndex: "option",
+      valueType: "option",
+      render: (_, record) => (
+        <Space size="middle">
+          <button
+            onClick={() => {
+              setCurrentRow(record);
+              setUpdateModalVisible(true);
+            }}
+            className="flex items-center gap-1.5 text-primary hover:text-primary/80 font-bold transition-colors"
+          >
+            <Edit3 className="h-4 w-4" />
+            修改
+          </button>
+          <button
+            onClick={() => handleDelete(record)}
+            className="flex items-center gap-1.5 text-red-500 hover:text-red-600 font-bold transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            删除
+          </button>
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Premium Admin Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-10">
+           <UserCog className="h-24 w-24 text-primary" />
+        </div>
+        <div className="relative z-10 space-y-2">
+           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-wider text-xs">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              ADMIN CONTROL PANEL
+           </div>
+           <h1 className="text-3xl sm:text-4xl font-black tracking-tight">用户权限管理</h1>
+           <p className="text-slate-400 font-medium">查看、编辑和管理平台所有效户的访问权限。</p>
+        </div>
+        <div className="relative z-10">
+          <button
+            onClick={() => setCreateModalVisible(true)}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 rounded-2xl font-black text-lg transition-all shadow-xl shadow-primary/25 hover:scale-105 active:scale-95"
+          >
+            <Plus className="h-6 w-6" />
+            新增用户
+          </button>
+        </div>
+      </div>
+
+      {/* Table Container */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden p-4 sm:p-6 pb-12 ant-table-premium">
+        <ProTable<API.User>
+          headerTitle={null}
+          actionRef={actionRef}
+          rowKey="id"
+          search={{
+            labelWidth: "auto",
+            defaultCollapsed: false,
+            className: "admin-search-form",
+          }}
+          request={async (params, sort, filter) => {
+            const sortField = Object.keys(sort)?.[0];
+            const sortOrder = sort?.[sortField] ?? undefined;
+            // @ts-ignore
+            const res = await listUserByPageUsingPost({
+              ...params,
+              sortField,
+              sortOrder,
+              ...filter,
+            } as API.UserQueryRequest);
+            return {
+              success: res.code === 0,
+              data: res.data?.records || [],
+              total: Number(res.data?.total) || 0,
+            };
+          }}
+          columns={columns}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: true,
+          }}
+        />
+      </div>
+
+      <CreateModal
+        visible={createModalVisible}
+        columns={columns}
+        onSubmit={() => {
+          setCreateModalVisible(false);
+          actionRef.current?.reload();
+        }}
+        onCancel={() => setCreateModalVisible(false)}
+      />
+      
+      <UpdateModal
+        visible={updateModalVisible}
+        columns={columns}
+        oldData={currentRow}
+        onSubmit={() => {
+          setUpdateModalVisible(false);
+          setCurrentRow(undefined);
+          actionRef.current?.reload();
+        }}
+        onCancel={() => setUpdateModalVisible(false)}
+      />
+    </div>
+  );
+};
+
+export default UserAdminPage;
+
