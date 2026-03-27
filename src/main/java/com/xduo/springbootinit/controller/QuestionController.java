@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
+import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -44,6 +45,9 @@ public class QuestionController {
 
     @Resource
     private QuestionService questionService;
+
+    @Resource
+    private UserQuestionHistoryService userQuestionHistoryService;
 
     @Resource
     private UserService userService;
@@ -154,6 +158,8 @@ public class QuestionController {
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+        // 保存浏览记录
+        userQuestionHistoryService.addQuestionHistory(loginUser.getId(), id, 0);
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));
     }
@@ -336,7 +342,7 @@ public class QuestionController {
     public BaseResponse<Page<QuestionVO>> handleFallback(QuestionQueryRequest questionQueryRequest,
                                                          HttpServletRequest request, Throwable ex) {
         // 可以返回本地数据或空数据
-        return ResultUtils.success(null);
+        return ResultUtils.success(new Page<>());
     }
 
 }

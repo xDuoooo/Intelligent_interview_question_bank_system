@@ -2,7 +2,10 @@ import React, { useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import dayjs from "dayjs";
 import { message } from "antd";
-import { getUserSignInRecordUsingGet } from "@/api/userController";
+import { getMyQuestionHistoryRecordUsingGet } from "@/api/userQuestionHistoryController";
+import { useSelector } from "react-redux";
+import { RootState } from "@/stores";
+import ACCESS_ENUM from "@/access/accessEnum";
 import "./index.css";
 
 interface Props {}
@@ -13,9 +16,10 @@ interface Props {}
  * @constructor
  */
 const CalendarChart = (props: Props) => {
-  const {} = props;
+  // 刷题记录列表
+  const [dataList, setDataList] = useState<any[]>([]);
+  const year = new Date().getFullYear();
 
-  // 签到日期列表（[1, 200]，表示第 1 和第 200 天有签到记录）
   const loginUser = useSelector((state: RootState) => state.loginUser);
 
   // 请求后端获取数据
@@ -24,12 +28,12 @@ const CalendarChart = (props: Props) => {
       return;
     }
     try {
-      const res = await getUserSignInRecordUsingGet({
+      const res = await getMyQuestionHistoryRecordUsingGet({
         year,
       });
       setDataList(res.data || []);
     } catch (e: any) {
-      console.error("获取刷题签到记录失败，" + e.message);
+      message.error("获取刷题记录失败，" + e.message);
     }
   };
 
@@ -39,13 +43,8 @@ const CalendarChart = (props: Props) => {
   }, [loginUser.id]);
 
   // 计算图表所需的数据
-  const optionsData = dataList.map((dayOfYear) => {
-    // 计算日期字符串
-    const dateStr = dayjs(`${year}-01-01`)
-      .add(dayOfYear - 1, "day")
-      .format("YYYY-MM-DD");
-    console.log(dateStr);
-    return [dateStr, 1];
+  const optionsData = dataList.map((item) => {
+    return [item.date, item.count];
   });
 
   // 图表配置
@@ -53,10 +52,16 @@ const CalendarChart = (props: Props) => {
     visualMap: {
       show: false,
       min: 0,
-      max: 1,
+      max: 10,
       inRange: {
-        // 颜色从灰色到浅绿色
-        color: ["#efefef", "lightgreen"],
+        // 颜色从灰色到深绿色
+        color: ["#efefef", "lightgreen", "darkgreen"],
+      },
+    },
+    tooltip: {
+      position: "top",
+      formatter: (params: any) => {
+        return `${params.value[0]} 做题：${params.value[1]} 道`;
       },
     },
     calendar: {

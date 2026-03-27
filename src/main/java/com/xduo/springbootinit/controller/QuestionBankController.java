@@ -1,7 +1,10 @@
 package com.xduo.springbootinit.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
-import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.EntryType;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.Tracer;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -14,7 +17,6 @@ import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankAddRequest;
-import com.xduo.springbootinit.model.dto.questionbank.QuestionBankEditRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankUpdateRequest;
 import com.xduo.springbootinit.model.entity.Question;
@@ -173,103 +175,39 @@ public class QuestionBankController {
      * @param request
      * @return
      */
-    @SentinelResource(value = "listQuestionBankVOByPage",
-            blockHandler = "handleBlockException",
-            fallback = "handleFallback")
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<QuestionBankVO>> listQuestionBankVOByPage(
             @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
             HttpServletRequest request) {
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        // 查询数据库
-        Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
-                questionBankService.getQueryWrapper(questionBankQueryRequest));
-        // 获取封装类
-        return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
-    }
-
-    /**
-     * 分页获取当前登录用户创建的题库列表
-     *
-     * @param questionBankQueryRequest
-     * @param request
-     * @return
-     */
-    @PostMapping("/my/list/page/vo")
-    public BaseResponse<Page<QuestionBankVO>> listMyQuestionBankVOByPage(
-            @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
-            HttpServletRequest request) {
-        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        // 补充查询条件，只查询当前登录用户的数据
-        User loginUser = userService.getLoginUser(request);
-        questionBankQueryRequest.setUserId(loginUser.getId());
-        long current = questionBankQueryRequest.getCurrent();
-        long size = questionBankQueryRequest.getPageSize();
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        // 查询数据库
-        Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
-                questionBankService.getQueryWrapper(questionBankQueryRequest));
-        // 获取封装类
-        return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
-    }
-
-    /**
-     * 编辑题库（给用户使用）
-     *
-     * @param questionBankEditRequest
-     * @param request
-     * @return
-     */
-    @PostMapping("/edit")
-    public BaseResponse<Boolean> editQuestionBank(@RequestBody QuestionBankEditRequest questionBankEditRequest,
-                                                  HttpServletRequest request) {
-        if (questionBankEditRequest == null || questionBankEditRequest.getId() <= 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        Entry entry = null;
+        String remoteAddr = request.getRemoteAddr();
+        try {
+            entry = SphU.entry("listQuestionBankVOByPage", EntryType.IN, 1, remoteAddr);
+            // 限制爬虫
+            ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
+            // 查询数据库
+            Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
+                    questionBankService.getQueryWrapper(questionBankQueryRequest));
+            // 获取封装类
+            return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
+        } catch (Throwable ex) {
+            // 业务异常
+            if (!BlockException.isBlockException(ex)) {
+                Tracer.trace(ex);
+                return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
+            }
+            // 降级操作
+            if (ex instanceof DegradeException) {
+                return ResultUtils.success(new Page<>());
+            }
+            // 限流操作
+            return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "访问过于频繁，请稍后再试");
+        } finally {
+            if (entry != null) {
+                entry.exit(1, remoteAddr);
+            }
         }
-        QuestionBank questionBank = new QuestionBank();
-        BeanUtils.copyProperties(questionBankEditRequest, questionBank);
-        // 数据校验
-        questionBankService.validQuestionBank(questionBank, false);
-        User loginUser = userService.getLoginUser(request);
-        // 判断是否存在
-        long id = questionBankEditRequest.getId();
-        QuestionBank oldQuestionBank = questionBankService.getById(id);
-        ThrowUtils.throwIf(oldQuestionBank == null, ErrorCode.NOT_FOUND_ERROR);
-        // 仅本人或管理员可编辑
-        if (!oldQuestionBank.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-        }
-        // 操作数据库
-        boolean result = questionBankService.updateById(questionBank);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        return ResultUtils.success(true);
     }
-
-    /**
-     * listQuestionBankVOByPage 如果抛出业务异常，会走到这里进行降级
-     */
-    public BaseResponse<Page<QuestionBankVO>> handleFallback(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
-                                                             HttpServletRequest request, Throwable ex) {
-        // 可以返回本地数据或空数据
-        log.error("触发了降级操作");
-        return ResultUtils.success(null);
-    }
-
-    /**
-     * listQuestionBankVOByPage 流控操作
-     * 限流：提示“系统压力过大，请耐心等待” 如果触发了熔断，或者降级，则会走到这里进行block
-     */
-    public BaseResponse<Page<QuestionBankVO>> handleBlockException(@RequestBody QuestionBankQueryRequest questionBankQueryRequest,
-                                                                   HttpServletRequest request, BlockException ex) {
-        // 限流操作
-        if (ex instanceof DegradeException) {
-            return handleFallback(questionBankQueryRequest, request, ex);
-        }
-        return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统压力过大，请耐心等待");
-    }
-
 }

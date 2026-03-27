@@ -1,7 +1,6 @@
 package com.xduo.springbootinit.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
@@ -11,7 +10,6 @@ import com.xduo.springbootinit.config.WxOpenConfig;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
-import com.xduo.springbootinit.mapper.CounterManager;
 import com.xduo.springbootinit.model.dto.user.UserAddRequest;
 import com.xduo.springbootinit.model.dto.user.UserLoginRequest;
 import com.xduo.springbootinit.model.dto.user.UserQueryRequest;
@@ -23,10 +21,7 @@ import com.xduo.springbootinit.model.vo.LoginUserVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.UserService;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -316,6 +311,9 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
+        // 校验昵称唯一性
+        userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
+
         User user = new User();
         BeanUtils.copyProperties(userUpdateMyRequest, user);
         user.setId(loginUser.getId());
@@ -323,6 +321,27 @@ public class UserController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+
+    /**
+     * 修改密码
+     *
+     * @param userChangePasswordRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/change_password")
+    public BaseResponse<Boolean> changePassword(@RequestBody com.xduo.springbootinit.model.dto.user.UserChangePasswordRequest userChangePasswordRequest,
+                                                HttpServletRequest request) {
+        if (userChangePasswordRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        userService.changePassword(userChangePasswordRequest, loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 注销账号
 
     /**
      * 用户签到

@@ -5,6 +5,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseMapStringObject_ = {
+    code?: number;
+    data?: Record<string, any>;
+    message?: string;
+  };
+
   type BaseResponseInt_ = {
     code?: number;
     data?: number;
@@ -143,6 +149,30 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponsePageUserQuestionHistoryVO_ = {
+    code?: number;
+    data?: PageUserQuestionHistoryVO_;
+    message?: string;
+  };
+
+  type BaseResponseListMapStringObject_ = {
+    code?: number;
+    data?: Record<string, any>[];
+    message?: string;
+  };
+
+  type BaseResponseNotificationVO_ = {
+    code?: number;
+    data?: NotificationVO;
+    message?: string;
+  };
+
+  type BaseResponsePageNotificationVO_ = {
+    code?: number;
+    data?: PageNotificationVO_;
+    message?: string;
+  };
+
   type checkUsingGETParams = {
     /** echostr */
     echostr?: string;
@@ -246,16 +276,13 @@ declare namespace API {
   type LoginUserVO = {
     createTime?: string;
     email?: string;
-    expertiseDirection?: string;
-    grade?: string;
     id?: number;
-    phoneNumber?: string;
+    phone?: string;
     updateTime?: string;
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
     userRole?: string;
-    workExperience?: string;
   };
 
   type MockInterview = {
@@ -439,6 +466,32 @@ declare namespace API {
     orders?: OrderItem[];
     pages?: number;
     records?: UserVO[];
+    searchCount?: boolean;
+    size?: number;
+    total?: number;
+  };
+
+  type PageUserQuestionHistoryVO_ = {
+    countId?: string;
+    current?: number;
+    maxLimit?: number;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: number;
+    records?: UserQuestionHistoryVO[];
+    searchCount?: boolean;
+    size?: number;
+    total?: number;
+  };
+
+  type PageNotificationVO_ = {
+    countId?: string;
+    current?: number;
+    maxLimit?: number;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: number;
+    records?: NotificationVO[];
     searchCount?: boolean;
     size?: number;
     total?: number;
@@ -707,6 +760,8 @@ declare namespace API {
     answer?: string;
     content?: string;
     createTime?: string;
+    favourNum?: number;
+    hasFavour?: boolean;
     id?: number;
     tagList?: string[];
     title?: string;
@@ -723,12 +778,10 @@ declare namespace API {
     createTime?: string;
     editTime?: string;
     email?: string;
-    expertiseDirection?: string;
-    grade?: string;
     id?: number;
     isDelete?: number;
     mpOpenId?: string;
-    phoneNumber?: string;
+    phone?: string;
     unionId?: string;
     updateTime?: string;
     userAccount?: string;
@@ -737,7 +790,6 @@ declare namespace API {
     userPassword?: string;
     userProfile?: string;
     userRole?: string;
-    workExperience?: string;
   };
 
   type UserAddRequest = {
@@ -791,6 +843,23 @@ declare namespace API {
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
+    phone?: string;
+    email?: string;
+  };
+
+  type UserChangePasswordRequest = {
+    oldPassword?: string;
+    newPassword?: string;
+    checkPassword?: string;
+  };
+
+  type QuestionFavourAddRequest = {
+    questionId?: number;
+  };
+
+  type UserQuestionHistoryAddRequest = {
+    questionId?: number;
+    status?: number;
   };
 
   type UserUpdateRequest = {
@@ -808,5 +877,45 @@ declare namespace API {
     userName?: string;
     userProfile?: string;
     userRole?: string;
+  };
+  type UserQuestionHistoryVO = {
+    createTime?: string;
+    id?: number;
+    question?: QuestionVO;
+    questionId?: number;
+    status?: number;
+    updateTime?: string;
+    userId?: number;
+  };
+
+  type NotificationVO = {
+    id?: number;
+    userId?: number;
+    title?: string;
+    content?: string;
+    type?: string;
+    status?: number;
+    createTime?: string;
+    updateTime?: string;
+  };
+
+  type NotificationAddRequest = {
+    userId?: number;
+    title?: string;
+    content?: string;
+    type?: string;
+  };
+
+  type NotificationQueryRequest = {
+    current?: number;
+    pageSize?: number;
+    id?: number;
+    userId?: number;
+    title?: string;
+    content?: string;
+    type?: string;
+    status?: number;
+    sortField?: string;
+    sortOrder?: string;
   };
 }

@@ -12,6 +12,11 @@ import UserInfoEditForm from "@/app/user/center/components/UserInfoEditForm";
 import {USER_ROLE_ENUM, USER_ROLE_TEXT_MAP} from "@/constants/user";
 import dayjs from "dayjs";
 
+import PasswordChangeForm from "@/app/user/center/components/PasswordChangeForm";
+import LearningDataDashboard from "@/app/user/center/components/LearningDataDashboard";
+import MyFavourList from "@/app/user/center/components/MyFavourList";
+import LearningHistoryList from "@/app/user/center/components/LearningHistoryList";
+
 /**
  * 用户中心页面
  * @constructor
@@ -23,8 +28,16 @@ export default function UserCenterPage() {
   const user = loginUser;
   // 控制菜单栏的 Tab 高亮
   const [activeTabKey, setActiveTabKey] = useState<string>("info");
-  // 控制用户资料编辑状态的切换
-  const [currentEditState, setCurrentEditState] = useState<string>("查看信息");
+  // 控制内容切换（Segmented）
+  const [innerState, setInnerState] = useState<string>("查看信息");
+
+  // 当主 Tab 切换时，重置子状态
+  const onTabChange = (key: string) => {
+    setActiveTabKey(key);
+    if (key === "info") setInnerState("查看信息");
+    if (key === "security") setInnerState("修改密码");
+    if (key === "record") setInnerState("成就看板");
+  };
 
   return (
     <div id="userCenterPage" className="max-width-content">
@@ -46,13 +59,15 @@ export default function UserCenterPage() {
             <Tag
               color={user.userRole === USER_ROLE_ENUM.ADMIN ? "gold" : "grey"}
             >
-              {USER_ROLE_TEXT_MAP[user.userRole]}
+              {user.userRole
+                ? (USER_ROLE_TEXT_MAP as Record<string, string>)[user.userRole]
+                : "未知角色"}
             </Tag>
             <Paragraph type="secondary" style={{ marginTop: 8 }}>
               注册日期：{dayjs(user.createTime).format("YYYY-MM-DD")}
             </Paragraph>
             <Paragraph type="secondary" style={{ marginTop: 8 }} copyable={{
-              text: user.id
+              text: String(user.id)
             }}>
               我的 id：{user.id}
             </Paragraph>
@@ -70,34 +85,62 @@ export default function UserCenterPage() {
                 label: "刷题记录",
               },
               {
+                key: "security",
+                label: "账号安全",
+              },
+              {
                 key: "others",
-                label: "其他",
+                label: "其他内容",
               },
             ]}
             activeTabKey={activeTabKey}
-            onTabChange={(key: string) => {
-              setActiveTabKey(key);
-            }}
+            onTabChange={onTabChange}
           >
             {activeTabKey === "info" && (
               <>
                 <Segmented<string>
                   options={["查看信息", "修改信息"]}
-                  value={currentEditState}
-                  onChange={setCurrentEditState}
+                  value={innerState}
+                  onChange={setInnerState}
+                  style={{ marginBottom: 20 }}
                 />
-                {currentEditState === "查看信息" && <UserInfo user={user} />}
-                {currentEditState === "修改信息" && (
+                {innerState === "查看信息" && <UserInfo user={user} />}
+                {innerState === "修改信息" && (
                   <UserInfoEditForm user={user} />
                 )}
               </>
             )}
-            {activeTabKey === "record" && (
+            {activeTabKey === "security" && (
               <>
-                <CalendarChart />
+                <Segmented<string>
+                  options={["修改密码"]}
+                  value={innerState}
+                  onChange={setInnerState}
+                  style={{ marginBottom: 20 }}
+                />
+                {innerState === "修改密码" && <PasswordChangeForm />}
               </>
             )}
-            {activeTabKey === "others" && <>bbb</>}
+            {activeTabKey === "record" && (
+              <>
+                <Segmented<string>
+                  options={["成就看板", "收藏题目", "学习轨迹"]}
+                  value={innerState}
+                  onChange={setInnerState}
+                  style={{ marginBottom: 20 }}
+                />
+                {innerState === "成就看板" && (
+                  <>
+                    <LearningDataDashboard />
+                    <Title level={5}>刷题热力图</Title>
+                    <CalendarChart />
+                  </>
+                )}
+                {innerState === "收藏题目" && <MyFavourList />}
+                {innerState === "学习轨迹" && <LearningHistoryList />}
+              </>
+            )}
+            {activeTabKey === "others" && <>这里暂无内容，敬请期待</>}
           </Card>
         </Col>
       </Row>

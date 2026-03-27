@@ -217,3 +217,26 @@ export async function updateMyUserUsingPost(
     ...(options || {}),
   });
 }
+
+/** changePassword POST /api/user/change_password */
+export async function changePasswordUsingPost(
+  body: API.UserChangePasswordRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/change_password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** deleteMyAccount POST /api/user/delete/my */
+export async function deleteMyAccountUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/delete/my', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}

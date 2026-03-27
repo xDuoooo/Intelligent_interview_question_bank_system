@@ -61,6 +61,16 @@ public class QuestionVO implements Serializable {
     private UserVO user;
 
     /**
+     * 是否已收藏
+     */
+    private Boolean hasFavour;
+
+    /**
+     * 收藏数
+     */
+    private Integer favourNum;
+
+    /**
      * 封装类转对象
      */
     public static Question voToObj(QuestionVO questionVO) {

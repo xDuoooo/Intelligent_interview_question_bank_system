@@ -38,7 +38,14 @@ public class LogInterceptor {
         String url = httpServletRequest.getRequestURI();
         // 获取请求参数
         Object[] args = point.getArgs();
-        String reqParam = "[" + StringUtils.join(args, ", ") + "]";
+        java.util.List<Object> safeArgs = new java.util.ArrayList<>();
+        for (Object arg : args) {
+            if (!(arg instanceof jakarta.servlet.http.HttpServletRequest) && 
+                !(arg instanceof jakarta.servlet.http.HttpServletResponse)) {
+                safeArgs.add(arg);
+            }
+        }
+        String reqParam = "[" + StringUtils.join(safeArgs, ", ") + "]";
         // 输出请求日志
         log.info("request start，id: {}, path: {}, ip: {}, params: {}", requestId, url,
                 httpServletRequest.getRemoteHost(), reqParam);

@@ -20,8 +20,8 @@ import com.xduo.springbootinit.satoken.DeviceUtils;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 
+import java.io.Serializable;
 import java.time.LocalDate;
-import java.time.Year;
 import java.util.*;
 import java.util.stream.Collectors;
 import jakarta.annotation.Resource;
@@ -81,6 +81,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             User user = new User();
             user.setUserAccount(userAccount);
             user.setUserPassword(encryptPassword);
+            // 默认昵称等于账号
+            user.setUserName(userAccount);
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
@@ -161,12 +163,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getLoginUser(HttpServletRequest request) {
         // 先判断是否已登录
-        Object loginUserId = StpUtil.getLoginIdDefaultNull();
-        if (loginUserId == null) {
+        Object loginId = StpUtil.getLoginIdDefaultNull();
+        if (loginId == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
-        // TODO 从数据库查询（追求性能的话可以注释，直接走缓存）
-        User currentUser = this.getById((String) loginUserId);
+        // 从数据库查询
+        User currentUser = this.getById((Serializable) loginId);
         if (currentUser == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
@@ -183,14 +185,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public User getLoginUserPermitNull(HttpServletRequest request) {
         // 先判断是否已登录
-        Object userObj = StpUtil.getSession().get(USER_LOGIN_STATE);
-        User currentUser = (User) userObj;
-        if (currentUser == null || currentUser.getId() == null) {
+        Object loginId = StpUtil.getLoginIdDefaultNull();
+        if (loginId == null) {
             return null;
         }
-        // 从数据库查询（追求性能的话可以注释，直接走缓存）
-        long userId = currentUser.getId();
-        return this.getById(userId);
+        // 从数据库查询
+        return this.getById((Serializable) loginId);
     }
 
     /**
@@ -201,10 +201,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public boolean isAdmin(HttpServletRequest request) {
-        // 仅管理员可查询
-        Object userObj = StpUtil.getSession().get(USER_LOGIN_STATE);
-        User user = (User) userObj;
-        return isAdmin(user);
+        // 获取当前登录用户
+        User loginUser = this.getLoginUserPermitNull(request);
+        return isAdmin(loginUser);
     }
 
     @Override
@@ -346,5 +345,46 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return dayList;
     }
 
+    @Override
+    public void changePassword(com.xduo.springbootinit.model.dto.user.UserChangePasswordRequest request, User loginUser) {
+        String oldPassword = request.getOldPassword();
+        String newPassword = request.getNewPassword();
+        String checkPassword = request.getCheckPassword();
+        if (StringUtils.isAnyBlank(oldPassword, newPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+        }
+        if (newPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码过短");
+        }
+        if (!newPassword.equals(checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+        }
+        // 校验旧密码
+        String encryptOldPassword = DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
+        if (!encryptOldPassword.equals(loginUser.getUserPassword())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+        }
+        // 更新密码
+        String encryptNewPassword = DigestUtils.md5DigestAsHex((SALT + newPassword).getBytes());
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setUserPassword(encryptNewPassword);
+        this.updateById(user);
+    }
+
+
+    @Override
+    public void checkUserNameUnique(String userName, Long userId) {
+        if (StringUtils.isBlank(userName)) {
+            return;
+        }
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userName", userName);
+        queryWrapper.ne(userId != null, "id", userId);
+        long count = this.count(queryWrapper);
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "昵称已存在");
+        }
+    }
 
 }
