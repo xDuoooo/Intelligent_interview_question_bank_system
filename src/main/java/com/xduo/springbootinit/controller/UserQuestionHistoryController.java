@@ -1,0 +1,103 @@
+package com.xduo.springbootinit.controller;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xduo.springbootinit.common.BaseResponse;
+import com.xduo.springbootinit.common.ErrorCode;
+import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.model.dto.userquestionhistory.UserQuestionHistoryAddRequest;
+import com.xduo.springbootinit.model.entity.Question;
+import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.entity.UserQuestionHistory;
+import com.xduo.springbootinit.model.vo.QuestionVO;
+import com.xduo.springbootinit.model.vo.UserQuestionHistoryVO;
+import com.xduo.springbootinit.service.UserQuestionHistoryService;
+import com.xduo.springbootinit.service.UserService;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 刷题记录接口
+ */
+@RestController
+@RequestMapping("/user_question_history")
+@Slf4j
+public class UserQuestionHistoryController {
+
+    @Resource
+    private UserQuestionHistoryService userQuestionHistoryService;
+
+    @Resource
+    private UserService userService;
+
+    /**
+     * 添加/修改刷题记录
+     *
+     * @param historyAddRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/add")
+    public BaseResponse<Boolean> addQuestionHistory(@RequestBody UserQuestionHistoryAddRequest historyAddRequest,
+                                                   HttpServletRequest request) {
+        if (historyAddRequest == null || historyAddRequest.getQuestionId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        final User loginUser = userService.getLoginUser(request);
+        boolean result = userQuestionHistoryService.addQuestionHistory(
+                loginUser.getId(),
+                historyAddRequest.getQuestionId(),
+                historyAddRequest.getStatus()
+        );
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 获取我收藏的题目分页
+     */
+    @GetMapping("/my/favour/list")
+    public BaseResponse<Page<QuestionVO>> listMyFavourQuestionByPage(int current, int pageSize,
+                                                                    HttpServletRequest request) {
+        final User loginUser = userService.getLoginUser(request);
+        Page<Question> page = new Page<>(current, pageSize);
+        Page<QuestionVO> questionVOPage = userQuestionHistoryService.listMyFavourQuestionByPage(page, loginUser.getId(), request);
+        return ResultUtils.success(questionVOPage);
+    }
+
+    /**
+     * 获取我的刷题记录分页
+     */
+    @GetMapping("/my/history/list")
+    public BaseResponse<Page<UserQuestionHistoryVO>> listMyQuestionHistoryByPage(int current, int pageSize,
+                                                                      HttpServletRequest request) {
+        final User loginUser = userService.getLoginUser(request);
+        Page<UserQuestionHistory> page = new Page<>(current, pageSize);
+        Page<UserQuestionHistoryVO> voPage = userQuestionHistoryService.listMyQuestionHistoryByPage(page, loginUser.getId(), request);
+        return ResultUtils.success(voPage);
+    }
+
+    /**
+     * 获取我的刷题日历记录
+     */
+    @GetMapping("/my/history/record")
+    public BaseResponse<List<Map<String, Object>>> getMyQuestionHistoryRecord(Integer year, HttpServletRequest request) {
+        final User loginUser = userService.getLoginUser(request);
+        List<Map<String, Object>> record = userQuestionHistoryService.getUserQuestionHistoryRecord(loginUser.getId(), year);
+        return ResultUtils.success(record);
+    }
+
+    /**
+     * 获取我的学习统计
+     */
+    @GetMapping("/my/stats")
+    public BaseResponse<Map<String, Object>> getMyQuestionStats(HttpServletRequest request) {
+        final User loginUser = userService.getLoginUser(request);
+        Map<String, Object> stats = userQuestionHistoryService.getUserQuestionStats(loginUser.getId());
+        return ResultUtils.success(stats);
+    }
+}
