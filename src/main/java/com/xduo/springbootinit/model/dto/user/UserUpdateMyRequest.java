@@ -35,5 +35,20 @@ public class UserUpdateMyRequest implements Serializable {
      */
     private String email;
 
+    /**
+     * GitHub 唯一标识
+     */
+    private String githubId;
+
+    /**
+     * Gitee 唯一标识
+     */
+    private String giteeId;
+
+    /**
+     * Google 唯一标识
+     */
+    private String googleId;
+
     private static final long serialVersionUID = 1L;
 }

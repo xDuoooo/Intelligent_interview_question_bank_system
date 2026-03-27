@@ -170,4 +170,52 @@ public interface UserService extends IService<User> {
      * @return 登录用户信息
      */
     LoginUserVO userCodeLogin(com.xduo.springbootinit.model.dto.user.UserCodeLoginRequest userCodeLoginRequest, HttpServletRequest request);
+
+    /**
+     * 绑定手机号
+     *
+     * @param target 手机号
+     * @param code   验证码
+     * @param loginUser 当前登录用户
+     */
+    void bindPhone(String target, String code, User loginUser);
+
+    /**
+     * 绑定邮箱
+     *
+     * @param target 邮箱
+     * @param code   验证码
+     * @param loginUser 当前登录用户
+     */
+    void bindEmail(String target, String code, User loginUser);
+
+    /**
+     * GitHub 登录/注册
+     *
+     * @param githubId GitHub 唯一标识
+     * @param userName GitHub 昵称
+     * @param userAvatar GitHub 头像
+     * @return 用户信息
+     */
+    User githubLogin(String githubId, String userName, String userAvatar);
+
+    /**
+     * Gitee 登录/注册
+     *
+     * @param giteeId Gitee 唯一标识
+     * @param userName Gitee 昵称
+     * @param userAvatar Gitee 头像
+     * @return 用户信息
+     */
+    User giteeLogin(String giteeId, String userName, String userAvatar);
+
+    /**
+     * Google 登录/注册
+     *
+     * @param googleId Google 唯一标识
+     * @param userName Google 昵称
+     * @param userAvatar Google 头像
+     * @return 用户信息
+     */
+    User googleLogin(String googleId, String userName, String userAvatar);
 }

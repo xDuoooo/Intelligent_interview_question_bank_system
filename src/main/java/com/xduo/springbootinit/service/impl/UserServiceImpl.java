@@ -393,4 +393,152 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.updateById(user);
         StpUtil.logout(); // 修改密码后强制重新登录
     }
+
+    @Override
+    public void bindPhone(String target, String code, User loginUser) {
+        // 1. 校验验证码
+        String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
+        String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
+        if (cachedCode == null || !cachedCode.equals(code)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+        }
+        stringRedisTemplate.delete(codeKey);
+
+        // 2. 校验手机号是否已被占用
+        long count = this.count(new QueryWrapper<User>().eq("phone", target).ne("id", loginUser.getId()));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "该手机号已被其他账号绑定");
+        }
+
+        // 3. 更新
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setPhone(target);
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "绑定失败，服务器开小差了");
+        }
+    }
+
+    @Override
+    public void bindEmail(String target, String code, User loginUser) {
+        // 1. 校验验证码
+        String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
+        String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
+        if (cachedCode == null || !cachedCode.equals(code)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+        }
+        stringRedisTemplate.delete(codeKey);
+
+        // 2. 校验邮箱是否已被占用
+        long count = this.count(new QueryWrapper<User>().eq("email", target).ne("id", loginUser.getId()));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "该邮箱已被其他账号绑定");
+        }
+
+        // 3. 更新
+        User user = new User();
+        user.setId(loginUser.getId());
+        user.setEmail(target);
+        boolean result = this.updateById(user);
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "绑定失败，服务器开小差了");
+        }
+    }
+
+    @Override
+    public User githubLogin(String githubId, String userName, String userAvatar) {
+        // 1. 检查是否存在该 GitHub ID
+        User user = this.getOne(new QueryWrapper<User>().eq("githubId", githubId));
+        if (user == null) {
+            // 2. 静默注册
+            synchronized (githubId.intern()) {
+                // 再查一遍防止并发冲突
+                user = this.getOne(new QueryWrapper<User>().eq("githubId", githubId));
+                if (user == null) {
+                    user = new User();
+                    user.setGithubId(githubId);
+                    user.setUserAccount("gh_" + RandomUtil.randomString(8));
+                    user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setUserName(userName);
+                    user.setUserAvatar(userAvatar);
+                    user.setUserRole(UserRoleEnum.USER.getValue());
+                    boolean saveResult = this.save(user);
+                    if (!saveResult) {
+                        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "GitHub 自动注册失败");
+                    }
+                    // 刷新 user 以获取数据库自动生成的 createTime 等字段
+                    user = this.getById(user.getId());
+                }
+            }
+        }
+        // 3. 建立登录态
+        StpUtil.login(user.getId());
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        return user;
+    }
+
+    @Override
+    public User giteeLogin(String giteeId, String userName, String userAvatar) {
+        // 1. 检查是否存在该 Gitee ID
+        User user = this.getOne(new QueryWrapper<User>().eq("giteeId", giteeId));
+        if (user == null) {
+            // 2. 静默注册
+            synchronized (giteeId.intern()) {
+                // 再查一遍防止并发冲突
+                user = this.getOne(new QueryWrapper<User>().eq("giteeId", giteeId));
+                if (user == null) {
+                    user = new User();
+                    user.setGiteeId(giteeId);
+                    user.setUserAccount("gt_" + RandomUtil.randomString(8));
+                    user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setUserName(userName);
+                    user.setUserAvatar(userAvatar);
+                    user.setUserRole(UserRoleEnum.USER.getValue());
+                    boolean saveResult = this.save(user);
+                    if (!saveResult) {
+                        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Gitee 自动注册失败");
+                    }
+                    // 刷新 user 以获取数据库自动生成的 createTime 等字段
+                    user = this.getById(user.getId());
+                }
+            }
+        }
+        // 3. 建立登录态
+        StpUtil.login(user.getId());
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        return user;
+    }
+
+    @Override
+    public User googleLogin(String googleId, String userName, String userAvatar) {
+        // 1. 检查是否存在该 Google ID
+        User user = this.getOne(new QueryWrapper<User>().eq("googleId", googleId));
+        if (user == null) {
+            // 2. 静默注册
+            synchronized (googleId.intern()) {
+                // 再查一遍防止并发冲突
+                user = this.getOne(new QueryWrapper<User>().eq("googleId", googleId));
+                if (user == null) {
+                    user = new User();
+                    user.setGoogleId(googleId);
+                    user.setUserAccount("gl_" + RandomUtil.randomString(8));
+                    user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setUserName(userName);
+                    user.setUserAvatar(userAvatar);
+                    user.setUserRole(UserRoleEnum.USER.getValue());
+                    boolean saveResult = this.save(user);
+                    if (!saveResult) {
+                        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Google 自动注册失败");
+                    }
+                    // 刷新 user 以获取数据库自动生成的 createTime 等字段
+                    user = this.getById(user.getId());
+                }
+            }
+        }
+        // 3. 建立登录态
+        StpUtil.login(user.getId());
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        return user;
+    }
 }

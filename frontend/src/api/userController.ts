@@ -270,3 +270,33 @@ export async function userCodeLoginUsingPost(
     ...(options || {}),
   });
 }
+
+/** bindPhone POST /api/user/bind/phone */
+export async function bindPhoneUsingPost(
+  body: API.UserBindRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/bind/phone', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** bindEmail POST /api/user/bind/email */
+export async function bindEmailUsingPost(
+  body: API.UserBindRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/bind/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
