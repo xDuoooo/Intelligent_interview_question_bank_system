@@ -1,100 +1,38 @@
-import { Button, Form, Input, message, Divider, Space, Modal, Typography } from "antd";
+import { Button, Form, Input, message, Typography, Upload } from "antd";
 import { 
   updateMyUserUsingPost, 
-  sendVerificationCodeUsingPost,
-  bindPhoneUsingPost,
-  bindEmailUsingPost
+  getLoginUserUsingGet
 } from "@/api/userController";
 import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
-import { User, Mail, Phone, FileText, Share2, ShieldCheck, CheckCircle2, ChevronRight, Plus, ArrowRight } from "lucide-react";
-import Image from "next/image";
+import { User, FileText, ArrowRight, Camera, Loader2 } from "lucide-react";
 
 const { Text } = Typography;
 
 interface Props {
   user: API.LoginUserVO;
+  onSuccess?: () => void;
 }
 
 /**
- * 用户信息编辑表单（增强安全版）
+ * 用户个人信息编辑表单
  */
 const UserInfoEditForm = (props: Props) => {
   const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [form] = Form.useForm();
-  const { user } = props;
+  const { user, onSuccess } = props;
 
-  // 绑定弹窗控制
-  const [bindVisible, setBindVisible] = useState(false);
-  const [bindType, setBindType] = useState<"phone" | "email">("phone");
-  const [bindTarget, setBindTarget] = useState("");
-  const [bindCode, setBindCode] = useState("");
-  const [countdown, setCountdown] = useState(0);
-  const [bindLoading, setBindLoading] = useState(false);
+  // 这里的 userAvatar 状态用于实时预览
+  const [avatarUrl, setAvatarUrl] = useState(user.userAvatar || "");
 
   useEffect(() => {
     form.setFieldsValue(user);
+    setAvatarUrl(user.userAvatar || "");
   }, [user, form]);
-
-  // 倒计时逻辑
-  useEffect(() => {
-    let timer: any;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  /**
-   * 发送绑定验证码
-   */
-  const handleSendCode = async () => {
-    if (!bindTarget) {
-      message.warning(`请输入新的${bindType === "phone" ? "手机号" : "邮箱"}`);
-      return;
-    }
-    try {
-      await sendVerificationCodeUsingPost({
-        target: bindTarget,
-        type: bindType === "email" ? 1 : 2,
-      });
-      message.success("验证码已发送");
-      setCountdown(60);
-    } catch (error: any) {
-      message.error("发送失败：" + error.message);
-    }
-  };
-
-  /**
-   * 执行绑定操作
-   */
-  const doBind = async () => {
-    if (!bindTarget || !bindCode) {
-      message.warning("请补全信息");
-      return;
-    }
-    setBindLoading(true);
-    try {
-      if (bindType === "phone") {
-        await bindPhoneUsingPost({ target: bindTarget, code: bindCode });
-      } else {
-        await bindEmailUsingPost({ target: bindTarget, code: bindCode });
-      }
-      message.success("绑定成功");
-      setBindVisible(false);
-      // 局部刷新全局状态
-      const newUser = { ...user, [bindType]: bindTarget };
-      dispatch(setLoginUser(newUser));
-      form.setFieldValue(bindType, bindTarget);
-    } catch (error: any) {
-      message.error("绑定失败：" + error.message);
-    } finally {
-      setBindLoading(false);
-    }
-  };
 
   /**
    * 提交基础信息修改
@@ -103,14 +41,17 @@ const UserInfoEditForm = (props: Props) => {
     setLoading(true);
     const hide = message.loading("正在保存更改...");
     try {
-      // 后端 updateMyUser 已屏蔽敏感字段，这里仅传递允许修改的字段
       await updateMyUserUsingPost({
-        userName: values.userName,
-        userAvatar: values.userAvatar,
-        userProfile: values.userProfile,
+        ...values,
+        userAvatar: avatarUrl, // 使用上传后的最新 URL
       });
       message.success("资料更新成功");
-      dispatch(setLoginUser({ ...user, ...values }));
+      
+      const res = await getLoginUserUsingGet();
+      if (res.data) {
+        dispatch(setLoginUser(res.data as any));
+        onSuccess?.();
+      }
     } catch (error: any) {
       message.error("更新失败：" + error.message);
     } finally {
@@ -119,210 +60,137 @@ const UserInfoEditForm = (props: Props) => {
     }
   };
 
-  const openBindModal = (type: "phone" | "email") => {
-    setBindType(type);
-    setBindTarget("");
-    setBindCode("");
-    setCountdown(0);
-    setBindVisible(true);
+  /**
+   * 上传前校验
+   */
+  const beforeUpload = (file: File) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
+    if (!isJpgOrPng) {
+      message.error('仅支持 JPG/PNG/WebP 格式图片!');
+    }
+    const isLt1M = file.size / 1024 / 1024 < 1;
+    if (!isLt1M) {
+      message.error('图片大小不能超过 1MB!');
+    }
+    return isJpgOrPng && isLt1M;
+  };
+
+  /**
+   * 上传状态变更
+   */
+  const handleUploadChange = (info: any) => {
+    if (info.file.status === 'uploading') {
+      setUploadLoading(true);
+      return;
+    }
+    if (info.file.status === 'done') {
+      const { code, data, message: msg } = info.file.response;
+      if (code === 0) {
+        setAvatarUrl(data);
+        message.success("头像上传成功");
+      } else {
+        message.error(msg || "上传失败");
+      }
+      setUploadLoading(false);
+    } else if (info.file.status === 'error') {
+      message.error("服务器响应错误，上传失败");
+      setUploadLoading(false);
+    }
   };
 
   return (
-    <div className="user-info-edit-container max-w-2xl px-2">
+    <div className="user-info-edit-container max-w-2xl mx-auto px-4 py-2">
       <Form
         form={form}
         layout="vertical"
         onFinish={doSubmit}
-        className="space-y-8"
+        className="space-y-6"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="flex flex-col items-center mb-8">
+          <Upload
+            name="file"
+            listType="picture-circle"
+            className="avatar-uploader"
+            showUploadList={false}
+            action="/api/file/upload?biz=user_avatar"
+            beforeUpload={beforeUpload}
+            onChange={handleUploadChange}
+            withCredentials={true}
+          >
+            {avatarUrl ? (
+              <div className="relative group w-full h-full rounded-full overflow-hidden border-2 border-slate-100 p-1">
+                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-full" />
+                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploadLoading ? <Loader2 size={24} className="text-white animate-spin" /> : <Camera size={24} className="text-white" />}
+                  <span className="text-[10px] text-white font-bold mt-1">更换头像</span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-2">
+                {uploadLoading ? <Loader2 size={24} className="text-primary animate-spin" /> : <Camera size={24} className="text-slate-400" />}
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">上传头像</div>
+              </div>
+            )}
+          </Upload>
+          <Text type="secondary" className="text-[11px] mt-3 font-bold uppercase tracking-widest text-slate-400">
+            支持 JPG, PNG, WebP (最大 1MB)
+          </Text>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
           <Form.Item
-            label={<span className="font-bold text-slate-700 flex items-center gap-2 text-sm"><User size={16} className="text-primary"/> 昵称</span>}
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <User size={16} className="text-primary"/> 昵称
+              </span>
+            }
             name="userName"
-            rules={[{ required: true, message: '请输入昵称' }]}
+            rules={[
+              { required: true, message: '请输入昵称' },
+              { max: 20, message: '昵称最多 20 个字符' }
+            ]}
           >
             <Input 
               placeholder="您的公开显示名称" 
+              showCount
+              maxLength={20}
               className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
             />
           </Form.Item>
 
           <Form.Item
-            label={<span className="font-bold text-slate-700 flex items-center gap-2 text-sm"><FileText size={16} className="text-primary"/> 个人简介</span>}
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <FileText size={16} className="text-primary"/> 个人简介
+              </span>
+            }
             name="userProfile"
+            rules={[
+              { max: 200, message: '简介最多 200 个字符' }
+            ]}
           >
-            <Input 
+            <Input.TextArea 
               placeholder="介绍一下你自己..." 
-              className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
+              rows={4}
+              showCount
+              maxLength={200}
+              className="rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm py-4"
             />
           </Form.Item>
         </div>
 
-        <Divider orientation="left">
-          <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-            <ShieldCheck size={14}/> 账号安全绑定
-          </span>
-        </Divider>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* 手机号展示与修改 */}
-          <div className="p-5 rounded-[2rem] bg-slate-50/50 border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-white shadow-sm text-blue-500 group-hover:scale-110 transition-transform">
-                <Phone size={20} />
-              </div>
-              <div className="flex flex-col items-center flex-1">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">手机号码</div>
-                <div className={`text-sm font-bold ${user.phone ? 'text-slate-800' : 'text-slate-300'}`}>
-                  {user.phone || "暂未绑定"}
-                </div>
-              </div>
-            </div>
-            <div 
-              onClick={() => openBindModal("phone")}
-              className={`group/btn h-9 px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
-                user.phone 
-                ? "bg-slate-100 text-slate-500 hover:bg-slate-200" 
-                : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm shadow-blue-200 font-bold"
-              }`}
-            >
-              <span className="text-[11px] uppercase tracking-wide">
-                {user.phone ? "更换" : "去绑定"}
-              </span>
-              <ChevronRight size={14} className={user.phone ? "opacity-30" : "opacity-90"} />
-            </div>
-          </div>
-
-          {/* 邮箱展示与修改 */}
-          <div className="p-5 rounded-[2rem] bg-slate-50/50 border border-slate-100 flex items-center justify-between group hover:bg-white hover:shadow-xl hover:shadow-slate-200/50 transition-all duration-500">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-2xl bg-white shadow-sm text-orange-500 group-hover:scale-110 transition-transform">
-                <Mail size={20} />
-              </div>
-              <div className="flex flex-col items-center flex-1">
-                <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">电子邮箱</div>
-                <div className={`text-sm font-bold ${user.email ? 'text-slate-800' : 'text-slate-300'}`}>
-                  {user.email ? (
-                    <span className="truncate max-w-[120px] inline-block">{user.email}</span>
-                  ) : (
-                    "暂未绑定"
-                  )}
-                </div>
-              </div>
-            </div>
-            <div 
-              onClick={() => openBindModal("email")}
-              className={`group/btn h-9 px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
-                user.email 
-                ? "bg-slate-100 text-slate-500 hover:bg-slate-200" 
-                : "bg-orange-500 text-white hover:bg-orange-600 shadow-sm shadow-orange-200 font-bold"
-              }`}
-            >
-              <span className="text-[11px] uppercase tracking-wide">
-                {user.email ? "更换" : "去绑定"}
-              </span>
-              <ChevronRight size={14} className={user.email ? "opacity-30" : "opacity-90"} />
-            </div>
-          </div>
-        </div>
-
-        <Divider orientation="left">
-          <span className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-            <Share2 size={14}/> 社交账号关联 (只读展示)
-          </span>
-        </Divider>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { key: "githubId", label: "GitHub", icon: "/assets/github-logo.png" },
-            { key: "giteeId", label: "Gitee", icon: "/assets/gitee-logo.png" },
-            { key: "googleId", label: "Google", icon: "/assets/google-logo.png" },
-          ].map((item) => (
-            <div key={item.key} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-3 opacity-80 cursor-not-allowed">
-              <Image src={item.icon} width={20} height={20} alt={item.label} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[9px] font-bold text-slate-400 uppercase">{item.label}</div>
-                <div className="text-xs font-semibold text-slate-500 truncate">{(user as any)[item.key] || "未关联"}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="pt-8 flex justify-center">
+        <div className="pt-8 flex justify-center border-t border-slate-50 mt-10">
           <Button 
             type="primary" 
             htmlType="submit" 
-            loading={loading}
-            className="h-12 px-12 rounded-xl bg-slate-900 hover:bg-black text-white border-none font-bold text-sm flex items-center gap-2 shadow-lg shadow-slate-200 transition-all hover:-translate-y-0.5"
+            loading={loading || uploadLoading}
+            className="h-14 px-16 rounded-2xl bg-slate-900 hover:bg-black text-white border-none font-black text-base flex items-center gap-3 shadow-xl shadow-slate-200 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
             {loading ? "更新中..." : "保存更改"}
-            {!loading && <ArrowRight size={16} />}
+            {!loading && <ArrowRight size={20} />}
           </Button>
         </div>
       </Form>
-
-      {/* 绑定弹窗 */}
-      <Modal
-        title={null}
-        open={bindVisible}
-        onCancel={() => setBindVisible(false)}
-        footer={null}
-        centered
-        width={400}
-        bodyStyle={{ padding: '32px' }}
-        className="bind-modal"
-      >
-        <div className="text-center mb-8">
-          <div className={`mx-auto w-16 h-16 rounded-3xl flex items-center justify-center mb-4 shadow-lg ${bindType === 'phone' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
-            {bindType === 'phone' ? <Phone size={32} /> : <Mail size={32} />}
-          </div>
-          <h2 className="text-xl font-black text-slate-800">安全修改 {bindType === 'phone' ? '手机号' : '邮箱'}</h2>
-          <p className="text-xs text-slate-400 font-bold mt-2 uppercase tracking-widest">需要验证您的所有权</p>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs font-black text-slate-500 mb-1.5 block uppercase ml-1">新的 {bindType === 'phone' ? '号码' : '地址'}</label>
-            <Input 
-              prefix={bindType === 'phone' ? <Phone size={16} /> : <Mail size={16} />}
-              placeholder={`请输入新的${bindType === 'phone' ? '手机号' : '邮箱'}`}
-              value={bindTarget}
-              onChange={(e) => setBindTarget(e.target.value)}
-              className="h-12 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-primary transition-all font-bold"
-            />
-          </div>
-
-          <div>
-            <label className="text-xs font-black text-slate-500 mb-1.5 block uppercase ml-1">六位验证码</label>
-            <div className="flex gap-2">
-              <Input 
-                prefix={<ShieldCheck size={16} />}
-                placeholder="数字代码"
-                value={bindCode}
-                onChange={(e) => setBindCode(e.target.value)}
-                className="h-12 rounded-2xl bg-slate-50 border-transparent focus:bg-white focus:border-primary transition-all font-bold flex-1"
-              />
-              <Button 
-                onClick={handleSendCode}
-                disabled={countdown > 0}
-                className="h-12 px-4 rounded-xl font-bold bg-slate-800 text-white border-none hover:brightness-110 disabled:grayscale disabled:opacity-50"
-              >
-                {countdown > 0 ? `${countdown}s` : "获取"}
-              </Button>
-            </div>
-          </div>
-
-          <Button 
-            type="primary" 
-            block
-            loading={bindLoading}
-            onClick={doBind}
-            className="h-14 rounded-2xl bg-primary text-white font-black text-base shadow-lg shadow-primary/20 mt-6"
-          >
-            确认绑定
-          </Button>
-        </div>
-      </Modal>
     </div>
   );
 };

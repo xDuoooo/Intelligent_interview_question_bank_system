@@ -3,18 +3,20 @@ import { List, message } from "antd";
 import Link from "next/link";
 import { listMyQuestionHistoryByPageUsingGet } from "@/api/userQuestionHistoryController";
 import TagList from "@/components/TagList";
-
 import dayjs from "dayjs";
+
+interface Props {
+  limit?: number;
+}
 
 /**
  * 我的刷题记录列表
- * @constructor
  */
-const LearningHistoryList: React.FC = () => {
+const LearningHistoryList: React.FC<Props> = ({ limit }) => {
   const [dataList, setDataList] = useState<API.UserQuestionHistoryVO[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [params, setParams] = useState({ current: 1, pageSize: 12 });
+  const [params, setParams] = useState({ current: 1, pageSize: limit || 12 });
 
   const fetchData = async () => {
     setLoading(true);
@@ -22,8 +24,9 @@ const LearningHistoryList: React.FC = () => {
       const res = await listMyQuestionHistoryByPageUsingGet({
         ...params,
       });
-      setDataList(res.data?.records || []);
-      setTotal(Number(res.data?.total) || 0);
+      const pageData = res.data as any;
+      setDataList(pageData?.records || []);
+      setTotal(Number(pageData?.total) || 0);
     } catch (e: any) {
       message.error("获取数据失败，" + e.message);
     } finally {
@@ -40,7 +43,7 @@ const LearningHistoryList: React.FC = () => {
       loading={loading}
       itemLayout="horizontal"
       dataSource={dataList}
-      pagination={{
+      pagination={limit ? false : {
         onChange: (page) => setParams({ ...params, current: page }),
         current: params.current,
         pageSize: params.pageSize,
@@ -52,13 +55,13 @@ const LearningHistoryList: React.FC = () => {
         return (
           <List.Item
             extra={
-              <div style={{ color: "rgba(0, 0, 0, 0.45)" }}>
+              <div style={{ color: "rgba(0, 0, 0, 0.45)" }} className="text-xs">
                 练习时间：{dayjs(item.updateTime).format("YYYY-MM-DD HH:mm")}
               </div>
             }
           >
             <List.Item.Meta
-              title={<Link href={`/question/${question.id}`}>{question.title}</Link>}
+              title={<Link href={`/question/${question.id}`} className="font-semibold text-slate-700 hover:text-primary">{question.title}</Link>}
               description={<TagList tagList={question.tagList} />}
             />
           </List.Item>

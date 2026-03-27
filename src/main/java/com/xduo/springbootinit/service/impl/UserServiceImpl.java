@@ -541,4 +541,85 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
+
+    @Override
+    public void bindGithub(long userId, String githubId) {
+        long count = this.count(new QueryWrapper<User>().eq("githubId", githubId).ne("id", userId));
+        if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 GitHub 账号已被其他账号绑定");
+        User user = new User();
+        user.setId(userId);
+        user.setGithubId(githubId);
+        this.updateById(user);
+    }
+
+    @Override
+    public void bindGitee(long userId, String giteeId) {
+        long count = this.count(new QueryWrapper<User>().eq("giteeId", giteeId).ne("id", userId));
+        if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 Gitee 账号已被其他账号绑定");
+        User user = new User();
+        user.setId(userId);
+        user.setGiteeId(giteeId);
+        this.updateById(user);
+    }
+
+    @Override
+    public void bindGoogle(long userId, String googleId) {
+        long count = this.count(new QueryWrapper<User>().eq("googleId", googleId).ne("id", userId));
+        if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 Google 账号已被其他账号绑定");
+        User user = new User();
+        user.setId(userId);
+        user.setGoogleId(googleId);
+        this.updateById(user);
+    }
+
+    @Override
+    public void unbindGithub(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        // 校验：不能是唯一的登录方式
+        checkLastLoginMethod(user, "githubId");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setGithubId("");
+        this.updateById(updateRes);
+    }
+
+    @Override
+    public void unbindGitee(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        checkLastLoginMethod(user, "giteeId");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setGiteeId("");
+        this.updateById(updateRes);
+    }
+
+    @Override
+    public void unbindGoogle(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        checkLastLoginMethod(user, "googleId");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setGoogleId("");
+        this.updateById(updateRes);
+    }
+
+    /**
+     * 校验是否为唯一的登录方式
+     */
+    private void checkLastLoginMethod(User user, String currentField) {
+        int methods = 0;
+        if (StringUtils.isNotBlank(user.getUserPassword())) methods++;
+        if (StringUtils.isNotBlank(user.getPhone())) methods++;
+        if (StringUtils.isNotBlank(user.getEmail())) methods++;
+        if (StringUtils.isNotBlank(user.getGithubId()) && !"githubId".equals(currentField)) methods++;
+        if (StringUtils.isNotBlank(user.getGiteeId()) && !"giteeId".equals(currentField)) methods++;
+        if (StringUtils.isNotBlank(user.getGoogleId()) && !"googleId".equals(currentField)) methods++;
+        
+        if (methods == 0) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "解绑失败，请至少保留一种登录方式");
+        }
+    }
 }

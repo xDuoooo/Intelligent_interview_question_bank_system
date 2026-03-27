@@ -218,4 +218,34 @@ public interface UserService extends IService<User> {
      * @return 用户信息
      */
     User googleLogin(String googleId, String userName, String userAvatar);
+
+    /**
+     * 绑定 GitHub
+     */
+    void bindGithub(long userId, String githubId);
+
+    /**
+     * 绑定 Gitee
+     */
+    void bindGitee(long userId, String giteeId);
+
+    /**
+     * 绑定 Google
+     */
+    void bindGoogle(long userId, String googleId);
+
+    /**
+     * 解绑 GitHub
+     */
+    void unbindGithub(long userId);
+
+    /**
+     * 解绑 Gitee
+     */
+    void unbindGitee(long userId);
+
+    /**
+     * 解绑 Google
+     */
+    void unbindGoogle(long userId);
 }

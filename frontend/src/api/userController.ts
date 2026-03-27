@@ -286,17 +286,38 @@ export async function bindPhoneUsingPost(
   });
 }
 
-/** bindEmail POST /api/user/bind/email */
-export async function bindEmailUsingPost(
-  body: API.UserBindRequest,
-  options?: { [key: string]: any },
-) {
+/** bindEmail/** 绑定邮箱 POST /api/user/bind/email */
+export async function bindEmailUsingPost(body: API.UserBindRequest, options?: { [key: string]: any }) {
   return request<API.BaseResponseBoolean_>('/api/user/bind/email', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     data: body,
+    ...(options || {}),
+  });
+}
+
+/** 解绑 GitHub POST /api/user/unbind/github */
+export async function unbindGithubUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/unbind/github', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** 解绑 Gitee POST /api/user/unbind/gitee */
+export async function unbindGiteeUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/unbind/gitee', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** 解绑 Google POST /api/user/unbind/google */
+export async function unbindGoogleUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/unbind/google', {
+    method: 'POST',
     ...(options || {}),
   });
 }

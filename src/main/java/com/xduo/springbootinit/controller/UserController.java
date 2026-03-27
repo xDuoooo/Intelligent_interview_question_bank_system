@@ -411,4 +411,33 @@ public class UserController {
         return ResultUtils.success(userSignInRecord);
     }
 
+    /**
+     * 解绑 GitHub
+     */
+    @PostMapping("/unbind/github")
+    public BaseResponse<Boolean> unbindGithub(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindGithub(loginUser.getId());
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 解绑 Gitee
+     */
+    @PostMapping("/unbind/gitee")
+    public BaseResponse<Boolean> unbindGitee(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindGitee(loginUser.getId());
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 解绑 Google
+     */
+    @PostMapping("/unbind/google")
+    public BaseResponse<Boolean> unbindGoogle(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindGoogle(loginUser.getId());
+        return ResultUtils.success(true);
+    }
 }
