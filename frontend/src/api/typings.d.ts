@@ -780,7 +780,6 @@ declare namespace API {
     email?: string;
     id?: number;
     isDelete?: number;
-    mpOpenId?: string;
     phone?: string;
     unionId?: string;
     updateTime?: string;
@@ -790,6 +789,19 @@ declare namespace API {
     userPassword?: string;
     userProfile?: string;
     userRole?: string;
+  };
+
+  type UserSendCodeRequest = {
+    target?: string;
+    type?: number;
+    captcha?: string;
+    captchaUuid?: string;
+  };
+
+  type UserCodeLoginRequest = {
+    target?: string;
+    code?: string;
+    type?: number;
   };
 
   type UserAddRequest = {

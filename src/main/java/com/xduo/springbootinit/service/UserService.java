@@ -153,4 +153,21 @@ public interface UserService extends IService<User> {
      * @param userId    当前用户 ID（排除自身）
      */
     void checkUserNameUnique(String userName, Long userId);
+
+    /**
+     * 发送验证码
+     *
+     * @param userSendCodeRequest 发送请求
+     * @param request 请求
+     */
+    void sendVerificationCode(com.xduo.springbootinit.model.dto.user.UserSendCodeRequest userSendCodeRequest, HttpServletRequest request);
+
+    /**
+     * 验证码登录/注册
+     *
+     * @param userCodeLoginRequest 登录请求
+     * @param request 请求
+     * @return 登录用户信息
+     */
+    LoginUserVO userCodeLogin(com.xduo.springbootinit.model.dto.user.UserCodeLoginRequest userCodeLoginRequest, HttpServletRequest request);
 }

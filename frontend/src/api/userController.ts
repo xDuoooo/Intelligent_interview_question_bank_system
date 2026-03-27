@@ -240,3 +240,33 @@ export async function deleteMyAccountUsingPost(options?: { [key: string]: any })
     ...(options || {}),
   });
 }
+
+/** sendVerificationCode POST /api/user/send_code */
+export async function sendVerificationCodeUsingPost(
+  body: API.UserSendCodeRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/user/send_code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** userCodeLogin POST /api/user/login/code */
+export async function userCodeLoginUsingPost(
+  body: API.UserCodeLoginRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseLoginUserVO_>('/api/user/login/code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}

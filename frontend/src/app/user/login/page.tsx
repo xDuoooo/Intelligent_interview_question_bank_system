@@ -1,44 +1,145 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { Lock, Mail, Phone, User, ShieldCheck } from "lucide-react";
+import { message } from "antd";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
-import { userLoginUsingPost } from "@/api/userController";
-import { message } from "antd";
-import { cn } from "@/lib/utils";
-import { User, Lock, ArrowRight, Loader2, Globe, Mail, MessageSquare } from "lucide-react";
-import WxLoginModal from "@/components/WxLoginModal";
+import request from "@/libs/request";
+import {
+  getLoginUserUsingGet,
+  sendVerificationCodeUsingPost,
+  userCodeLoginUsingPost,
+  userLoginUsingPost,
+} from "@/api/userController";
 
-export default function UserLoginPage() {
-  const [formData, setFormData] = useState<API.UserLoginRequest>({
+type LoginType = "password" | "code";
+
+const UserLoginPage: React.FC = () => {
+  const [loginType, setLoginType] = useState<LoginType>("code");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+
+  // 账号密码登录数据
+  const [passwordData, setPasswordData] = useState({
     userAccount: "",
     userPassword: "",
   });
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [wxModalVisible, setWxModalVisible] = useState(false);
-  const dispatch = useDispatch<AppDispatch>();
-  const router = useRouter();
+
+  // 验证码登录数据
+  const [target, setTarget] = useState("");
+  const [code, setCode] = useState("");
+
+  // 自动检测输入类型 (1-邮件, 2-手机)
+  const inputType = useMemo(() => {
+    if (target.includes("@")) return 1;
+    if (/^\d{11}$/.test(target)) return 2;
+    return 0; // 未识别
+  }, [target]);
+
+  const [count, setCount] = useState(0);
+  const [captchaData, setCaptchaData] = useState<{ image: string; uuid: string } | null>(null);
+  const [captchaInput, setCaptchaInput] = useState("");
+
+  // 获取图形验证码
+  const refreshCaptcha = async () => {
+    try {
+      // 使用统一封装的 request，会自动拼上 baseURL
+      const res: any = await request.get("/api/captcha/get");
+      if (res.code === 0) {
+        setCaptchaData(res.data);
+      }
+    } catch (e) {
+      console.error("获取图形验证码失败", e);
+    }
+  };
+
+  useEffect(() => {
+    refreshCaptcha();
+  }, []);
+
+  // 定时器处理
+  useEffect(() => {
+    let timer: any;
+    if (count > 0) {
+      timer = setInterval(() => {
+        setCount((c) => c - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [count]);
+
+  // 发送验证码
+  const sendCode = async () => {
+    if (!target) {
+      message.warning("请输入邮箱或手机号");
+      return;
+    }
+    if (inputType === 0) {
+      message.warning("请输入有效的邮箱地址或 11 位手机号");
+      return;
+    }
+    if (!captchaInput) {
+      message.warning("请先输入图形验证码");
+      return;
+    }
+    try {
+      const res = await sendVerificationCodeUsingPost({
+        target,
+        type: inputType,
+        captcha: captchaInput,
+        captchaUuid: captchaData?.uuid,
+      });
+      if (res.data) {
+        message.success("验证码已发送");
+        setCount(60);
+        // 发送成功后刷新图形码，防止被复用
+        refreshCaptcha();
+        setCaptchaInput("");
+      }
+    } catch (e: any) {
+      message.error(e.message || "验证码发送失败，请稍后重试");
+      refreshCaptcha();
+      setCaptchaInput("");
+    }
+  };
 
   const doSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.userAccount || !formData.userPassword) {
-      message.warning("请填写账号和密码");
-      return;
-    }
     setLoginLoading(true);
+
     try {
-      const res = await userLoginUsingPost(formData);
+      let res;
+      if (loginType === "password") {
+        res = await userLoginUsingPost(passwordData);
+      } else {
+        if (inputType === 0) {
+          message.error("请输入有效的手机号或邮箱");
+          setLoginLoading(false);
+          return;
+        }
+        res = await userCodeLoginUsingPost({
+          target,
+          code,
+          type: inputType,
+        });
+      }
+
       if (res.data) {
         message.success("欢迎回来！");
-        dispatch(setLoginUser(res.data as API.LoginUserVO));
+        // 成功后刷新 store
+        const userRes = await getLoginUserUsingGet();
+        if (userRes.data) {
+          dispatch(setLoginUser(userRes.data as API.LoginUserVO));
+        }
         router.replace("/");
       }
-    } catch (e) {
-      message.error("登录失败，请检查账号密码");
+    } catch (e: any) {
+      message.error(e.message || "认证失败，请检查输入项");
     } finally {
       setLoginLoading(false);
     }
@@ -47,133 +148,183 @@ export default function UserLoginPage() {
   return (
     <div className="flex min-h-[calc(100vh-64px-160px)] items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="relative w-full max-w-md">
-        {/* Background Decorative Elements */}
+        {/* Decorative elements */}
         <div className="absolute -top-12 -left-12 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-pulse" />
         <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl animate-pulse delay-700" />
 
-        {/* Login Card */}
-        <div className="relative overflow-hidden rounded-[2.5rem] border bg-white/60 backdrop-blur-2xl shadow-2xl p-8 sm:p-10 transition-all hover:shadow-primary/5">
-          {/* Header */}
-          <div className="flex flex-col items-center text-center space-y-4 mb-10">
-            <div className="relative h-24 w-24 rounded-3xl overflow-hidden shadow-xl ring-4 ring-slate-50 group transform hover:scale-105 transition-transform duration-500">
-               <div className="absolute inset-0 bg-white flex items-center justify-center p-4">
-                 <Image
-                  src="/assets/logo.png"
-                  height={64}
-                  width={64}
-                  alt="Logo"
-                  className="object-contain group-hover:scale-110 transition-transform duration-500"
-                />
+        <div className="relative overflow-hidden rounded-[2.5rem] border bg-white/60 backdrop-blur-2xl shadow-2xl p-8 sm:p-10">
+          <div className="flex flex-col items-center text-center space-y-4 mb-8">
+            <div className="relative h-20 w-20 rounded-3xl overflow-hidden shadow-lg ring-4 ring-slate-50">
+              <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
+                <Image src="/assets/logo.png" height={64} width={64} alt="Logo" className="object-contain" />
               </div>
             </div>
-            <div className="space-y-1">
-              <h1 className="text-3xl font-black tracking-tight text-foreground">欢迎回来</h1>
-              <p className="text-sm font-medium text-muted-foreground">
-                使用您的账号登录智面刷题平台
-              </p>
-            </div>
+            <h1 className="text-2xl font-black text-foreground">智面 IntelliFace</h1>
           </div>
 
-          <form onSubmit={doSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground/80 ml-1">账号</label>
-                <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="请输入用户账号"
-                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-transparent border-2 focus:border-primary focus:bg-white outline-none transition-all font-medium"
-                    value={formData.userAccount}
-                    onChange={(e) => setFormData({ ...formData, userAccount: e.target.value })}
-                  />
-                </div>
-              </div>
+          <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8">
+            <button
+              onClick={() => setLoginType("code")}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                loginType === "code" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              验证码登录
+            </button>
+            <button
+              onClick={() => setLoginType("password")}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                loginType === "password" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              账号密码
+            </button>
+          </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between items-center ml-1">
-                  <label className="text-sm font-bold text-foreground/80">密码</label>
-                  <Link href="#" className="text-xs font-bold text-primary hover:underline">忘记密码?</Link>
+          <form onSubmit={doSubmit} className="space-y-5">
+            {loginType === "password" ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">账号</label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <input
+                      type="text"
+                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      placeholder="用户名 / 手机号 / 邮箱"
+                      value={passwordData.userAccount}
+                      onChange={(e) => setPasswordData({ ...passwordData, userAccount: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="请输入密码"
-                    className="w-full h-14 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-transparent border-2 focus:border-primary focus:bg-white outline-none transition-all font-medium"
-                    value={formData.userPassword}
-                    onChange={(e) => setFormData({ ...formData, userPassword: e.target.value })}
-                  />
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">密码</label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <input
+                      type="password"
+                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      placeholder="您的登录密码"
+                      value={passwordData.userPassword}
+                      onChange={(e) => setPasswordData({ ...passwordData, userPassword: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold ml-1 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                  新用户输入账号密码后将自动为您注册
-                </p>
-              </div>
-            </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">手机号或邮箱</label>
+                  <div className="relative transition-all">
+                    {inputType === 1 ? (
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-in zoom-in-50 duration-300" />
+                    ) : inputType === 2 ? (
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-in zoom-in-50 duration-300" />
+                    ) : (
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    )}
+                    <input
+                      type="text"
+                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      placeholder="输入手机号或邮箱"
+                      value={target}
+                      onChange={(e) => setTarget(e.target.value.trim())}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">人机校验</label>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <input
+                        type="text"
+                        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                        placeholder="计算结果"
+                        value={captchaInput}
+                        onChange={(e) => setCaptchaInput(e.target.value)}
+                      />
+                    </div>
+                    <div 
+                      className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
+                      onClick={refreshCaptcha}
+                      title="点击刷新"
+                    >
+                      {captchaData ? (
+                        <img src={captchaData.image} alt="captcha" className="h-full w-full object-cover rounded-xl" />
+                      ) : (
+                        <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">验证码</label>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <input
+                        type="text"
+                        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                        placeholder="6 位数字"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={count > 0}
+                      onClick={sendCode}
+                      className="h-12 px-6 rounded-2xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 disabled:grayscale disabled:opacity-50 transition-all whitespace-nowrap"
+                    >
+                      {count > 0 ? `${count}s` : "获取验证码"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             <button
+              type="submit"
               disabled={loginLoading}
-              className="group relative w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-lg shadow-primary/30 hover:shadow-primary/40 active:scale-95 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
+              className="w-full h-14 mt-4 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center disabled:opacity-70"
             >
-              {loginLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <>
-                  立即进入
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
+              {loginLoading ? <div className="h-6 w-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : "进入智面"}
             </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative my-10">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-widest font-black">
-              <span className="bg-transparent px-4 text-muted-foreground">合作平台登录</span>
-            </div>
+          <div className="mt-8 text-center text-slate-400 text-xs font-medium">
+            首次使用验证码登录将自动创建账号
           </div>
 
-          {/* Social Login */}
-          <div className="flex flex-col gap-3">
-             <div className="grid grid-cols-2 gap-3">
-              <button 
-                type="button"
-                className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm"
-              >
-                <Globe className="h-5 w-5 text-slate-700" /> GitHub
-              </button>
-              <button 
-                type="button"
-                className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm"
-              >
-                <MessageSquare className="h-5 w-5 text-red-500" /> Gitee
-              </button>
-             </div>
-            <button 
-              type="button"
-              className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm w-full"
-            >
-              <Mail className="h-5 w-5 text-blue-500" /> Google 账号登录
-            </button>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-300">第三方登录</span></div>
           </div>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm font-bold text-muted-foreground">
-              还没有账号?{" "}
-              <Link href="/user/register" className="text-primary hover:underline underline-offset-4">
-                立即注册
-              </Link>
-            </p>
+          <div className="grid grid-cols-3 gap-3">
+            {[ 
+              { icon: <Image src="/assets/gitee-logo.png" width={22} height={22} alt="Gitee" />, label: "Gitee" },
+              { icon: <Image src="/assets/github-logo.png" width={22} height={22} alt="GitHub" />, label: "GitHub" },
+              { icon: <Image src="/assets/google-logo.png" width={22} height={22} alt="Google" />, label: "Google" }
+            ].map((social, idx) => (
+              <button 
+                key={idx} 
+                type="button"
+                onClick={() => message.info("第三方关联功能即将上线，敬请期待！")}
+                className="flex flex-col items-center justify-center h-16 rounded-2xl border border-slate-50 bg-slate-50/30 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all gap-1 group"
+              >
+                <div className="group-hover:scale-110 transition-transform">{social.icon}</div>
+                <span className="text-[10px] font-bold text-slate-400">{social.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
+export default UserLoginPage;

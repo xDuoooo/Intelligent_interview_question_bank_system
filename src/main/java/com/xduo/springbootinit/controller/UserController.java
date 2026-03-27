@@ -65,7 +65,7 @@ public class UserController {
         String userPassword = userRegisterRequest.getUserPassword();
         String checkPassword = userRegisterRequest.getCheckPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数不能为空");
         }
         long result = userService.userRegister(userAccount, userPassword, checkPassword, request);
         return ResultUtils.success(result);
@@ -89,6 +89,40 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         LoginUserVO loginUserVO = userService.userLogin(userAccount, userPassword, request);
+        return ResultUtils.success(loginUserVO);
+    }
+
+    /**
+     * 发送验证码
+     *
+     * @param userSendCodeRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/send_code")
+    public BaseResponse<Boolean> sendVerificationCode(@RequestBody com.xduo.springbootinit.model.dto.user.UserSendCodeRequest userSendCodeRequest,
+                                                        HttpServletRequest request) {
+        if (userSendCodeRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        userService.sendVerificationCode(userSendCodeRequest, request);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 验证码登录/注册
+     *
+     * @param userCodeLoginRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/login/code")
+    public BaseResponse<LoginUserVO> userCodeLogin(@RequestBody com.xduo.springbootinit.model.dto.user.UserCodeLoginRequest userCodeLoginRequest,
+                                                    HttpServletRequest request) {
+        if (userCodeLoginRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        LoginUserVO loginUserVO = userService.userCodeLogin(userCodeLoginRequest, request);
         return ResultUtils.success(loginUserVO);
     }
 
