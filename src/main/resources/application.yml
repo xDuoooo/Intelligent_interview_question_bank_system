@@ -44,6 +44,23 @@ spring:
       max-idle: 10
       # 连接池中的最小空闲连接
       min-idle: 0
+  # 邮件服务配置
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: auto-sender@zhimian.com
+    password: your-smtp-password
+    protocol: smtps
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: true
 
   # Elasticsearch 配置
   elasticsearch:
@@ -131,3 +148,10 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+# 阿里云短信配置
+aliyun:
+  sms:
+    accessKeyId: your_access_key_id
+    accessKeySecret: your_access_key_secret
+    signName: 智面平台
+    templateCode: SMS_xxxxxxx
