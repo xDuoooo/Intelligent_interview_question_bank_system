@@ -41,26 +41,25 @@ public class GoogleController {
      * 跳转到 Google 授权页
      */
     @GetMapping("")
-    public void login(HttpServletResponse response) throws IOException {
+    public void login(@RequestParam(required = false) String action, HttpServletResponse response) throws IOException {
+        String state = StringUtils.isBlank(action) ? "login" : action;
         String authorizeUrl = String.format(
                 "https://accounts.google.com/o/oauth2/v2/auth?client_id=%s&redirect_uri=%s&response_type=code" +
-                        "&scope=openid%%20profile%%20email&access_type=offline",
+                        "&scope=openid%%20profile%%20email&access_type=offline&state=%s",
                 oauthConfig.getGoogle().getId(),
-                URLEncoder.encode(oauthConfig.getGoogle().getRedirectUri(), "UTF-8")
+                URLEncoder.encode(oauthConfig.getGoogle().getRedirectUri(), "UTF-8"),
+                state
         );
-        log.info("Redirecting to Google authorize URL: {}", authorizeUrl);
+        log.info("Redirecting to Google authorize URL: {}, state: {}", authorizeUrl, state);
         response.sendRedirect(authorizeUrl);
     }
 
-    /**
-     * Google 回调接口
-     */
     @GetMapping("/callback")
-    public void callback(@RequestParam String code, HttpServletResponse response) throws IOException {
+    public void callback(@RequestParam String code, @RequestParam(required = false) String state, HttpServletResponse response) throws IOException {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Google 授权码为空");
         }
-
+        
         // 1. 换取 Access Token
         Map<String, Object> tokenParams = new HashMap<>();
         tokenParams.put("grant_type", "authorization_code");
@@ -100,10 +99,21 @@ public class GoogleController {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Google 用户资料失败");
         }
 
-        // 3. 执行静默注册/登录
-        userService.googleLogin(googleId, userName, userAvatar);
-
-        // 4. 重定向回前端首页
-        response.sendRedirect("http://localhost:3000/");
+        // 3. 执行静默注册/登录或绑定（基于 state 显式区分意图）
+        try {
+            if ("bind".equals(state) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
+                userService.bindGoogle(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), googleId);
+                // 重定向回中心页
+                response.sendRedirect("http://localhost:3000/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
+            } else {
+                userService.googleLogin(googleId, userName, userAvatar);
+                // 登录成功重定向首页
+                response.sendRedirect("http://localhost:3000/");
+            }
+        } catch (BusinessException e) {
+            log.error("Google callback error", e);
+            String redirectUrl = "bind".equals(state) ? "http://localhost:3000/user/center" : "http://localhost:3000/user/login";
+            response.sendRedirect(redirectUrl + "?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+        }
     }
 }

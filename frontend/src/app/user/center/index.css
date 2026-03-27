@@ -1,3 +1,73 @@
+/* 个人中心巅峰级美化 */
 #userCenterPage {
-    width: 100%;
+  width: 100%;
+  padding-bottom: 40px;
+}
+
+#userCenterPage .ant-card {
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 0; /* 使用 Row gutter 控制间隔 */
+}
+
+.user-profile-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+}
+
+.user-tabs-card .ant-tabs-nav {
+  padding: 0 24px;
+}
+
+.user-tabs-card .ant-card-head {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  padding: 0 8px;
+}
+
+/* 渐显动画 */
+.fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 弹窗高级感 */
+.profile-edit-modal .ant-modal-content {
+  border-radius: 32px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile-edit-modal .ant-modal-header {
+  display: none; /* 使用自定义 Header */
+}
+
+/* 数据卡片微动效 */
+.stats-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.stats-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(24, 144, 255, 0.05) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(30%, -30%);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  #userCenterPage .ant-card {
+    border-radius: 16px;
+  }
 }

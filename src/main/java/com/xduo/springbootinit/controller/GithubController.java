@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,24 +41,24 @@ public class GithubController {
      * 跳转到 GitHub 授权页
      */
     @GetMapping("")
-    public void login(HttpServletResponse response) throws IOException {
+    public void login(@RequestParam(required = false) String action, HttpServletResponse response) throws IOException {
+        String state = StringUtils.isBlank(action) ? "login" : action;
         String authorizeUrl = String.format(
-                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user",
+                "https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=read:user&state=%s",
                 oauthConfig.getGithub().getId(),
-                oauthConfig.getGithub().getRedirectUri()
+                oauthConfig.getGithub().getRedirectUri(),
+                state
         );
-        log.info("Redirecting to GitHub authorize URL: {}", authorizeUrl);
+        log.info("Redirecting to GitHub authorize URL: {}, state: {}", authorizeUrl, state);
         response.sendRedirect(authorizeUrl);
     }
 
-    /**
-     * GitHub 回调接口
-     */
     @GetMapping("/callback")
-    public void callback(@RequestParam String code, HttpServletResponse response) throws IOException {
+    public void callback(@RequestParam String code, @RequestParam(required = false) String state, HttpServletResponse response) throws IOException {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "GitHub 授权码为空");
         }
+
 
         // 1. 换取 Access Token
         Map<String, Object> tokenParams = new HashMap<>();
@@ -96,10 +97,21 @@ public class GithubController {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub 用户资料失败");
         }
 
-        // 3. 执行静默注册/登录
-        userService.githubLogin(githubId, userName, userAvatar);
-
-        // 4. 重定向回前端首页
-        response.sendRedirect("http://localhost:3000/");
+        // 3. 执行静默注册/登录或绑定（基于 state 显式区分意图）
+        try {
+            if ("bind".equals(state) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
+                userService.bindGithub(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), githubId);
+                // 重定向回中心页
+                response.sendRedirect("http://localhost:3000/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
+            } else {
+                userService.githubLogin(githubId, userName, userAvatar);
+                // 登录成功重定向首页
+                response.sendRedirect("http://localhost:3000/");
+            }
+        } catch (BusinessException e) {
+            log.error("GitHub callback error", e);
+            String redirectUrl = "bind".equals(state) ? "http://localhost:3000/user/center" : "http://localhost:3000/user/login";
+            response.sendRedirect(redirectUrl + "?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
+        }
     }
 }

@@ -7,6 +7,13 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.FileConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.manager.CosManager;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.TimeUnit;
 import com.xduo.springbootinit.model.dto.file.UploadFileRequest;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.enums.FileUploadBizEnum;
@@ -38,6 +45,12 @@ public class FileController {
     @Resource
     private CosManager cosManager;
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Value("${cos.client.accessKey:xxx}")
+    private String cosAccessKey;
+
     /**
      * 文件上传
      *
@@ -54,30 +67,60 @@ public class FileController {
         if (fileUploadBizEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
-        validFile(multipartFile, fileUploadBizEnum);
         User loginUser = userService.getLoginUser(request);
+        
+        // 频率限制：单用户每小时限 10 次上传
+        String redisKey = "user:upload:limit:" + loginUser.getId();
+        String uploadCountStr = stringRedisTemplate.opsForValue().get(redisKey);
+        int uploadCount = uploadCountStr == null ? 0 : Integer.parseInt(uploadCountStr);
+        if (uploadCount >= 10) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "上传过于频繁，请一小时后再试");
+        }
+        
+        validFile(multipartFile, fileUploadBizEnum);
+        
+        // 计数增加
+        if (uploadCount == 0) {
+            stringRedisTemplate.opsForValue().set(redisKey, "1", 1, TimeUnit.HOURS);
+        } else {
+            stringRedisTemplate.opsForValue().increment(redisKey);
+        }
+
         // 文件目录：根据业务、用户来划分
         String uuid = RandomStringUtils.randomAlphanumeric(8);
         String filename = uuid + "-" + multipartFile.getOriginalFilename();
         String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
-        File file = null;
-        try {
-            // 上传文件
-            file = File.createTempFile(filepath, null);
-            multipartFile.transferTo(file);
-            cosManager.putObject(filepath, file);
-            // 返回可访问地址
-            return ResultUtils.success(FileConstant.COS_HOST + filepath);
-        } catch (Exception e) {
-            log.error("file upload error, filepath = " + filepath, e);
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-        } finally {
-            if (file != null) {
-                // 删除临时文件
-                boolean delete = file.delete();
-                if (!delete) {
-                    log.error("file delete error, filepath = {}", filepath);
+        
+        // 优先使用 COS，若未配置则使用本地存储
+        if (cosAccessKey != null && !cosAccessKey.equals("xxx")) {
+            File file = null;
+            try {
+                file = File.createTempFile(filepath, null);
+                multipartFile.transferTo(file);
+                cosManager.putObject(filepath, file);
+                return ResultUtils.success(FileConstant.COS_HOST + filepath);
+            } catch (Exception e) {
+                log.error("COS upload error, filepath = " + filepath, e);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传至云存储失败");
+            } finally {
+                if (file != null) file.delete();
+            }
+        } else {
+            // 本地存储兜底
+            try {
+                String uploadDir = System.getProperty("user.dir") + File.separator + "uploads";
+                Path bizPath = Paths.get(uploadDir, fileUploadBizEnum.getValue(), String.valueOf(loginUser.getId()));
+                if (!Files.exists(bizPath)) {
+                    Files.createDirectories(bizPath);
                 }
+                Path targetPath = bizPath.resolve(filename);
+                Files.copy(multipartFile.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+                
+                // 返回本地访问 URL (带 context-path /api)
+                return ResultUtils.success("/api/files" + filepath);
+            } catch (Exception e) {
+                log.error("Local upload error, filepath = " + filepath, e);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "本地文件上传失败");
             }
         }
     }

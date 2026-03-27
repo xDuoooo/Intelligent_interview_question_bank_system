@@ -5,8 +5,8 @@ import Image from "next/image";
 import { Lock, Mail, Phone, User, ShieldCheck } from "lucide-react";
 import { message } from "antd";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/stores";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import request from "@/libs/request";
 import {
@@ -23,6 +23,14 @@ const UserLoginPage: React.FC = () => {
   const [loginLoading, setLoginLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const loginUser = useSelector((state: RootState) => state.loginUser);
+
+  // 已登录用户自动重定向
+  useEffect(() => {
+    if (loginUser && loginUser.id) {
+      router.replace("/");
+    }
+  }, [loginUser, router]);
 
   // 账号密码登录数据
   const [passwordData, setPasswordData] = useState({
@@ -48,7 +56,6 @@ const UserLoginPage: React.FC = () => {
   // 获取图形验证码
   const refreshCaptcha = async () => {
     try {
-      // 使用统一封装的 request，会自动拼上 baseURL
       const res: any = await request.get("/api/captcha/get");
       if (res.code === 0) {
         setCaptchaData(res.data);
@@ -97,7 +104,6 @@ const UserLoginPage: React.FC = () => {
       if (res.data) {
         message.success("验证码已发送");
         setCount(60);
-        // 发送成功后刷新图形码，防止被复用
         refreshCaptcha();
         setCaptchaInput("");
       }
@@ -131,7 +137,6 @@ const UserLoginPage: React.FC = () => {
 
       if (res.data) {
         message.success("欢迎回来！");
-        // 成功后刷新 store
         const userRes = await getLoginUserUsingGet();
         if (userRes.data) {
           dispatch(setLoginUser(userRes.data as API.LoginUserVO));
@@ -148,7 +153,6 @@ const UserLoginPage: React.FC = () => {
   return (
     <div className="flex min-h-[calc(100vh-64px-160px)] items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="relative w-full max-w-md">
-        {/* Decorative elements */}
         <div className="absolute -top-12 -left-12 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-pulse" />
         <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl animate-pulse delay-700" />
 
@@ -234,14 +238,14 @@ const UserLoginPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">人机校验</label>
+                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
                   <div className="flex gap-3">
                     <div className="relative flex-1">
                       <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                       <input
                         type="text"
                         className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
-                        placeholder="计算结果"
+                        placeholder="请输入右侧验证码"
                         value={captchaInput}
                         onChange={(e) => setCaptchaInput(e.target.value)}
                       />

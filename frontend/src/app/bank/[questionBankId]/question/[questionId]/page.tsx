@@ -35,7 +35,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
-           <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
+          <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
         </div>
         <h1 className="text-xl font-bold text-foreground">获取题库详情失败</h1>
         <p className="text-muted-foreground">该题库可能已被移除或权限不足</p>
@@ -47,7 +47,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   // 获取题目详情
   let question: API.QuestionVO | undefined = undefined;
   let isNotLogin = false;
-  
+
   try {
     const res = await getQuestionVoByIdUsingGet({
       id: Number(questionId),
@@ -56,7 +56,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
         cookie: headers().get("cookie") || "",
       }
     }) as unknown as API.BaseResponseQuestionVO_;
-    
+
     if (res.code === 40100) {
       isNotLogin = true;
     } else {
@@ -69,16 +69,16 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   if (!question) {
     const errorTitle = isNotLogin ? "您还没有登录" : "获取题目详情失败";
     const errorDesc = isNotLogin ? "请先登录后再查看题目详情" : "该题目可能已被移除或权限不足";
-    
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
         <div className="h-20 w-20 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
-           <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
+          <span className="text-4xl text-primary"><Sparkles className="h-10 w-10" /></span>
         </div>
         <h1 className="text-xl font-bold text-foreground">{errorTitle}</h1>
         <p className="text-muted-foreground">{errorDesc}</p>
-        <Link 
-          href={isNotLogin ? `/user/login?redirect=/bank/${questionBankId}/question/${questionId}` : `/bank/${questionBankId}`} 
+        <Link
+          href={isNotLogin ? `/user/login?redirect=/bank/${questionBankId}/question/${questionId}` : `/bank/${questionBankId}`}
           className="h-11 px-8 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center transition-all shadow-lg shadow-primary/20 hover:scale-105 active:scale-95"
         >
           {isNotLogin ? "立即登录" : "返回题库"}
@@ -92,14 +92,14 @@ export default async function BankQuestionPage({ params }: { params: { questionB
       {/* Sidebar - Question Navigation */}
       <aside className="lg:w-80 shrink-0">
         <div className="sticky top-24 space-y-6">
-          <Link 
+          <Link
             href={`/bank/${questionBankId}`}
             className="group flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-2"
           >
             <ChevronLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
             返回题库主页
           </Link>
-          
+
           <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
             <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center gap-2">
               <ListFilter className="h-4 w-4 text-primary" />
@@ -107,7 +107,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
                 {bank.title}
               </h2>
             </div>
-            
+
             <nav className="p-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
               {(bank.questionPage?.records || []).map((q) => (
                 <Link
@@ -115,8 +115,8 @@ export default async function BankQuestionPage({ params }: { params: { questionB
                   href={`/bank/${questionBankId}/question/${q.id}`}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all mb-1",
-                    Number(questionId) === q.id 
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                    Number(questionId) === q.id
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                       : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
                   )}
                 >

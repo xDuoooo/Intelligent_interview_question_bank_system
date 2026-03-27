@@ -70,8 +70,10 @@ spring:
   # 文件上传
   servlet:
     multipart:
-      # 大小限制
-      max-file-size: 10MB
+      # 单个文件限制
+      max-file-size: 2MB
+      # 单次请求总限制
+      max-request-size: 4MB
   cloud:
     nacos:
       discovery:
@@ -142,7 +144,7 @@ sa-token:
   active-timeout: -1
   # 是否允许同一账号多地同时登录（为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
   is-concurrent: false
-  # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
+  # 在登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
   is-share: true
   # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
   token-style: uuid
@@ -155,3 +157,18 @@ aliyun:
     accessKeySecret: your_access_key_secret
     signName: 智面平台
     templateCode: SMS_xxxxxxx
+# 社交登录配置
+# 社交登录配置
+social:
+  github:
+    id: ${GITHUB_CLIENT_ID:}
+    secret: ${GITHUB_CLIENT_SECRET:}
+    redirect-uri: http://localhost:8101/api/user/login/github/callback
+  gitee:
+    id: ${GITEE_CLIENT_ID:}
+    secret: ${GITEE_CLIENT_SECRET:}
+    redirect-uri: http://localhost:8101/api/user/login/gitee/callback
+  google:
+    id: ${GOOGLE_CLIENT_ID:}
+    secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: http://localhost:8101/api/user/login/google/callback

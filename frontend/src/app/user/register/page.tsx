@@ -4,9 +4,10 @@ import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "@/stores";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
+import { useEffect } from "react";
 import { 
   userRegisterUsingPost, 
   getLoginUserUsingGet 
@@ -23,6 +24,14 @@ export default function UserRegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const loginUser = useSelector((state: RootState) => state.loginUser);
+
+  // 已登录用户自动重定向
+  useEffect(() => {
+    if (loginUser && loginUser.id) {
+      router.replace("/");
+    }
+  }, [loginUser, router]);
 
   const doSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
