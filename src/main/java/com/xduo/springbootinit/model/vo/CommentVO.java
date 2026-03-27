@@ -48,6 +48,9 @@ public class CommentVO implements Serializable {
     /** 发表人信息（脱敏） */
     private UserVO user;
 
+    /** 被回复人信息（脱敏） */
+    private UserVO replyToUser;
+
     /** 当前登录用户是否已点赞 */
     private Boolean hasLiked;
 

@@ -202,6 +202,11 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
             comment.isPinned === 1 ? "bg-amber-50/60 border border-amber-100" :
             "bg-slate-50/60 border border-slate-100"
           )}>
+            {comment.replyToUser && (
+              <span className="text-primary font-bold mr-2">
+                回复 @{comment.replyToUser.userName}：
+              </span>
+            )}
             {comment.content}
           </div>
 

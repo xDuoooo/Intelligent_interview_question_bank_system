@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Popover, List, Badge, Button, Typography, Space, Empty, message } from "antd";
 import { Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { 
   listMyNotificationVOByPageUsingPost, 
   readAllNotificationUsingPost, 
@@ -20,6 +21,7 @@ const NotificationPopover: React.FC = () => {
   const [notifications, setNotifications] = useState<API.NotificationVO[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   // 获取最近通知列表
   const fetchNotifications = async () => {
@@ -32,10 +34,11 @@ const NotificationPopover: React.FC = () => {
         sortOrder: "descend",
       });
       if (res.data) {
-        setNotifications(res.data.records || []);
+        const data = res.data as API.PageNotificationVO_;
+        setNotifications(data.records || []);
       }
     } catch (e: any) {
-      console.error("获取通知列表失败", e);
+      message.error("获取通知失败");
     } finally {
       setLoading(false);
     }
@@ -50,7 +53,8 @@ const NotificationPopover: React.FC = () => {
         status: 0, // 未读
       });
       if (res.data) {
-        setUnreadCount(res.data.total || 0);
+        const data = res.data as API.PageNotificationVO_;
+        setUnreadCount(data.total || 0);
       }
     } catch (e) {
       console.error("获取未读通知数量失败", e);
@@ -78,13 +82,19 @@ const NotificationPopover: React.FC = () => {
     }
   };
 
-  // 标记单条已读
-  const handleRead = async (id: number) => {
+  // 标记单条已读并跳转
+  const handleRead = async (item: API.NotificationVO) => {
+    const { id, targetId } = item;
+    if (!id) return;
     try {
       const res = await readNotificationUsingPost({ id });
       if (res.data) {
         fetchNotifications();
         fetchUnreadCount();
+        // 如果有 targetId，根据类型跳转
+        if (targetId) {
+          router.push(`/question/${targetId}`);
+        }
       }
     } catch (e) {
       message.error("操作失败");
@@ -127,7 +137,7 @@ const NotificationPopover: React.FC = () => {
             }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fafafa")}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-            onClick={() => item.id && handleRead(item.id)}
+            onClick={() => handleRead(item)}
           >
             <List.Item.Meta
               title={
@@ -159,7 +169,7 @@ const NotificationPopover: React.FC = () => {
             paddingTop: 8 
           }}
         >
-          <Button type="link" size="small" style={{ fontSize: 13 }}>查看所有通知</Button>
+          <Button type="link" size="small" style={{ fontSize: 13 }} onClick={() => router.push("/user/notifications")}>查看所有通知</Button>
         </div>
       )}
     </div>

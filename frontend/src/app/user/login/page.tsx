@@ -10,14 +10,16 @@ import { setLoginUser } from "@/stores/loginUser";
 import { userLoginUsingPost } from "@/api/userController";
 import { message } from "antd";
 import { cn } from "@/lib/utils";
-import { User, Lock, ArrowRight, Loader2, Globe, Mail } from "lucide-react";
+import { User, Lock, ArrowRight, Loader2, Globe, Mail, MessageSquare } from "lucide-react";
+import WxLoginModal from "@/components/WxLoginModal";
 
 export default function UserLoginPage() {
   const [formData, setFormData] = useState<API.UserLoginRequest>({
     userAccount: "",
     userPassword: "",
   });
-  const [loading, setLoading] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [wxModalVisible, setWxModalVisible] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
 
@@ -27,7 +29,7 @@ export default function UserLoginPage() {
       message.warning("请填写账号和密码");
       return;
     }
-    setLoading(true);
+    setLoginLoading(true);
     try {
       const res = await userLoginUsingPost(formData);
       if (res.data) {
@@ -38,7 +40,7 @@ export default function UserLoginPage() {
     } catch (e) {
       message.error("登录失败，请检查账号密码");
     } finally {
-      setLoading(false);
+      setLoginLoading(false);
     }
   };
 
@@ -105,18 +107,22 @@ export default function UserLoginPage() {
                     onChange={(e) => setFormData({ ...formData, userPassword: e.target.value })}
                   />
                 </div>
+                <p className="text-[10px] text-slate-400 font-bold ml-1 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                  新用户输入账号密码后将自动为您注册
+                </p>
               </div>
             </div>
 
             <button
-              disabled={loading}
+              disabled={loginLoading}
               className="group relative w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black text-lg shadow-lg shadow-primary/30 hover:shadow-primary/40 active:scale-95 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {loginLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
                 <>
-                  立即登录
+                  立即进入
                   <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
@@ -129,17 +135,31 @@ export default function UserLoginPage() {
               <div className="w-full border-t border-slate-200"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-widest font-black">
-              <span className="bg-transparent px-4 text-muted-foreground">或者通过</span>
+              <span className="bg-transparent px-4 text-muted-foreground">合作平台登录</span>
             </div>
           </div>
 
           {/* Social Login */}
-          <div className="grid grid-cols-2 gap-4">
-             <button className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm">
-              <Globe className="h-5 w-5" /> GitHub
-            </button>
-            <button className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm">
-              <Mail className="h-5 w-5 text-blue-500" /> Google
+          <div className="flex flex-col gap-3">
+             <div className="grid grid-cols-2 gap-3">
+              <button 
+                type="button"
+                className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm"
+              >
+                <Globe className="h-5 w-5 text-slate-700" /> GitHub
+              </button>
+              <button 
+                type="button"
+                className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm"
+              >
+                <MessageSquare className="h-5 w-5 text-red-500" /> Gitee
+              </button>
+             </div>
+            <button 
+              type="button"
+              className="flex h-12 items-center justify-center rounded-2xl border bg-white hover:bg-slate-50 transition-all gap-2 font-bold shadow-sm w-full"
+            >
+              <Mail className="h-5 w-5 text-blue-500" /> Google 账号登录
             </button>
           </div>
 

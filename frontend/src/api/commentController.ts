@@ -27,6 +27,7 @@ interface UserVO {
   id: number;
   userName: string;
   userAvatar: string;
+  userProfile?: string;
   userRole: string;
 }
 
@@ -43,6 +44,7 @@ export interface CommentVO {
   createTime: string;
   deleted: boolean;
   user: UserVO | null;
+  replyToUser?: UserVO | null;
   hasLiked: boolean;
   replies: CommentVO[];
 }

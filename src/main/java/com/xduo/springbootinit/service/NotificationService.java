@@ -47,6 +47,7 @@ public interface NotificationService extends IService<Notification> {
      * @param title
      * @param content
      * @param type
+     * @param targetId
      */
-    void sendNotification(Long userId, String title, String content, String type);
+    void sendNotification(Long userId, String title, String content, String type, Long targetId);
 }

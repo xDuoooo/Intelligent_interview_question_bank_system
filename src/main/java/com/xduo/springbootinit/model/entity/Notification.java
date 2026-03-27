@@ -43,9 +43,14 @@ public class Notification implements Serializable {
     private String type;
 
     /**
-     * 状态：0-未读, 1-已读
+     * 状态（0-未读, 1-已读）
      */
     private Integer status;
+
+    /**
+     * 关联业务 ID
+     */
+    private Long targetId;
 
     /**
      * 创建时间

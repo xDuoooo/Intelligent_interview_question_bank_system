@@ -34,8 +34,8 @@ export default function UserRegisterPage() {
     try {
       const res = await userRegisterUsingPost(formData);
       if (res.data) {
-        message.success("注册成功，请重新登录");
-        router.replace("/user/login");
+        message.success("注册成功，欢迎加入！");
+        router.replace("/");
       }
     } catch (e) {
       message.error("注册失败，请检查账号格式");

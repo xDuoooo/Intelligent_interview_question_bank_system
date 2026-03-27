@@ -43,5 +43,10 @@ public class NotificationQueryRequest extends PageRequest implements Serializabl
      */
     private Integer status;
 
+    /**
+     * 关联业务 ID
+     */
+    private Long targetId;
+
     private static final long serialVersionUID = 1L;
 }

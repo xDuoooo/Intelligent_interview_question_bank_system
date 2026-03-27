@@ -895,6 +895,7 @@ declare namespace API {
     content?: string;
     type?: string;
     status?: number;
+    targetId?: number;
     createTime?: string;
     updateTime?: string;
   };
@@ -904,6 +905,7 @@ declare namespace API {
     title?: string;
     content?: string;
     type?: string;
+    targetId?: number;
   };
 
   type NotificationQueryRequest = {
@@ -915,6 +917,7 @@ declare namespace API {
     content?: string;
     type?: string;
     status?: number;
+    targetId?: number;
     sortField?: string;
     sortOrder?: string;
   };
