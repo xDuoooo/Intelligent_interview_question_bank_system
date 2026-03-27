@@ -42,6 +42,11 @@ public class NotificationVO implements Serializable {
     private Integer status;
 
     /**
+     * 关联业务 ID
+     */
+    private Long targetId;
+
+    /**
      * 创建时间
      */
     private Date createTime;

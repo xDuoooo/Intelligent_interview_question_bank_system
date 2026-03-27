@@ -3,6 +3,10 @@ const nextConfig = {
     output: "standalone",
     images: {
         remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'gw.alipayobjects.com',
+            }
         ],
     },
     typescript: {

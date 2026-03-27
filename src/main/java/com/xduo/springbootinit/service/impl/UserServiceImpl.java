@@ -28,7 +28,6 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
-import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.api.RBitSet;
 import org.redisson.api.RedissonClient;
@@ -52,7 +51,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private RedissonClient redissonClient;
 
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword) {
+    public long userRegister(String userAccount, String userPassword, String checkPassword, HttpServletRequest request) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -87,6 +86,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             if (!saveResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "注册失败，数据库错误");
             }
+            // 注册成功后自动登录
+            StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
+            StpUtil.getSession().set(USER_LOGIN_STATE, user);
             return user.getId();
         }
     }
@@ -105,17 +107,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         // 2. 加密
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
+
+        // 3. 登录即注册逻辑
         // 查询用户是否存在
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userAccount", userAccount);
-        queryWrapper.eq("userPassword", encryptPassword);
         User user = this.baseMapper.selectOne(queryWrapper);
-        // 用户不存在
+
+        // 用户不存在，则自动注册
         if (user == null) {
-            log.info("user login failed, userAccount cannot match userPassword");
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户不存在或密码错误");
+            log.info("user not exists, auto registering: {}", userAccount);
+            this.userRegister(userAccount, userPassword, userPassword, request);
+            // 注册后再查询一次
+            user = this.baseMapper.selectOne(queryWrapper);
+        } else {
+            // 用户已存在，校验密码
+            if (!user.getUserPassword().equals(encryptPassword)) {
+                log.info("user login failed, userAccount cannot match userPassword");
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户已存在且密码错误");
+            }
         }
-        // Sa-Token 登录，并指定设备，同端登录互斥
+
+        // 4. Sa-Token 登录，并指定设备，同端登录互斥
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
 
@@ -123,35 +136,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public LoginUserVO userLoginByMpOpen(WxOAuth2UserInfo wxOAuth2UserInfo, HttpServletRequest request) {
-        String unionId = wxOAuth2UserInfo.getUnionId();
-        String mpOpenId = wxOAuth2UserInfo.getOpenid();
-        // 单机锁
-        synchronized (unionId.intern()) {
-            // 查询用户是否已存在
-            QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("unionId", unionId);
-            User user = this.getOne(queryWrapper);
-            // 被封号，禁止登录
-            if (user != null && UserRoleEnum.BAN.getValue().equals(user.getUserRole())) {
-                throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "该用户已被封，禁止登录");
+    public LoginUserVO userLoginBySocial(String platform, String socialId, String nickname, String avatar, HttpServletRequest request) {
+        // 1. 根据社交平台的 ID 查找用户
+        // 统一使用 unionId 存储社交平台唯一标识
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("unionId", socialId);
+        User user = this.getOne(queryWrapper);
+
+        // 2. 如果不存在，则注册
+        if (user == null) {
+            user = new User();
+            user.setUnionId(socialId);
+            user.setUserAccount(socialId);
+            // 初始随机密码
+            user.setUserPassword(DigestUtils.md5DigestAsHex(("social_" + socialId).getBytes()));
+            user.setUserName(nickname);
+            user.setUserAvatar(avatar);
+            boolean result = this.save(user);
+            if (!result) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "社交登录失败，自动注册异常");
             }
-            // 用户不存在则创建
-            if (user == null) {
-                user = new User();
-                user.setUnionId(unionId);
-                user.setMpOpenId(mpOpenId);
-                user.setUserAvatar(wxOAuth2UserInfo.getHeadImgUrl());
-                user.setUserName(wxOAuth2UserInfo.getNickname());
-                boolean result = this.save(user);
-                if (!result) {
-                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "登录失败");
-                }
-            }
-            // TODO 记录用户的登录态
-            request.getSession().setAttribute(USER_LOGIN_STATE, user);
-            return getLoginUserVO(user);
         }
+
+        // 3. 记录登录态
+        StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
+
+        return this.getLoginUserVO(user);
     }
 
     /**

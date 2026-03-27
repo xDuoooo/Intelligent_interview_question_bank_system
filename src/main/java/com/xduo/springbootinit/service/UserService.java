@@ -12,8 +12,6 @@ import java.util.List;
 import java.util.Map;
 import jakarta.servlet.http.HttpServletRequest;
 
-import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
-
 /**
  * 用户服务
  */
@@ -27,7 +25,7 @@ public interface UserService extends IService<User> {
      * @param checkPassword 校验密码
      * @return 新用户 id
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword);
+    long userRegister(String userAccount, String userPassword, String checkPassword, HttpServletRequest request);
 
     /**
      * 用户登录
@@ -40,13 +38,16 @@ public interface UserService extends IService<User> {
     LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request);
 
     /**
-     * 用户登录（微信开放平台）
+     * 社交登录（通用）
      *
-     * @param wxOAuth2UserInfo 从微信获取的用户信息
-     * @param request
-     * @return 脱敏后的用户信息
+     * @param platform 平台
+     * @param socialId 社交平台唯一标识
+     * @param nickname 昵称
+     * @param avatar   头像
+     * @param request  请求
+     * @return 登录用户信息
      */
-    LoginUserVO userLoginByMpOpen(WxOAuth2UserInfo wxOAuth2UserInfo, HttpServletRequest request);
+    LoginUserVO userLoginBySocial(String platform, String socialId, String nickname, String avatar, HttpServletRequest request);
 
     /**
      * 获取当前登录用户

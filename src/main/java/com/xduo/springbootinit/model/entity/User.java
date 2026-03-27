@@ -33,14 +33,9 @@ public class User implements Serializable {
     private String userPassword;
 
     /**
-     * 微信开放平台id
+     * 社交平台唯一标识
      */
     private String unionId;
-
-    /**
-     * 公众号openId
-     */
-    private String mpOpenId;
 
     /**
      * 用户昵称

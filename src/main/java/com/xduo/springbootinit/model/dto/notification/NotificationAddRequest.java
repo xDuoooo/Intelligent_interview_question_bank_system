@@ -30,5 +30,10 @@ public class NotificationAddRequest implements Serializable {
      */
     private String type;
 
+    /**
+     * 关联业务 ID
+     */
+    private Long targetId;
+
     private static final long serialVersionUID = 1L;
 }

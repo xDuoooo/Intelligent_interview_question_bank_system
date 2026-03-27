@@ -112,7 +112,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     replyToComment.getUserId(),
                     "有人回复了你的评论",
                     loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20),
-                    "reply"
+                    "reply",
+                    questionId
                 );
             }
         } else if (parentId != null) {
@@ -123,7 +124,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     parentComment.getUserId(),
                     "你的评论有了新回复",
                     loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20),
-                    "reply"
+                    "reply",
+                    questionId
                 );
             }
         }
@@ -250,7 +252,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     comment.getUserId(),
                     "有人给你点赞了",
                     loginUser.getUserName() + " 点赞了你的评论：" + StringUtils.abbreviate(comment.getContent(), 20),
-                    "like"
+                    "like",
+                    comment.getQuestionId()
                 );
             }
         }
@@ -339,7 +342,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                 comment.getUserId(),
                 "恭喜！你的评论被设为官方解答",
                 "你在题目 ID 为 " + comment.getQuestionId() + " 下发表的评论已被管理员设为官方解答。",
-                "official_answer"
+                "official_answer",
+                comment.getQuestionId()
             );
         }
         return result;
@@ -370,10 +374,22 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         Map<Long, List<QuestionComment>> childrenMap = childComments.stream()
                 .collect(Collectors.groupingBy(QuestionComment::getParentId));
 
-        // 收集所有用户 id
+        // 收集所有用户 id（包括被回复人的 id）
         Set<Long> userIds = new HashSet<>();
         topComments.forEach(c -> userIds.add(c.getUserId()));
         childComments.forEach(c -> userIds.add(c.getUserId()));
+        
+        // 收集所有涉及到的评论 id 来查作者
+        Set<Long> allInvolvedCommentIds = new HashSet<>();
+        childComments.forEach(c -> {
+            if (c.getReplyToId() != null) {
+                allInvolvedCommentIds.add(c.getReplyToId());
+            }
+        });
+        if (!allInvolvedCommentIds.isEmpty()) {
+            List<QuestionComment> replyToComments = listByIds(allInvolvedCommentIds);
+            replyToComments.forEach(rc -> userIds.add(rc.getUserId()));
+        }
 
         List<User> users = userService.listByIds(userIds);
         Map<Long, UserVO> userMap = users.stream()
@@ -381,7 +397,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     UserVO vo = new UserVO();
                     BeanUtils.copyProperties(u, vo);
                     return vo;
-                }));
+                }, (v1, v2) -> v1));
 
         // 若已登录，批量查询该用户对这些评论的点赞情况
         Set<Long> likedIds = new HashSet<>();
@@ -396,11 +412,20 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
             }
         }
 
+        // 预查一份 commentId -> userId 的映射，方便找 replyToUser
+        Map<Long, Long> commentToUserMap = new HashMap<>();
+        topComments.forEach(c -> commentToUserMap.put(c.getId(), c.getUserId()));
+        childComments.forEach(c -> commentToUserMap.put(c.getId(), c.getUserId()));
+        if (!allInvolvedCommentIds.isEmpty()) {
+             listByIds(allInvolvedCommentIds).forEach(rc -> commentToUserMap.put(rc.getId(), rc.getUserId()));
+        }
+
         // 转 VO
-        return topComments.stream().map(c -> toVO(c, userMap, childrenMap, likedIds)).collect(Collectors.toList());
+        return topComments.stream().map(c -> toVO(c, userMap, commentToUserMap, childrenMap, likedIds)).collect(Collectors.toList());
     }
 
     private CommentVO toVO(QuestionComment comment, Map<Long, UserVO> userMap,
+                           Map<Long, Long> commentToUserMap,
                            Map<Long, List<QuestionComment>> childrenMap, Set<Long> likedIds) {
         CommentVO vo = new CommentVO();
         vo.setId(comment.getId());
@@ -416,6 +441,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         vo.setDeleted(false);
         vo.setUser(userMap.getOrDefault(comment.getUserId(), null));
         vo.setHasLiked(likedIds.contains(comment.getId()));
+
+        // 设置被回复人信息
+        if (comment.getReplyToId() != null) {
+            Long replyToUserId = commentToUserMap.get(comment.getReplyToId());
+            if (replyToUserId != null) {
+                vo.setReplyToUser(userMap.get(replyToUserId));
+            }
+        }
 
         // 组装子评论（不递归第三层，直接平铺）
         List<QuestionComment> children = childrenMap.getOrDefault(comment.getId(), Collections.emptyList());
@@ -435,6 +468,15 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     childVO.setDeleted(false);
                     childVO.setUser(userMap.getOrDefault(child.getUserId(), null));
                     childVO.setHasLiked(likedIds.contains(child.getId()));
+
+                    // 设置被回复人信息
+                    if (child.getReplyToId() != null) {
+                        Long ruid = commentToUserMap.get(child.getReplyToId());
+                        if (ruid != null) {
+                            childVO.setReplyToUser(userMap.get(ruid));
+                        }
+                    }
+
                     childVO.setReplies(Collections.emptyList());
                     return childVO;
                 })

@@ -61,6 +61,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         Integer status = notificationQueryRequest.getStatus();
         String sortField = notificationQueryRequest.getSortField();
         String sortOrder = notificationQueryRequest.getSortOrder();
+        Long targetId = notificationQueryRequest.getTargetId();
 
         queryWrapper.eq(id != null && id > 0, "id", id);
         queryWrapper.eq(userId != null && userId > 0, "userId", userId);
@@ -68,6 +69,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
         queryWrapper.eq(StringUtils.isNotBlank(type), "type", type);
         queryWrapper.eq(status != null, "status", status);
+        queryWrapper.eq(targetId != null, "targetId", targetId);
         queryWrapper.eq("isDelete", false);
         queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
                 sortField);
@@ -76,7 +78,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
 
     @Override
     @Async
-    public void sendNotification(Long userId, String title, String content, String type) {
+    public void sendNotification(Long userId, String title, String content, String type, Long targetId) {
         if (userId == null || userId <= 0) {
             return;
         }
@@ -85,6 +87,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         notification.setTitle(title);
         notification.setContent(content);
         notification.setType(type);
+        notification.setTargetId(targetId);
         notification.setStatus(0);
         this.save(notification);
     }
