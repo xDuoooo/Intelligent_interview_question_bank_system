@@ -68,6 +68,21 @@ public class User implements Serializable {
     private String userRole;
 
     /**
+     * GitHub 唯一标识
+     */
+    private String githubId;
+
+    /**
+     * Gitee 唯一标识
+     */
+    private String giteeId;
+
+    /**
+     * Google 唯一标识
+     */
+    private String googleId;
+
+    /**
      * 编辑时间
      */
     private Date editTime;

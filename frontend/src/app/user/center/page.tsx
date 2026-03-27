@@ -64,7 +64,7 @@ export default function UserCenterPage() {
                 : "未知角色"}
             </Tag>
             <Paragraph type="secondary" style={{ marginTop: 8 }}>
-              注册日期：{dayjs(user.createTime).format("YYYY-MM-DD")}
+              注册日期：{user.createTime ? dayjs(user.createTime).format("YYYY-MM-DD") : dayjs().format("YYYY-MM-DD")}
             </Paragraph>
             <Paragraph type="secondary" style={{ marginTop: 8 }} copyable={{
               text: String(user.id)

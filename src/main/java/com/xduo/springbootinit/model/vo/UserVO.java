@@ -47,6 +47,21 @@ public class UserVO implements Serializable {
     private String email;
 
     /**
+     * GitHub 唯一标识
+     */
+    private String githubId;
+
+    /**
+     * Gitee 唯一标识
+     */
+    private String giteeId;
+
+    /**
+     * Google 唯一标识
+     */
+    private String googleId;
+
+    /**
      * 创建时间
      */
     private Date createTime;

@@ -317,7 +317,8 @@ public class UserController {
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
         User user = new User();
-        BeanUtils.copyProperties(userUpdateMyRequest, user);
+        // 仅允许修改昵称、头像、简介
+        BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "githubId", "giteeId", "googleId");
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -339,6 +340,42 @@ public class UserController {
         }
         User loginUser = userService.getLoginUser(request);
         userService.changePassword(userChangePasswordRequest, loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 绑定手机号
+     *
+     * @param userBindRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/bind/phone")
+    public BaseResponse<Boolean> bindPhone(@RequestBody com.xduo.springbootinit.model.dto.user.UserBindRequest userBindRequest,
+                                           HttpServletRequest request) {
+        if (userBindRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        userService.bindPhone(userBindRequest.getTarget(), userBindRequest.getCode(), loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 绑定邮箱
+     *
+     * @param userBindRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/bind/email")
+    public BaseResponse<Boolean> bindEmail(@RequestBody com.xduo.springbootinit.model.dto.user.UserBindRequest userBindRequest,
+                                           HttpServletRequest request) {
+        if (userBindRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        userService.bindEmail(userBindRequest.getTarget(), userBindRequest.getCode(), loginUser);
         return ResultUtils.success(true);
     }
 

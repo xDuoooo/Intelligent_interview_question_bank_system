@@ -283,6 +283,9 @@ declare namespace API {
     userName?: string;
     userProfile?: string;
     userRole?: string;
+    githubId?: string;
+    giteeId?: string;
+    googleId?: string;
   };
 
   type MockInterview = {
@@ -798,6 +801,11 @@ declare namespace API {
     captchaUuid?: string;
   };
 
+  type UserBindRequest = {
+    target?: string;
+    code?: string;
+  };
+
   type UserCodeLoginRequest = {
     target?: string;
     code?: string;
@@ -889,6 +897,9 @@ declare namespace API {
     userName?: string;
     userProfile?: string;
     userRole?: string;
+    githubId?: string;
+    giteeId?: string;
+    googleId?: string;
   };
   type UserQuestionHistoryVO = {
     createTime?: string;

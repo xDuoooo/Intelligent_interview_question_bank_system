@@ -313,7 +313,17 @@ const UserLoginPage: React.FC = () => {
               <button 
                 key={idx} 
                 type="button"
-                onClick={() => message.info("第三方关联功能即将上线，敬请期待！")}
+                onClick={() => {
+                  if (social.label === "GitHub") {
+                    window.location.href = "http://localhost:8101/api/user/login/github";
+                  } else if (social.label === "Gitee") {
+                    window.location.href = "http://localhost:8101/api/user/login/gitee";
+                  } else if (social.label === "Google") {
+                    window.location.href = "http://localhost:8101/api/user/login/google";
+                  } else {
+                    message.info(`${social.label} 关联功能即将上线，敬请期待！`);
+                  }
+                }}
                 className="flex flex-col items-center justify-center h-16 rounded-2xl border border-slate-50 bg-slate-50/30 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all gap-1 group"
               >
                 <div className="group-hover:scale-110 transition-transform">{social.icon}</div>
