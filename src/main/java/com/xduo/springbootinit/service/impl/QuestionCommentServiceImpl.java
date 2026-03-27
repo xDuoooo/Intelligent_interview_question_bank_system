@@ -14,12 +14,10 @@ import com.xduo.springbootinit.mapper.QuestionCommentReportMapper;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
-import com.xduo.springbootinit.model.entity.QuestionComment;
-import com.xduo.springbootinit.model.entity.QuestionCommentLike;
-import com.xduo.springbootinit.model.entity.QuestionCommentReport;
-import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.entity.*;
 import com.xduo.springbootinit.model.vo.CommentVO;
 import com.xduo.springbootinit.model.vo.UserVO;
+import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.UserService;
 import jakarta.annotation.Resource;
@@ -55,6 +53,9 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private NotificationService notificationService;
 
     // ----------------------------------------------------------------
     //  1. 发表评论
@@ -101,6 +102,32 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
 
         boolean saved = save(comment);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR);
+
+        // 发送通知
+        // 1. 如果是回复某人
+        if (request.getReplyToId() != null) {
+            QuestionComment replyToComment = getById(request.getReplyToId());
+            if (replyToComment != null && !replyToComment.getUserId().equals(loginUser.getId())) {
+                Notification notification = new Notification();
+                notification.setUserId(replyToComment.getUserId());
+                notification.setTitle("有人回复了你的评论");
+                notification.setContent(loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20));
+                notification.setType("reply");
+                notificationService.save(notification);
+            }
+        } else if (parentId != null) {
+            // 2. 如果是回复主评论（但在 addComment 中 parentId 和 replyToId 的逻辑可能重合，通常取决于前端传参）
+            QuestionComment parentComment = getById(parentId);
+            if (parentComment != null && !parentComment.getUserId().equals(loginUser.getId())) {
+                Notification notification = new Notification();
+                notification.setUserId(parentComment.getUserId());
+                notification.setTitle("你的评论有了新回复");
+                notification.setContent(loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20));
+                notification.setType("reply");
+                notificationService.save(notification);
+            }
+        }
+
         return comment.getId();
     }
 
@@ -296,7 +323,16 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         QuestionComment comment = getById(commentId);
         ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR);
         comment.setIsOfficial(official ? 1 : 0);
-        return updateById(comment);
+        boolean result = updateById(comment);
+        if (result && official) {
+            Notification notification = new Notification();
+            notification.setUserId(comment.getUserId());
+            notification.setTitle("恭喜！你的评论被设为官方解答");
+            notification.setContent("你在题目 ID 为 " + comment.getQuestionId() + " 下发表的评论已被管理员设为官方解答。");
+            notification.setType("official_answer");
+            notificationService.save(notification);
+        }
+        return result;
     }
 
     // ----------------------------------------------------------------

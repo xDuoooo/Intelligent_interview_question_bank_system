@@ -1,5 +1,5 @@
 import { Button, Form, Input, message } from "antd";
-import { editUserUsingPost } from "@/api/userController";
+import { updateMyUserUsingPost } from "@/api/userController";
 import React from "react";
 import {useDispatch} from "react-redux";
 import {AppDispatch} from "@/stores";
@@ -25,13 +25,14 @@ const UserInfoEditForm = (props: Props) => {
    *
    * @param values
    */
-  const doSubmit = async (values: API.UserEditRequest) => {
+  const doSubmit = async (values: API.UserUpdateMyRequest) => {
     const hide = message.loading("正在操作");
     try {
-      await editUserUsingPost(values);
+      await updateMyUserUsingPost(values);
       hide();
       message.success("操作成功");
-      dispatch(setLoginUser({...user, ...values}));
+      // 更新全局登录状态
+      dispatch(setLoginUser({ ...user, ...values }));
     } catch (error: any) {
       hide();
       message.error("操作失败，" + error.message);
@@ -42,24 +43,21 @@ const UserInfoEditForm = (props: Props) => {
     <Form
       form={form}
       style={{ marginTop: 24, maxWidth: 480 }}
-      labelCol={{ span: 4 }}
+      labelCol={{ span: 5 }}
       labelAlign="left"
       onFinish={doSubmit}
     >
-      <Form.Item label="手机号" name="phoneNumber">
+      <Form.Item label="昵称" name="userName">
+        <Input placeholder="请输入昵称" />
+      </Form.Item>
+      <Form.Item label="简介" name="userProfile">
+        <Input.TextArea placeholder="请输入简介" />
+      </Form.Item>
+      <Form.Item label="手机号" name="phone">
         <Input placeholder="请输入手机号" />
       </Form.Item>
       <Form.Item label="邮箱" name="email">
         <Input placeholder="请输入邮箱" />
-      </Form.Item>
-      <Form.Item label="年级" name="grade">
-        <Input placeholder="请输入年级" />
-      </Form.Item>
-      <Form.Item label="工作经验" name="workExperience">
-        <Input placeholder="请输入工作经验" />
-      </Form.Item>
-      <Form.Item label="擅长方向" name="expertiseDirection">
-        <Input placeholder="请输入擅长方向" />
       </Form.Item>
       <Form.Item>
         <Button style={{ width: 180 }} type="primary" htmlType="submit">

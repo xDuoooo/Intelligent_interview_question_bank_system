@@ -19,6 +19,8 @@ create table if not exists user
     userAvatar   varchar(1024)                          null comment '用户头像',
     userProfile  varchar(512)                           null comment '用户简介',
     userRole     varchar(256) default 'user'            not null comment '用户角色：user/admin/ban',
+    phone        varchar(128)                           null comment '手机号',
+    email        varchar(128)                           null comment '邮箱',
     editTime     datetime     default CURRENT_TIMESTAMP not null comment '编辑时间',
     createTime   datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
@@ -69,3 +71,28 @@ create table if not exists question_bank_question
     updateTime     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     UNIQUE (questionBankId, questionId)
     ) comment '题库题目' collate = utf8mb4_unicode_ci;
+
+-- 题目收藏表（硬删除）
+create table if not exists question_favour
+(
+    id         bigint auto_increment comment 'id' primary key,
+    questionId bigint                             not null comment '题目 id',
+    userId     bigint                             not null comment '创建用户 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    index idx_questionId (questionId),
+    index idx_userId (userId)
+) comment '题目收藏';
+
+-- 刷题记录表（用户题目的记录，硬删除）
+create table if not exists user_question_history
+(
+    id         bigint auto_increment comment 'id' primary key,
+    questionId bigint                             not null comment '题目 id',
+    userId     bigint                             not null comment '用户 id',
+    status     int      default 0                 not null comment '状态：0-未开始, 1-浏览中, 2-已过, 3-困难',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    index idx_questionId (questionId),
+    index idx_userId (userId)
+) comment '刷题记录';

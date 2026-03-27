@@ -13,7 +13,9 @@ import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
+import com.xduo.springbootinit.model.entity.QuestionFavour;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.service.QuestionFavourService;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
@@ -23,6 +25,7 @@ import com.xduo.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import co.elastic.clients.elasticsearch._types.SortOptions;
@@ -61,6 +64,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private QuestionBankQuestionService questionBankQuestionService;
+
+    @Resource
+    @Lazy
+    private QuestionFavourService questionFavourService;
 
     /**
      * 校验数据
@@ -148,6 +155,18 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         UserVO userVO = userService.getUserVO(user);
         questionVO.setUser(userVO);
+        // 是否已收藏
+        User loginUser = userService.getLoginUserPermitNull(request);
+        if (loginUser != null) {
+            QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+            favourQueryWrapper.eq("questionId", question.getId());
+            favourQueryWrapper.eq("userId", loginUser.getId());
+            questionVO.setHasFavour(questionFavourService.getOne(favourQueryWrapper) != null);
+        }
+        // 收藏数
+        QueryWrapper<QuestionFavour> favourCountWrapper = new QueryWrapper<>();
+        favourCountWrapper.eq("questionId", question.getId());
+        questionVO.setFavourNum((int) questionFavourService.count(favourCountWrapper));
         return questionVO;
     }
 
@@ -175,6 +194,29 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
                 .collect(Collectors.groupingBy(User::getId));
         // 填充信息
+        User loginUser = userService.getLoginUserPermitNull(request);
+        // 查询收藏状态和收藏数
+        Map<Long, Boolean> questionIdHasFavourMap = new java.util.HashMap<>();
+        Map<Long, Integer> questionIdFavourNumMap = new java.util.HashMap<>();
+        if (loginUser != null) {
+            Set<Long> questionIdSet = questionList.stream().map(Question::getId).collect(Collectors.toSet());
+            QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+            favourQueryWrapper.in("questionId", questionIdSet);
+            favourQueryWrapper.eq("userId", loginUser.getId());
+            List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
+            Set<Long> favourQuestionIdSet = favourList.stream().map(QuestionFavour::getQuestionId).collect(Collectors.toSet());
+            favourQuestionIdSet.forEach(id -> questionIdHasFavourMap.put(id, true));
+        }
+        // 批量查询收藏数 (推荐在实际项目中增加 favourNum 到 Question 表或使用 Redis 缓存计数)
+        // 这里为了简单先用循环查或分组查
+        Set<Long> allQuestionIdSet = questionList.stream().map(Question::getId).collect(Collectors.toSet());
+        // mybatis-plus 暂时没有直接分组计数的快捷 IService 方法，这里简单处理
+        allQuestionIdSet.forEach(qId -> {
+            QueryWrapper<QuestionFavour> qw = new QueryWrapper<>();
+            qw.eq("questionId", qId);
+            questionIdFavourNumMap.put(qId, (int) questionFavourService.count(qw));
+        });
+
         questionVOList.forEach(questionVO -> {
             Long userId = questionVO.getUserId();
             User user = null;
@@ -182,6 +224,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 user = userIdUserListMap.get(userId).get(0);
             }
             questionVO.setUser(userService.getUserVO(user));
+            questionVO.setHasFavour(questionIdHasFavourMap.getOrDefault(questionVO.getId(), false));
+            questionVO.setFavourNum(questionIdFavourNumMap.getOrDefault(questionVO.getId(), 0));
         });
         questionVOPage.setRecords(questionVOList);
         return questionVOPage;

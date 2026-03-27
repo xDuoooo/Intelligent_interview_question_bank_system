@@ -136,4 +136,20 @@ public interface UserService extends IService<User> {
      */
     List<Integer> getUserSignInRecord(long userId, Integer year);
 
+    /**
+     * 修改密码
+     *
+     * @param request
+     * @param loginUser
+     */
+    void changePassword(com.xduo.springbootinit.model.dto.user.UserChangePasswordRequest request, User loginUser);
+
+
+    /**
+     * 检查昵称是否唯一
+     *
+     * @param userName  待检查昵称
+     * @param userId    当前用户 ID（排除自身）
+     */
+    void checkUserNameUnique(String userName, Long userId);
 }

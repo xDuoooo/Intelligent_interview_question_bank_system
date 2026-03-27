@@ -13,7 +13,8 @@ import ACCESS_ENUM from "@/access/accessEnum";
 import getAccessibleMenus from "@/access/menuAccess";
 import { menus } from "../../../config/menu";
 import { cn } from "@/lib/utils";
-import { Search, Bell, Menu, X, LogOut, User, Settings, Crown, ChevronDown } from "lucide-react";
+import { Search, Menu, X, LogOut, User, Settings, Crown, ChevronDown } from "lucide-react";
+import NotificationPopover from "../NotificationPopover";
 
 export default function GlobalHeader() {
   const pathname = usePathname();
@@ -96,10 +97,9 @@ export default function GlobalHeader() {
             </div>
 
             {/* Notification */}
-            <button className="relative h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background" />
-            </button>
+            {loginUser.id && (
+              <NotificationPopover />
+            )}
 
             {/* User Profile */}
             {loginUser.id ? (

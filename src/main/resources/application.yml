@@ -3,6 +3,9 @@
 spring:
   application:
     name: Intelligent-interview-question-bank-system
+  devtools:
+    restart:
+      enabled: false
   # 默认 dev 环境
   profiles:
     active: dev
