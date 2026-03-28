@@ -1,21 +1,24 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import CreateModal from "./components/CreateModal";
-import UpdateModal from "./components/UpdateModal";
+import dynamic from "next/dynamic";
 import {
   batchDeleteQuestionsUsingPost,
   deleteQuestionUsingPost,
   listQuestionByPageUsingPost,
 } from "@/api/questionController";
 import { Plus, Trash2, Edit3, Database, Wand2, Link2 } from "lucide-react";
-import { ProTable } from "@ant-design/pro-components";
+import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Button, message, Popconfirm, Space, Table } from "antd";
 import TagList from "@/components/TagList";
-import UpdateBankModal from "@/app/admin/question/components/UpdateBankModal";
-import BatchAddQuestionsToBankModal from "@/app/admin/question/components/BatchAddQuestionsToBankModal";
-import BatchRemoveQuestionsFromBankModal from "@/app/admin/question/components/BatchRemoveQuestionsFromBankModal";
+import Link from "next/link";
+
+const CreateModal = dynamic(() => import("./components/CreateModal"));
+const UpdateModal = dynamic(() => import("./components/UpdateModal"));
+const UpdateBankModal = dynamic(() => import("./components/UpdateBankModal"));
+const BatchAddQuestionsToBankModal = dynamic(() => import("./components/BatchAddQuestionsToBankModal"));
+const BatchRemoveQuestionsFromBankModal = dynamic(() => import("./components/BatchRemoveQuestionsFromBankModal"));
 
 /**
  * 题目管理页面
@@ -145,13 +148,13 @@ const QuestionAdminPage: React.FC = () => {
            <p className="text-slate-500 font-medium text-lg">高效组织、编辑和批量维护平台的面试题目内容。</p>
         </div>
         <div className="relative z-10 flex flex-wrap gap-3">
-          <a
+          <Link
             href="/admin/question/ai"
             className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 h-14 px-8 rounded-2xl font-black text-lg transition-all border border-slate-200 shadow-sm"
           >
             <Wand2 className="h-6 w-6 text-primary" />
             AI 生成
-          </a>
+          </Link>
           <button
             onClick={() => setCreateModalVisible(true)}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 rounded-2xl font-black text-lg transition-all shadow-xl shadow-primary/25"
@@ -222,11 +225,57 @@ const QuestionAdminPage: React.FC = () => {
         />
       </div>
 
-      <CreateModal visible={createModalVisible} columns={columns} onSubmit={() => { setCreateModalVisible(false); actionRef.current?.reload(); }} onCancel={() => setCreateModalVisible(false)} />
-      <UpdateModal visible={updateModalVisible} columns={columns} oldData={currentRow} onSubmit={() => { setUpdateModalVisible(false); setCurrentRow(undefined); actionRef.current?.reload(); }} onCancel={() => setUpdateModalVisible(false)} />
-      <UpdateBankModal visible={updateBankModalVisible} questionId={currentRow?.id} onCancel={() => setUpdateBankModalVisible(false)} />
-      <BatchAddQuestionsToBankModal visible={batchAddQuestionsToBankModalVisible} questionIdList={selectedQuestionIdList} onSubmit={() => { setBatchAddQuestionsToBankModalVisible(false); }} onCancel={() => setBatchAddQuestionsToBankModalVisible(false)} />
-      <BatchRemoveQuestionsFromBankModal visible={batchRemoveQuestionsFromBankModalVisible} questionIdList={selectedQuestionIdList} onSubmit={() => { setBatchRemoveQuestionsFromBankModalVisible(false); }} onCancel={() => setBatchRemoveQuestionsFromBankModalVisible(false)} />
+      {createModalVisible && (
+        <CreateModal
+          visible={createModalVisible}
+          columns={columns}
+          onSubmit={() => {
+            setCreateModalVisible(false);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setCreateModalVisible(false)}
+        />
+      )}
+      {updateModalVisible && currentRow && (
+        <UpdateModal
+          visible={updateModalVisible}
+          columns={columns}
+          oldData={currentRow}
+          onSubmit={() => {
+            setUpdateModalVisible(false);
+            setCurrentRow(undefined);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setUpdateModalVisible(false)}
+        />
+      )}
+      {updateBankModalVisible && currentRow?.id && (
+        <UpdateBankModal
+          visible={updateBankModalVisible}
+          questionId={currentRow.id}
+          onCancel={() => setUpdateBankModalVisible(false)}
+        />
+      )}
+      {batchAddQuestionsToBankModalVisible && (
+        <BatchAddQuestionsToBankModal
+          visible={batchAddQuestionsToBankModalVisible}
+          questionIdList={selectedQuestionIdList}
+          onSubmit={() => {
+            setBatchAddQuestionsToBankModalVisible(false);
+          }}
+          onCancel={() => setBatchAddQuestionsToBankModalVisible(false)}
+        />
+      )}
+      {batchRemoveQuestionsFromBankModalVisible && (
+        <BatchRemoveQuestionsFromBankModal
+          visible={batchRemoveQuestionsFromBankModalVisible}
+          questionIdList={selectedQuestionIdList}
+          onSubmit={() => {
+            setBatchRemoveQuestionsFromBankModalVisible(false);
+          }}
+          onCancel={() => setBatchRemoveQuestionsFromBankModalVisible(false)}
+        />
+      )}
     </div>
   );
 };
