@@ -75,7 +75,7 @@
 
 ### MySQL 数据库
 
-1）修改 `application.yml` 的数据库配置为你自己的：
+1）优先修改 `application-local.yml` 的数据库配置为你自己的：
 
 ```yml
 spring:
@@ -92,6 +92,14 @@ spring:
 
 4）启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
 
+补充说明：
+
+- `application.yml` 只放公共配置
+- `application-local.yml` 放开发环境 / 你本机真实配置，默认不会提交到 Git
+- 仓库内提供了 `application-local.example.yml` 作为模板
+- `application-test.yml`、`application-prod.yml` 放测试 / 生产环境自己的连接信息和回调地址
+- 像数据库、Redis、ES、邮件、Nacos、短信、COS、OAuth 回调、前端域名这类明显依赖环境的配置，都应该放到 `local / test / prod` 中
+
 ### 默认管理员账号
 
 执行 `sql/import_data.sql` 脚本，即可初始化默认管理员账号和演示数据：
@@ -103,7 +111,7 @@ spring:
 
 ### Redis 分布式登录
 
-1）修改 `application.yml` 的 Redis 配置为你自己的：
+1）优先修改 `application-local.yml` 的 Redis 配置为你自己的：
 
 ```yml
 spring:
@@ -115,7 +123,7 @@ spring:
     password: 123456
 ```
 
-2）修改 `application.yml` 中的 session 存储方式：
+2）修改 `application-local.yml` 中的 session 存储方式：
 
 ```yml
 spring:
@@ -140,7 +148,7 @@ spring:
 
 ### Elasticsearch 搜索引擎
 
-1）修改 `application.yml` 的 Elasticsearch 配置为你自己的：
+1）优先修改 `application-local.yml` 的 Elasticsearch 配置为你自己的：
 
 ```yml
 spring:
