@@ -131,37 +131,23 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
         List<User> userList = listRankableUsers();
         Map<Long, User> userMap = userList.stream().collect(Collectors.toMap(User::getId, user -> user));
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list();
+        QueryWrapper<UserQuestionHistory> historySummaryWrapper = new QueryWrapper<>();
+        historySummaryWrapper.select("userId", "count(distinct questionId) as bankPracticeCount", "max(updateTime) as lastActiveTime");
+        historySummaryWrapper.in("questionId", bankQuestionIdSet);
+        historySummaryWrapper.in("userId", userMap.keySet());
+        historySummaryWrapper.groupBy("userId");
 
-        Map<Long, Set<Long>> userBankQuestionMap = new HashMap<>();
-        Map<Long, Date> lastPracticeTimeMap = new HashMap<>();
-        for (UserQuestionHistory history : historyList) {
-            if (history.getUserId() == null || history.getQuestionId() == null || !bankQuestionIdSet.contains(history.getQuestionId())) {
-                continue;
-            }
-            if (!userMap.containsKey(history.getUserId())) {
-                continue;
-            }
-            userBankQuestionMap.computeIfAbsent(history.getUserId(), key -> new HashSet<>()).add(history.getQuestionId());
-            Date updateTime = history.getUpdateTime();
-            if (updateTime != null) {
-                Date previous = lastPracticeTimeMap.get(history.getUserId());
-                if (previous == null || updateTime.after(previous)) {
-                    lastPracticeTimeMap.put(history.getUserId(), updateTime);
-                }
-            }
-        }
-
-        List<UserLeaderboardStat> rankingStatList = userBankQuestionMap.entrySet().stream()
-                .map(entry -> {
-                    User user = userMap.get(entry.getKey());
+        List<UserLeaderboardStat> rankingStatList = userQuestionHistoryService.listMaps(historySummaryWrapper).stream()
+                .map(item -> {
+                    Long userId = getNullableLongValue(item.get("userId"));
+                    User user = userId == null ? null : userMap.get(userId);
                     if (user == null) {
                         return null;
                     }
                     UserLeaderboardStat stat = new UserLeaderboardStat();
                     stat.setUser(user);
-                    stat.setBankPracticeCount(entry.getValue().size());
-                    stat.setLastActiveTime(lastPracticeTimeMap.get(user.getId()));
+                    stat.setBankPracticeCount(getLongValue(item.get("bankPracticeCount")));
+                    stat.setLastActiveTime(getDateValue(item.get("lastActiveTime")));
                     return stat;
                 })
                 .filter(java.util.Objects::nonNull)
@@ -205,33 +191,61 @@ public class LeaderboardServiceImpl implements LeaderboardService {
             statMap.put(user.getId(), stat);
         }
 
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list();
-        Map<Long, List<UserQuestionHistory>> userHistoryMap = historyList.stream()
-                .filter(history -> history.getUserId() != null && statMap.containsKey(history.getUserId()))
-                .collect(Collectors.groupingBy(UserQuestionHistory::getUserId));
-
-        for (Map.Entry<Long, List<UserQuestionHistory>> entry : userHistoryMap.entrySet()) {
-            UserLeaderboardStat stat = statMap.get(entry.getKey());
-            List<UserQuestionHistory> userHistoryList = entry.getValue();
-            stat.setTotalCount(userHistoryList.size());
-            stat.setActiveDays(calculateActiveDays(userHistoryList));
-            stat.setCurrentStreak(calculateCurrentStreak(userHistoryList));
-            stat.setLastActiveTime(userHistoryList.stream()
-                    .map(UserQuestionHistory::getUpdateTime)
-                    .filter(java.util.Objects::nonNull)
-                    .max(Date::compareTo)
-                    .orElse(null));
+        if (statMap.isEmpty()) {
+            return statMap;
         }
 
-        List<QuestionFavour> favourList = questionFavourService.list();
-        Map<Long, Long> favourCountMap = favourList.stream()
-                .filter(favour -> favour.getUserId() != null && statMap.containsKey(favour.getUserId()))
-                .collect(Collectors.groupingBy(QuestionFavour::getUserId, Collectors.counting()));
+        QueryWrapper<UserQuestionHistory> historySummaryWrapper = new QueryWrapper<>();
+        historySummaryWrapper.select("userId", "count(*) as totalCount", "max(updateTime) as lastActiveTime");
+        historySummaryWrapper.in("userId", statMap.keySet());
+        historySummaryWrapper.groupBy("userId");
+        List<Map<String, Object>> historySummaryList = userQuestionHistoryService.listMaps(historySummaryWrapper);
 
-        for (Map.Entry<Long, Long> entry : favourCountMap.entrySet()) {
-            UserLeaderboardStat stat = statMap.get(entry.getKey());
+        for (Map<String, Object> item : historySummaryList) {
+            Long userId = getNullableLongValue(item.get("userId"));
+            UserLeaderboardStat stat = userId == null ? null : statMap.get(userId);
             if (stat != null) {
-                stat.setFavourCount(entry.getValue());
+                stat.setTotalCount(getLongValue(item.get("totalCount")));
+                stat.setLastActiveTime(getDateValue(item.get("lastActiveTime")));
+            }
+        }
+
+        QueryWrapper<UserQuestionHistory> activeDateWrapper = new QueryWrapper<>();
+        activeDateWrapper.select("userId", "DATE(updateTime) as activeDate");
+        activeDateWrapper.in("userId", statMap.keySet());
+        activeDateWrapper.groupBy("userId", "DATE(updateTime)");
+        Map<Long, List<LocalDate>> activeDateMap = new HashMap<>();
+        for (Map<String, Object> item : userQuestionHistoryService.listMaps(activeDateWrapper)) {
+            Long userId = getNullableLongValue(item.get("userId"));
+            Object activeDateValue = item.get("activeDate");
+            if (userId == null || activeDateValue == null || !statMap.containsKey(userId)) {
+                continue;
+            }
+            activeDateMap.computeIfAbsent(userId, key -> new ArrayList<>())
+                    .add(LocalDate.parse(String.valueOf(activeDateValue)));
+        }
+        activeDateMap.forEach((userId, activeDateList) -> {
+            UserLeaderboardStat stat = statMap.get(userId);
+            if (stat == null) {
+                return;
+            }
+            List<LocalDate> sortedActiveDateList = activeDateList.stream()
+                    .distinct()
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+            stat.setActiveDays(sortedActiveDateList.size());
+            stat.setCurrentStreak(calculateCurrentStreak(sortedActiveDateList));
+        });
+
+        QueryWrapper<QuestionFavour> favourSummaryWrapper = new QueryWrapper<>();
+        favourSummaryWrapper.select("userId", "count(*) as favourCount");
+        favourSummaryWrapper.in("userId", statMap.keySet());
+        favourSummaryWrapper.groupBy("userId");
+        for (Map<String, Object> item : questionFavourService.listMaps(favourSummaryWrapper)) {
+            Long userId = getNullableLongValue(item.get("userId"));
+            UserLeaderboardStat stat = userId == null ? null : statMap.get(userId);
+            if (stat != null) {
+                stat.setFavourCount(getLongValue(item.get("favourCount")));
             }
         }
 
@@ -299,23 +313,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         return item;
     }
 
-    private long calculateActiveDays(List<UserQuestionHistory> historyList) {
-        return historyList.stream()
-                .map(UserQuestionHistory::getUpdateTime)
-                .filter(java.util.Objects::nonNull)
-                .map(this::toLocalDate)
-                .collect(Collectors.toSet())
-                .size();
-    }
-
-    private long calculateCurrentStreak(List<UserQuestionHistory> historyList) {
-        List<LocalDate> activeDateList = historyList.stream()
-                .map(UserQuestionHistory::getUpdateTime)
-                .filter(java.util.Objects::nonNull)
-                .map(this::toLocalDate)
-                .distinct()
-                .sorted(Comparator.reverseOrder())
-                .collect(Collectors.toList());
+    private long calculateCurrentStreak(List<LocalDate> activeDateList) {
         if (activeDateList.isEmpty()) {
             return 0;
         }
@@ -338,8 +336,31 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         return streak;
     }
 
-    private LocalDate toLocalDate(Date date) {
-        return date.toInstant().atZone(ZoneId.of("Asia/Shanghai")).toLocalDate();
+    private long getLongValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private Long getNullableLongValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private Date getDateValue(Object value) {
+        if (value instanceof Date) {
+            return (Date) value;
+        }
+        return null;
     }
 
     private static class UserLeaderboardStat {

@@ -40,7 +40,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -81,88 +80,80 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     public Map<String, Object> getDashboardOverview() {
-        List<User> userList = userService.list();
-        List<Question> questionList = questionService.list();
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list();
-        List<QuestionComment> commentList = questionCommentService.list();
-        List<MockInterview> mockInterviewList = mockInterviewService.list();
-        List<QuestionSearchLog> searchLogList = questionSearchLogService.list();
-        List<SecurityAlert> securityAlertList = securityAlertService.list();
+        List<User> userList = listUserCitySnapshot();
+        List<Question> questionList = listDashboardQuestions();
+        Map<Long, Long> questionPracticeCountMap = listPracticeCountMapByQuestion();
+        Map<Long, Long> userPracticeCountMap = listPracticeCountMapByUser();
+        List<SecurityAlert> pendingSecurityAlertList = listPendingSecurityAlerts();
         List<AdminOperationLog> operationLogList = listRecentOperations();
 
         Map<String, Object> overviewData = new HashMap<>();
-        overviewData.put("overview", buildOverview(questionList, commentList, mockInterviewList, securityAlertList));
-        overviewData.put("todayStats", buildTodayStats(historyList, commentList, mockInterviewList, securityAlertList));
-        overviewData.put("trend", buildTrend(historyList, commentList));
-        overviewData.put("searchAnalytics", buildSearchAnalytics(searchLogList));
-        overviewData.put("geoDistribution", buildGeoDistribution(userList, historyList));
+        overviewData.put("overview", buildOverview(questionList));
+        overviewData.put("todayStats", buildTodayStats());
+        overviewData.put("trend", buildTrend());
+        overviewData.put("searchAnalytics", buildSearchAnalytics());
+        overviewData.put("geoDistribution", buildGeoDistribution(userList, userPracticeCountMap));
         overviewData.put("tagDistribution", buildTagDistribution(questionList));
-        overviewData.put("questionHealth", buildQuestionHealth(questionList, historyList));
-        overviewData.put("riskAlerts", buildRiskAlerts(securityAlertList));
+        overviewData.put("questionHealth", buildQuestionHealth(questionList, questionPracticeCountMap));
+        overviewData.put("riskAlerts", buildRiskAlerts(pendingSecurityAlertList));
         overviewData.put("recentOperations", buildRecentOperations(operationLogList));
         return overviewData;
     }
 
-    private Map<String, Object> buildOverview(List<Question> questionList, List<QuestionComment> commentList,
-                                              List<MockInterview> mockInterviewList, List<SecurityAlert> securityAlertList) {
+    private Map<String, Object> buildOverview(List<Question> questionList) {
         Map<String, Object> overview = new HashMap<>();
         overview.put("userTotal", userService.count());
         overview.put("bankTotal", questionBankService.count());
-        overview.put("questionTotal", questionList.size());
+        overview.put("questionTotal", questionService.count());
         overview.put("tagTotal", countDistinctTags(questionList));
-        overview.put("commentTotal", commentList.size());
-        overview.put("mockInterviewTotal", mockInterviewList.size());
+        overview.put("commentTotal", questionCommentService.count());
+        overview.put("mockInterviewTotal", mockInterviewService.count());
 
         QueryWrapper<User> bannedUserWrapper = new QueryWrapper<>();
         bannedUserWrapper.eq("userRole", "ban");
         overview.put("bannedUserTotal", userService.count(bannedUserWrapper));
 
-        QueryWrapper<QuestionFavour> favourWrapper = new QueryWrapper<>();
-        overview.put("favourTotal", questionFavourService.count(favourWrapper));
-        overview.put("pendingRiskAlertTotal", securityAlertList.stream()
-                .filter(alert -> alert.getStatus() != null && alert.getStatus() == 0)
-                .count());
+        overview.put("favourTotal", questionFavourService.count());
+
+        QueryWrapper<SecurityAlert> pendingAlertWrapper = new QueryWrapper<>();
+        pendingAlertWrapper.eq("status", 0);
+        overview.put("pendingRiskAlertTotal", securityAlertService.count(pendingAlertWrapper));
         return overview;
     }
 
-    private Map<String, Object> buildTodayStats(List<UserQuestionHistory> historyList, List<QuestionComment> commentList,
-                                                List<MockInterview> mockInterviewList,
-                                                List<SecurityAlert> securityAlertList) {
+    private Map<String, Object> buildTodayStats() {
         Map<String, Object> todayStats = new HashMap<>();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
         LocalDate sevenDaysAgo = today.minusDays(6);
 
         todayStats.put("todayRegisterCount", countUsersBetween(today, today));
         todayStats.put("sevenDayRegisterCount", countUsersBetween(sevenDaysAgo, today));
-        todayStats.put("todayPracticeCount", countByDate(historyList, UserQuestionHistory::getUpdateTime, today));
-        todayStats.put("sevenDayPracticeCount", countBetween(historyList, UserQuestionHistory::getUpdateTime, sevenDaysAgo, today));
-        todayStats.put("todayCommentCount", countByDate(commentList, QuestionComment::getCreateTime, today));
-        todayStats.put("todayMockInterviewCount", countByDate(mockInterviewList, MockInterview::getCreateTime, today));
-        todayStats.put("todayRiskAlertCount", countByDate(securityAlertList, SecurityAlert::getCreateTime, today));
-        todayStats.put("sevenDayActiveUserCount", historyList.stream()
-                .filter(item -> toLocalDate(item.getUpdateTime()) != null)
-                .filter(item -> !toLocalDate(item.getUpdateTime()).isBefore(sevenDaysAgo))
-                .map(UserQuestionHistory::getUserId)
-                .filter(java.util.Objects::nonNull)
-                .collect(Collectors.toSet())
-                .size());
+        todayStats.put("todayPracticeCount", countHistoryBetween(today, today));
+        todayStats.put("sevenDayPracticeCount", countHistoryBetween(sevenDaysAgo, today));
+        todayStats.put("todayCommentCount", countCommentsBetween(today, today));
+        todayStats.put("todayMockInterviewCount", countMockInterviewsBetween(today, today));
+        todayStats.put("todayRiskAlertCount", countSecurityAlertsBetween(today, today));
+        todayStats.put("sevenDayActiveUserCount", countActiveUsersBetween(sevenDaysAgo, today));
         return todayStats;
     }
 
-    private Map<String, Object> buildTrend(List<UserQuestionHistory> historyList, List<QuestionComment> commentList) {
+    private Map<String, Object> buildTrend() {
         Map<String, Object> trend = new HashMap<>();
         List<String> dateList = new ArrayList<>();
         List<Long> registerTrend = new ArrayList<>();
         List<Long> practiceTrend = new ArrayList<>();
         List<Long> commentTrend = new ArrayList<>();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        LocalDate startDate = today.minusDays(6);
+        Map<LocalDate, Long> practiceTrendMap = listDateCountMapForHistory(startDate, today);
+        Map<LocalDate, Long> commentTrendMap = listDateCountMapForComment(startDate, today);
 
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
             dateList.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
             registerTrend.add(countUsersBetween(date, date));
-            practiceTrend.add(countByDate(historyList, UserQuestionHistory::getUpdateTime, date));
-            commentTrend.add(countByDate(commentList, QuestionComment::getCreateTime, date));
+            practiceTrend.add(practiceTrendMap.getOrDefault(date, 0L));
+            commentTrend.add(commentTrendMap.getOrDefault(date, 0L));
         }
 
         trend.put("dates", dateList);
@@ -201,11 +192,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .collect(Collectors.toList());
     }
 
-    private List<Map<String, Object>> buildQuestionHealth(List<Question> questionList, List<UserQuestionHistory> historyList) {
-        Map<Long, Long> practiceCountMap = historyList.stream()
-                .filter(item -> item.getQuestionId() != null)
-                .collect(Collectors.groupingBy(UserQuestionHistory::getQuestionId, Collectors.counting()));
-
+    private List<Map<String, Object>> buildQuestionHealth(List<Question> questionList, Map<Long, Long> practiceCountMap) {
         return questionList.stream()
                 .sorted(Comparator
                         .comparingLong((Question question) -> practiceCountMap.getOrDefault(question.getId(), 0L))
@@ -237,81 +224,73 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }).collect(Collectors.toList());
     }
 
-    private Map<String, Object> buildSearchAnalytics(List<QuestionSearchLog> searchLogList) {
+    private Map<String, Object> buildSearchAnalytics() {
         Map<String, Object> analytics = new HashMap<>();
-        long totalSearchCount = searchLogList.size();
-        long zeroResultSearchCount = searchLogList.stream()
-                .filter(log -> log.getHasNoResult() != null && log.getHasNoResult() == 1)
-                .count();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        long totalSearchCount = questionSearchLogService.count();
+
+        QueryWrapper<QuestionSearchLog> zeroResultWrapper = new QueryWrapper<>();
+        zeroResultWrapper.eq("hasNoResult", 1);
+        long zeroResultSearchCount = questionSearchLogService.count(zeroResultWrapper);
 
         analytics.put("totalSearchCount", totalSearchCount);
-        analytics.put("todaySearchCount", countByDate(searchLogList, QuestionSearchLog::getCreateTime, today));
-        analytics.put("distinctKeywordCount", searchLogList.stream()
-                .map(QuestionSearchLog::getSearchText)
-                .filter(StringUtils::isNotBlank)
-                .map(String::trim)
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet())
-                .size());
+        analytics.put("todaySearchCount", countSearchLogsBetween(today, today));
+        analytics.put("distinctKeywordCount", countDistinctSearchKeyword());
         analytics.put("zeroResultSearchCount", zeroResultSearchCount);
         analytics.put("zeroResultRate", totalSearchCount == 0 ? 0D : Math.round(zeroResultSearchCount * 10000D / totalSearchCount) / 100D);
-        analytics.put("topKeywords", buildTopSearchKeywords(searchLogList, false));
-        analytics.put("zeroResultKeywords", buildTopSearchKeywords(searchLogList, true));
-        analytics.put("trend", buildSearchTrend(searchLogList));
+        analytics.put("topKeywords", buildTopSearchKeywords(false));
+        analytics.put("zeroResultKeywords", buildTopSearchKeywords(true));
+        analytics.put("trend", buildSearchTrend());
         return analytics;
     }
 
-    private List<Map<String, Object>> buildTopSearchKeywords(List<QuestionSearchLog> searchLogList, boolean onlyNoResult) {
-        Map<String, SearchKeywordMetric> keywordMetricMap = new LinkedHashMap<>();
-        searchLogList.stream()
-                .filter(log -> StringUtils.isNotBlank(log.getSearchText()))
-                .filter(log -> !onlyNoResult || (log.getHasNoResult() != null && log.getHasNoResult() == 1))
-                .forEach(log -> {
-                    String keyword = log.getSearchText().trim();
-                    SearchKeywordMetric metric = keywordMetricMap.computeIfAbsent(keyword, key -> new SearchKeywordMetric());
-                    metric.setKeyword(keyword);
-                    metric.increaseCount();
-                    if (log.getHasNoResult() != null && log.getHasNoResult() == 1) {
-                        metric.increaseZeroResultCount();
-                    }
-                    metric.addResultCount(log.getResultCount() == null ? 0 : log.getResultCount());
-                    metric.setLastSearchTime(log.getCreateTime());
-                });
+    private List<Map<String, Object>> buildTopSearchKeywords(boolean onlyNoResult) {
+        QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select(
+                "searchText as keyword",
+                "count(*) as count",
+                "sum(case when hasNoResult = 1 then 1 else 0 end) as zeroResultCount",
+                "sum(resultCount) as resultCountTotal",
+                "max(createTime) as lastSearchTime"
+        );
+        queryWrapper.isNotNull("searchText");
+        queryWrapper.ne("searchText", "");
+        if (onlyNoResult) {
+            queryWrapper.eq("hasNoResult", 1);
+        }
+        queryWrapper.groupBy("searchText");
+        queryWrapper.last("order by count(*) desc, max(createTime) desc limit " + (onlyNoResult ? 10 : 20));
 
-        return keywordMetricMap.values().stream()
-                .sorted(Comparator
-                        .comparingInt(SearchKeywordMetric::getCount).reversed()
-                        .thenComparing(SearchKeywordMetric::getLastSearchTime, Comparator.nullsLast(Comparator.reverseOrder())))
-                .limit(onlyNoResult ? 10 : 20)
-                .map(metric -> {
-                    Map<String, Object> item = new LinkedHashMap<>();
-                    item.put("keyword", metric.getKeyword());
-                    item.put("count", metric.getCount());
-                    item.put("zeroResultCount", metric.getZeroResultCount());
-                    item.put("avgResultCount", metric.getCount() == 0 ? 0D : Math.round(metric.getResultCountTotal() * 100D / metric.getCount()) / 100D);
-                    item.put("lastSearchTime", metric.getLastSearchTime());
-                    return item;
+        return questionSearchLogService.listMaps(queryWrapper).stream()
+                .map(item -> {
+                    long count = getLongValue(item.get("count"));
+                    Map<String, Object> keywordItem = new LinkedHashMap<>();
+                    keywordItem.put("keyword", item.get("keyword"));
+                    keywordItem.put("count", count);
+                    keywordItem.put("zeroResultCount", getLongValue(item.get("zeroResultCount")));
+                    keywordItem.put("avgResultCount", count == 0 ? 0D
+                            : Math.round(getLongValue(item.get("resultCountTotal")) * 100D / count) / 100D);
+                    keywordItem.put("lastSearchTime", item.get("lastSearchTime"));
+                    return keywordItem;
                 })
                 .collect(Collectors.toList());
     }
 
-    private Map<String, Object> buildSearchTrend(List<QuestionSearchLog> searchLogList) {
+    private Map<String, Object> buildSearchTrend() {
         Map<String, Object> trend = new HashMap<>();
         List<String> dateList = new ArrayList<>();
         List<Long> searchTrend = new ArrayList<>();
         List<Long> zeroResultTrend = new ArrayList<>();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        LocalDate startDate = today.minusDays(6);
+        Map<LocalDate, Long> searchTrendMap = listDateCountMapForSearchLog(startDate, today, false);
+        Map<LocalDate, Long> zeroResultTrendMap = listDateCountMapForSearchLog(startDate, today, true);
 
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
             dateList.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
-            searchTrend.add(countByDate(searchLogList, QuestionSearchLog::getCreateTime, date));
-            zeroResultTrend.add(searchLogList.stream()
-                    .filter(log -> toLocalDate(log.getCreateTime()) != null)
-                    .filter(log -> date.equals(toLocalDate(log.getCreateTime())))
-                    .filter(log -> log.getHasNoResult() != null && log.getHasNoResult() == 1)
-                    .count());
+            searchTrend.add(searchTrendMap.getOrDefault(date, 0L));
+            zeroResultTrend.add(zeroResultTrendMap.getOrDefault(date, 0L));
         }
 
         trend.put("dates", dateList);
@@ -320,7 +299,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return trend;
     }
 
-    private Map<String, Object> buildGeoDistribution(List<User> userList, List<UserQuestionHistory> historyList) {
+    private Map<String, Object> buildGeoDistribution(List<User> userList, Map<Long, Long> userPracticeCountMap) {
         Map<String, Object> geoDistribution = new HashMap<>();
         Map<Long, String> userCityMap = userList.stream()
                 .filter(user -> StringUtils.isNotBlank(user.getCity()))
@@ -330,15 +309,12 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .filter(StringUtils::isNotBlank)
                 .collect(Collectors.groupingBy(city -> city, Collectors.counting()));
         Map<String, Long> cityPracticeCountMap = new HashMap<>();
-        for (UserQuestionHistory history : historyList) {
-            if (history.getUserId() == null) {
-                continue;
-            }
-            String city = userCityMap.get(history.getUserId());
+        for (Map.Entry<Long, Long> entry : userPracticeCountMap.entrySet()) {
+            String city = userCityMap.get(entry.getKey());
             if (StringUtils.isBlank(city)) {
                 continue;
             }
-            cityPracticeCountMap.merge(city, 1L, Long::sum);
+            cityPracticeCountMap.merge(city, entry.getValue(), Long::sum);
         }
 
         List<Map<String, Object>> cityList = cityUserCountMap.entrySet().stream()
@@ -370,7 +346,6 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private List<Map<String, Object>> buildRiskAlerts(List<SecurityAlert> securityAlertList) {
         return securityAlertList.stream()
-                .filter(alert -> alert.getStatus() != null && alert.getStatus() == 0)
                 .sorted(Comparator.comparing(SecurityAlert::getCreateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(6)
                 .map(alert -> {
@@ -416,74 +391,157 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return userService.count(queryWrapper);
     }
 
-    private <T> long countBetween(List<T> dataList, Function<T, Date> dateGetter, LocalDate startDate, LocalDate endDate) {
-        return dataList.stream()
-                .map(dateGetter)
-                .map(this::toLocalDate)
-                .filter(java.util.Objects::nonNull)
-                .filter(date -> !date.isBefore(startDate) && !date.isAfter(endDate))
-                .count();
+    private long countHistoryBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.between("updateTime", toDate(startDate, true), toDate(endDate, false));
+        return userQuestionHistoryService.count(queryWrapper);
     }
 
-    private <T> long countByDate(List<T> dataList, Function<T, Date> dateGetter, LocalDate targetDate) {
-        return dataList.stream()
-                .map(dateGetter)
-                .map(this::toLocalDate)
-                .filter(targetDate::equals)
-                .count();
+    private long countCommentsBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<QuestionComment> queryWrapper = new QueryWrapper<>();
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        return questionCommentService.count(queryWrapper);
     }
 
-    private static class SearchKeywordMetric {
-        private String keyword;
-        private int count;
-        private int zeroResultCount;
-        private long resultCountTotal;
-        private Date lastSearchTime;
+    private long countMockInterviewsBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<MockInterview> queryWrapper = new QueryWrapper<>();
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        return mockInterviewService.count(queryWrapper);
+    }
 
-        public String getKeyword() {
-            return keyword;
-        }
+    private long countSecurityAlertsBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<SecurityAlert> queryWrapper = new QueryWrapper<>();
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        return securityAlertService.count(queryWrapper);
+    }
 
-        public void setKeyword(String keyword) {
-            this.keyword = keyword;
-        }
+    private long countSearchLogsBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        return questionSearchLogService.count(queryWrapper);
+    }
 
-        public int getCount() {
-            return count;
-        }
+    private int countActiveUsersBetween(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("distinct userId");
+        queryWrapper.isNotNull("userId");
+        queryWrapper.between("updateTime", toDate(startDate, true), toDate(endDate, false));
+        return userQuestionHistoryService.listObjs(queryWrapper).size();
+    }
 
-        public void increaseCount() {
-            this.count++;
-        }
+    private int countDistinctSearchKeyword() {
+        QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("distinct searchText");
+        queryWrapper.isNotNull("searchText");
+        queryWrapper.ne("searchText", "");
+        return questionSearchLogService.listObjs(queryWrapper).size();
+    }
 
-        public int getZeroResultCount() {
-            return zeroResultCount;
-        }
+    private List<User> listUserCitySnapshot() {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "city");
+        return userService.list(queryWrapper);
+    }
 
-        public void increaseZeroResultCount() {
-            this.zeroResultCount++;
-        }
+    private List<Question> listDashboardQuestions() {
+        QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "title", "tags", "updateTime");
+        return questionService.list(queryWrapper);
+    }
 
-        public long getResultCountTotal() {
-            return resultCountTotal;
-        }
+    private Map<Long, Long> listPracticeCountMapByQuestion() {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("questionId", "count(*) as practiceCount");
+        queryWrapper.isNotNull("questionId");
+        queryWrapper.groupBy("questionId");
+        return questionPracticeMapFrom(userQuestionHistoryService.listMaps(queryWrapper), "questionId");
+    }
 
-        public void addResultCount(int resultCount) {
-            this.resultCountTotal += resultCount;
-        }
+    private Map<Long, Long> listPracticeCountMapByUser() {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("userId", "count(*) as practiceCount");
+        queryWrapper.isNotNull("userId");
+        queryWrapper.groupBy("userId");
+        return questionPracticeMapFrom(userQuestionHistoryService.listMaps(queryWrapper), "userId");
+    }
 
-        public Date getLastSearchTime() {
-            return lastSearchTime;
-        }
+    private List<SecurityAlert> listPendingSecurityAlerts() {
+        QueryWrapper<SecurityAlert> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("status", 0);
+        queryWrapper.orderByDesc("createTime");
+        queryWrapper.last("limit 6");
+        return securityAlertService.list(queryWrapper);
+    }
 
-        public void setLastSearchTime(Date lastSearchTime) {
-            if (lastSearchTime == null) {
-                return;
+    private Map<Long, Long> questionPracticeMapFrom(List<Map<String, Object>> mapList, String idKey) {
+        Map<Long, Long> result = new HashMap<>();
+        for (Map<String, Object> item : mapList) {
+            Long id = getNullableLongValue(item.get(idKey));
+            if (id == null) {
+                continue;
             }
-            if (this.lastSearchTime == null || lastSearchTime.after(this.lastSearchTime)) {
-                this.lastSearchTime = lastSearchTime;
-            }
+            result.put(id, getLongValue(item.get("practiceCount")));
         }
+        return result;
+    }
+
+    private Map<LocalDate, Long> listDateCountMapForHistory(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(updateTime) as statDate", "count(*) as totalCount");
+        queryWrapper.between("updateTime", toDate(startDate, true), toDate(endDate, false));
+        queryWrapper.groupBy("DATE(updateTime)");
+        return dateCountMapFrom(userQuestionHistoryService.listMaps(queryWrapper));
+    }
+
+    private Map<LocalDate, Long> listDateCountMapForComment(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<QuestionComment> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(createTime) as statDate", "count(*) as totalCount");
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        queryWrapper.groupBy("DATE(createTime)");
+        return dateCountMapFrom(questionCommentService.listMaps(queryWrapper));
+    }
+
+    private Map<LocalDate, Long> listDateCountMapForSearchLog(LocalDate startDate, LocalDate endDate, boolean onlyNoResult) {
+        QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(createTime) as statDate", "count(*) as totalCount");
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        if (onlyNoResult) {
+            queryWrapper.eq("hasNoResult", 1);
+        }
+        queryWrapper.groupBy("DATE(createTime)");
+        return dateCountMapFrom(questionSearchLogService.listMaps(queryWrapper));
+    }
+
+    private Map<LocalDate, Long> dateCountMapFrom(List<Map<String, Object>> mapList) {
+        Map<LocalDate, Long> result = new HashMap<>();
+        for (Map<String, Object> item : mapList) {
+            Object dateValue = item.get("statDate");
+            if (dateValue == null) {
+                continue;
+            }
+            result.put(LocalDate.parse(String.valueOf(dateValue)), getLongValue(item.get("totalCount")));
+        }
+        return result;
+    }
+
+    private long getLongValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private Long getNullableLongValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 
     private Date toDate(LocalDate localDate, boolean startOfDay) {
@@ -502,10 +560,4 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return normalizedCity;
     }
 
-    private LocalDate toLocalDate(Date date) {
-        if (date == null) {
-            return null;
-        }
-        return date.toInstant().atZone(ZoneId.of("Asia/Shanghai")).toLocalDate();
-    }
 }

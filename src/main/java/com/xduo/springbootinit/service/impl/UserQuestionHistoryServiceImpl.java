@@ -22,6 +22,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -131,10 +132,13 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         if (year == null) {
             year = java.time.LocalDate.now().getYear();
         }
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate endDate = startDate.plusYears(1);
         QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("DATE(updateTime) as date", "count(*) as count");
         queryWrapper.eq("userId", userId);
-        queryWrapper.apply("YEAR(updateTime) = {0}", year);
+        queryWrapper.ge("updateTime", toDate(startDate, true));
+        queryWrapper.lt("updateTime", toDate(endDate, true));
         queryWrapper.groupBy("DATE(updateTime)");
         return this.listMaps(queryWrapper);
     }
@@ -187,9 +191,11 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
 
     @Override
     public long getTodayQuestionCount(long userId) {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
         QueryWrapper<UserQuestionHistory> todayWrapper = new QueryWrapper<>();
         todayWrapper.eq("userId", userId);
-        todayWrapper.apply("DATE(updateTime) = CURDATE()");
+        todayWrapper.ge("updateTime", toDate(today, true));
+        todayWrapper.lt("updateTime", toDate(today.plusDays(1), true));
         return this.count(todayWrapper);
     }
 
@@ -208,6 +214,11 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
             }
         }
         return activeDateList;
+    }
+
+    private Date toDate(LocalDate localDate, boolean startOfDay) {
+        LocalDateTime localDateTime = startOfDay ? localDate.atStartOfDay() : localDate.plusDays(1).atStartOfDay();
+        return Date.from(localDateTime.atZone(ZoneId.of("Asia/Shanghai")).toInstant());
     }
 
     private long calculateCurrentStreak(List<LocalDate> activeDateList) {
