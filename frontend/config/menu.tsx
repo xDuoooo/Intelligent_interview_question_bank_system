@@ -30,6 +30,7 @@ export const menus = [
     path: "/mockInterview/chat/[mockInterviewId]",
     name: "模拟面试会话",
     access: ACCESS_ENUM.USER,
+    hideInMenu: true,
   },
   {
     path: "/user/center",

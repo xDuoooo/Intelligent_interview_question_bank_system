@@ -1,13 +1,24 @@
 import { Button, Form, Input, message } from "antd";
 import { changePasswordUsingPost } from "@/api/userController";
 import React from "react";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/stores";
+import { setLoginUser } from "@/stores/loginUser";
+import { DEFAULT_USER } from "@/constants/user";
+
+interface Props {
+  onSuccess?: () => void;
+}
 
 /**
  * 修改密码表单
  * @constructor
  */
-const PasswordChangeForm = () => {
+const PasswordChangeForm: React.FC<Props> = ({ onSuccess }) => {
   const [form] = Form.useForm();
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
 
   const doSubmit = async (values: API.UserChangePasswordRequest) => {
     const hide = message.loading("正在操作");
@@ -16,9 +27,12 @@ const PasswordChangeForm = () => {
       hide();
       message.success("修改成功，请记住你的新密码");
       form.resetFields();
+      dispatch(setLoginUser(DEFAULT_USER));
+      onSuccess?.();
+      router.replace(`/user/login?msg=${encodeURIComponent("密码修改成功，请重新登录")}`);
     } catch (error: any) {
       hide();
-      message.error("修改失败，" + error.message);
+      message.error("修改失败，" + (error?.message || "请稍后重试"));
     }
   };
 

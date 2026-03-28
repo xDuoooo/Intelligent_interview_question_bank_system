@@ -10,6 +10,7 @@ import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import { User, FileText, ArrowRight, Camera, Loader2 } from "lucide-react";
 import { validateImageSrc } from "@/lib/utils";
+import { buildApiUrl } from "@/libs/request";
 
 const { Text } = Typography;
 
@@ -114,7 +115,7 @@ const UserInfoEditForm = (props: Props) => {
             listType="picture-circle"
             className="avatar-uploader"
             showUploadList={false}
-            action="/api/file/upload?biz=user_avatar"
+            action={buildApiUrl("/api/file/upload?biz=user_avatar")}
             beforeUpload={beforeUpload}
             onChange={handleUploadChange}
             withCredentials={true}

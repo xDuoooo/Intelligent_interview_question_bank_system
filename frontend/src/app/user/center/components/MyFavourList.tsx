@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { List, message } from "antd";
+import { Empty, List, message } from "antd";
 import Link from "next/link";
 import { listMyFavourQuestionByPageUsingGet } from "@/api/userQuestionHistoryController";
 import TagList from "@/components/TagList";
@@ -39,6 +39,9 @@ const MyFavourList: React.FC = () => {
       loading={loading}
       itemLayout="horizontal"
       dataSource={dataList}
+      locale={{
+        emptyText: <Empty description="还没有收藏题目，遇到好题记得收藏" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+      }}
       pagination={{
         onChange: (page) => setParams({ ...params, current: page }),
         current: params.current,
@@ -48,7 +51,7 @@ const MyFavourList: React.FC = () => {
       renderItem={(item) => (
         <List.Item>
           <List.Item.Meta
-            title={<Link href={`/question/${item.id}`}>{item.title}</Link>}
+            title={<Link href={`/question/${item.id}`} className="font-semibold text-slate-700 hover:text-primary">{item.title}</Link>}
             description={<TagList tagList={item.tagList} />}
           />
         </List.Item>

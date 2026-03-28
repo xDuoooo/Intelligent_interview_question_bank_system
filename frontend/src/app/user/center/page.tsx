@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Avatar, Card, Col, Row, Tag, Button, Typography, Modal, message, Progress } from "antd";
 import { useSelector } from "react-redux";
@@ -66,16 +66,21 @@ function UserCenterContent() {
   const hasShownMessage = useRef(false);
 
   // 获取统计数据用于侧边栏快查
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
     try {
       const res = await getMyQuestionStatsUsingGet();
       setStats(res.data || {});
-    } catch (error) { }
-  };
+    } catch (error) {}
+  }, [user?.id]);
 
   useEffect(() => {
-    fetchStats();
-  }, [user.id]);
+    if (activeTabKey === "overview" || activeTabKey === "record") {
+      void fetchStats();
+    }
+  }, [activeTabKey, fetchStats]);
 
   // 处理来自三方跳转的提示消息
   useEffect(() => {
@@ -155,20 +160,20 @@ function UserCenterContent() {
               <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
                 <div className="p-3 rounded-2xl bg-blue-50/50 border border-blue-100/30">
                   <div className="text-[10px] uppercase font-black text-blue-400 flex items-center gap-1.5 mb-1">
-                    <BookOpen size={12} /> Total Solved
+                    <BookOpen size={12} /> 累计刷题
                   </div>
                   <div className="text-xl font-black text-blue-700">{stats.totalCount || 0}</div>
                 </div>
                 <div className="p-3 rounded-2xl bg-orange-50/50 border border-orange-100/30">
                   <div className="text-[10px] uppercase font-black text-orange-400 flex items-center gap-1.5 mb-1">
-                    <Flame size={12} /> Mastered
+                    <Flame size={12} /> 已掌握
                   </div>
                   <div className="text-xl font-black text-orange-700">{stats.masteredCount || 0}</div>
                 </div>
               </div>
 
               <Paragraph type="secondary" className="text-[11px] mt-6 text-center opacity-40">
-                Member since {user.createTime ? dayjs(user.createTime).format("YYYY-MM-DD") : "Today"}
+                加入时间 {user.createTime ? dayjs(user.createTime).format("YYYY-MM-DD") : "今日"}
               </Paragraph>
             </div>
           </Card>
