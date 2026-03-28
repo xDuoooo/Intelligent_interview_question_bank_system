@@ -141,6 +141,22 @@ export async function recommendQuestionsByResumeUsingPost(
   });
 }
 
+/** recommendQuestionsByResumeFile POST /api/question/recommend/resume/file */
+export async function recommendQuestionsByResumeFileUsingPost(
+  file: File,
+  size = 4,
+  options?: { [key: string]: any },
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('size', String(size));
+  return request<API.BaseResponseResumeQuestionRecommendVO_>('/api/question/recommend/resume/file', {
+    method: 'POST',
+    data: formData,
+    ...(options || {}),
+  });
+}
+
 /** listQuestionByPage POST /api/question/list/page */
 export async function listQuestionByPageUsingPost(
   body: API.QuestionQueryRequest,

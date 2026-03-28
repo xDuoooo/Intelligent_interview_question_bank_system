@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Button, Card, Empty, Input, List, Space, Tag, Typography, message } from "antd";
-import { ArrowRight, FileSearch, Sparkles, Target } from "lucide-react";
-import { recommendQuestionsByResumeUsingPost } from "@/api/questionController";
+import { Button, Card, Empty, Input, List, Space, Tag, Typography, Upload, message } from "antd";
+import type { UploadProps } from "antd";
+import { ArrowRight, FileSearch, Paperclip, Sparkles, Target, UploadCloud, X } from "lucide-react";
+import { recommendQuestionsByResumeFileUsingPost, recommendQuestionsByResumeUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 
 const { Paragraph, Text, Title } = Typography;
@@ -21,6 +22,7 @@ const DEMO_RESUME_TEXT = [
  */
 const ResumeRecommendPanel: React.FC = () => {
   const [resumeText, setResumeText] = useState("");
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<API.ResumeQuestionRecommendVO>();
 
@@ -45,6 +47,33 @@ const ResumeRecommendPanel: React.FC = () => {
     }
   };
 
+  const handleRecommendByFile = async () => {
+    if (!resumeFile) {
+      message.warning("请先选择简历文件");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await recommendQuestionsByResumeFileUsingPost(resumeFile, 4);
+      setResult(res.data);
+      message.success("简历文件解析完成");
+    } catch (error: any) {
+      message.error("文件解析失败：" + (error?.message || "请稍后重试"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const uploadProps: UploadProps = {
+    accept: ".txt,.md,.markdown,.docx",
+    maxCount: 1,
+    showUploadList: false,
+    beforeUpload: (file) => {
+      setResumeFile(file as File);
+      return false;
+    },
+  };
+
   return (
     <Card
       bordered={false}
@@ -59,7 +88,7 @@ const ResumeRecommendPanel: React.FC = () => {
                 简历解析推荐
               </div>
               <Paragraph className="!mb-0 !mt-2 text-slate-500">
-                粘贴你的简历文本或项目经历，系统会自动提取技能标签，并推荐更适合当前岗位方向的面试题。
+                你可以直接粘贴简历文本，也可以上传 txt、md、docx 简历文件。系统会自动提取技能标签，并推荐更适合当前岗位方向的面试题。
               </Paragraph>
             </div>
             <Tag color="blue">AI + 规则双驱动</Tag>
@@ -75,14 +104,56 @@ const ResumeRecommendPanel: React.FC = () => {
             className="!mt-5 rounded-3xl bg-white/80"
           />
 
+          <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-white/70 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 font-semibold text-slate-800">
+                  <Paperclip className="h-4 w-4 text-slate-500" />
+                  上传简历文件
+                </div>
+                <Text className="mt-1 block text-sm text-slate-500">
+                  支持 `txt / md / docx`，单个文件不超过 2MB。
+                </Text>
+              </div>
+              <Upload {...uploadProps}>
+                <Button className="rounded-2xl" icon={<UploadCloud className="h-4 w-4" />}>
+                  选择文件
+                </Button>
+              </Upload>
+            </div>
+
+            {resumeFile ? (
+              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-slate-800">{resumeFile.name}</div>
+                  <div className="mt-1 text-xs text-slate-500">
+                    {(resumeFile.size / 1024).toFixed(1)} KB
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="primary" loading={loading} onClick={handleRecommendByFile} className="rounded-2xl">
+                    解析上传文件
+                  </Button>
+                  <Button
+                    onClick={() => setResumeFile(null)}
+                    className="rounded-2xl"
+                    icon={<X className="h-4 w-4" />}
+                  >
+                    移除文件
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <Space size="middle" className="!mt-5 flex flex-wrap">
             <Button type="primary" loading={loading} onClick={handleRecommend} className="rounded-2xl">
-              解析并推荐题目
+              解析粘贴内容
             </Button>
             <Button onClick={() => setResumeText(DEMO_RESUME_TEXT)} className="rounded-2xl">
               填入示例简历
             </Button>
-            <Button onClick={() => { setResumeText(""); setResult(undefined); }} className="rounded-2xl">
+            <Button onClick={() => { setResumeText(""); setResumeFile(null); setResult(undefined); }} className="rounded-2xl">
               清空内容
             </Button>
           </Space>
