@@ -9,13 +9,14 @@ import { DEFAULT_USER } from "@/constants/user";
 
 interface Props {
   onSuccess?: () => void;
+  passwordConfigured?: boolean;
 }
 
 /**
  * 修改密码表单
  * @constructor
  */
-const PasswordChangeForm: React.FC<Props> = ({ onSuccess }) => {
+const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = true }) => {
   const [form] = Form.useForm();
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
@@ -44,13 +45,20 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess }) => {
       labelAlign="left"
       onFinish={doSubmit}
     >
-      <Form.Item
-        label="旧密码"
-        name="oldPassword"
-        rules={[{ required: true, message: "请输入旧密码" }]}
-      >
-        <Input.Password placeholder="请输入旧密码" />
-      </Form.Item>
+      {!passwordConfigured ? (
+        <div className="mb-6 rounded-2xl bg-blue-50/70 px-4 py-3 text-sm text-blue-700">
+          当前账号还没有单独设置登录密码。设置完成后，你就可以在解绑第三方账号后继续使用账号密码登录。
+        </div>
+      ) : null}
+      {passwordConfigured ? (
+        <Form.Item
+          label="旧密码"
+          name="oldPassword"
+          rules={[{ required: true, message: "请输入旧密码" }]}
+        >
+          <Input.Password placeholder="请输入旧密码" />
+        </Form.Item>
+      ) : null}
       <Form.Item
         label="新密码"
         name="newPassword"
@@ -80,7 +88,7 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess }) => {
       </Form.Item>
       <Form.Item>
         <Button style={{ width: 180 }} type="primary" htmlType="submit">
-          修改密码
+          {passwordConfigured ? "修改密码" : "设置密码"}
         </Button>
       </Form.Item>
     </Form>

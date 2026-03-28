@@ -190,6 +190,20 @@ public interface UserService extends IService<User> {
     void bindEmail(String target, String code, User loginUser);
 
     /**
+     * 解绑手机号
+     *
+     * @param userId 用户 id
+     */
+    void unbindPhone(long userId);
+
+    /**
+     * 解绑邮箱
+     *
+     * @param userId 用户 id
+     */
+    void unbindEmail(long userId);
+
+    /**
      * GitHub 登录/注册
      *
      * @param githubId GitHub 唯一标识

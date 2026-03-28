@@ -3,8 +3,8 @@
 use Intelligent_interview_question_bank_system;
 
 -- 默认管理员账号
-insert into user (userAccount, userPassword, userName, userRole)
-select 'admin', 'dd50d8eff62344ecb394e73af0dd1eb1', '管理员', 'admin'
+insert into user (userAccount, userPassword, passwordConfigured, userName, userRole)
+select 'admin', 'dd50d8eff62344ecb394e73af0dd1eb1', 1, '管理员', 'admin'
 from dual
 where not exists (
     select 1 from user where userAccount = 'admin'

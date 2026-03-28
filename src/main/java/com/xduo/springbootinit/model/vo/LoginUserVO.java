@@ -72,6 +72,11 @@ public class LoginUserVO implements Serializable {
     private String googleId;
 
     /**
+     * 是否已设置可用登录密码：0-未设置，1-已设置
+     */
+    private Integer passwordConfigured;
+
+    /**
      * 更新时间
      */
     private Date updateTime;

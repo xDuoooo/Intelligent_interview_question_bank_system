@@ -33,6 +33,11 @@ public class User implements Serializable {
     private String userPassword;
 
     /**
+     * 是否已设置可用登录密码：0-未设置，1-已设置
+     */
+    private Integer passwordConfigured;
+
+    /**
      * 社交平台唯一标识
      */
     private String unionId;

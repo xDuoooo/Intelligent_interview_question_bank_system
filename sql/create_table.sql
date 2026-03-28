@@ -9,6 +9,7 @@ create table if not exists user
     id           bigint auto_increment comment 'id' primary key,
     userAccount  varchar(256)                           not null comment '账号',
     userPassword varchar(512)                           not null comment '密码',
+    passwordConfigured tinyint                          null comment '是否已设置可用登录密码：0-未设置 1-已设置',
     unionId      varchar(256)                           null comment '社交平台唯一标识',
     userName     varchar(256)                           null comment '用户昵称',
     userAvatar   varchar(1024)                          null comment '用户头像',

@@ -15,9 +15,11 @@ import {
   bindPhoneUsingPost,
   getLoginUserUsingGet,
   sendVerificationCodeUsingPost,
+  unbindEmailUsingPost,
   unbindGithubUsingPost, 
   unbindGiteeUsingPost, 
-  unbindGoogleUsingPost 
+  unbindGoogleUsingPost,
+  unbindPhoneUsingPost,
 } from "@/api/userController";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
@@ -46,7 +48,9 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
   const [captchaData, setCaptchaData] = useState<{ image: string; uuid: string } | null>(null);
   const [sendCodeLoading, setSendCodeLoading] = useState(false);
   const [bindLoading, setBindLoading] = useState(false);
+  const [unbindLoadingType, setUnbindLoadingType] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const hasPasswordConfigured = Number(user.passwordConfigured || 0) === 1;
 
   // 脱敏显示
   const maskPhone = (phone?: string) => phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2") : "未绑定";
@@ -195,13 +199,40 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     }
   };
 
+  const handleUnbindContact = async (type: "phone" | "email") => {
+    const label = type === "phone" ? "手机号" : "邮箱";
+    Modal.confirm({
+      title: `确认解绑${label}`,
+      content: `解绑后你将不能再通过${label}验证码登录，请确认当前账号还保留至少一种其他登录方式。`,
+      okButtonProps: { danger: true, loading: unbindLoadingType === type },
+      onOk: async () => {
+        setUnbindLoadingType(type);
+        try {
+          if (type === "phone") {
+            await unbindPhoneUsingPost();
+          } else {
+            await unbindEmailUsingPost();
+          }
+          await refreshLoginUser();
+          message.success(`${label}解绑成功`);
+        } catch (error: any) {
+          message.error(error?.message || `${label}解绑失败`);
+        } finally {
+          setUnbindLoadingType(null);
+        }
+      },
+    });
+  };
+
   // 解绑逻辑
   const handleUnbind = async (type: "github" | "gitee" | "google") => {
     const providerLabel = getSocialAuthProviderLabel(type);
     Modal.confirm({
       title: "确认解绑",
       content: `确定要解绑您的 ${providerLabel} 账号吗？解绑后将无法通过该方式登录。`,
+      okButtonProps: { danger: true, loading: unbindLoadingType === type },
       onOk: async () => {
+        setUnbindLoadingType(type);
         try {
           if (type === "github") await unbindGithubUsingPost();
           if (type === "gitee") await unbindGiteeUsingPost();
@@ -210,6 +241,8 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
           message.success("解绑成功");
         } catch (error: any) {
           message.error("解绑失败：" + (error?.message || "请稍后重试"));
+        } finally {
+          setUnbindLoadingType(null);
         }
       },
     });
@@ -219,10 +252,12 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     {
       key: "password",
       title: "登录密码",
-      description: "定期更换密码可以提高账号安全性",
-      status: <Tag color="success">已设置</Tag>,
+      description: hasPasswordConfigured
+        ? "定期更换密码可以提高账号安全性"
+        : "当前账号尚未设置独立密码，建议先设置密码再解绑第三方账号",
+      status: hasPasswordConfigured ? <Tag color="success">已设置</Tag> : <Tag color="warning">未设置</Tag>,
       icon: <Key size={20} className="text-blue-500" />,
-      action: <Button type="link" onClick={() => setPasswordModalVisible(true)}>修改密码</Button>
+      action: <Button type="link" onClick={() => setPasswordModalVisible(true)}>{hasPasswordConfigured ? "修改密码" : "设置密码"}</Button>
     },
     {
       key: "phone",
@@ -230,7 +265,14 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       description: `当前绑定：${maskPhone(user.phone)}`,
       status: user.phone ? <Tag color="success">已绑定</Tag> : <Tag>未绑定</Tag>,
       icon: <Phone size={20} className="text-green-500" />,
-      action: <Button type="link" onClick={() => openBindModal("phone")}>{user.phone ? "更换手机" : "立即绑定"}</Button>
+      action: user.phone ? (
+        <div className="flex items-center gap-2">
+          <Button type="link" onClick={() => openBindModal("phone")}>更换手机</Button>
+          <Button type="text" danger icon={<Unlink size={16} />} onClick={() => handleUnbindContact("phone")} />
+        </div>
+      ) : (
+        <Button type="link" onClick={() => openBindModal("phone")}>立即绑定</Button>
+      )
     },
     {
       key: "email",
@@ -238,7 +280,14 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       description: `当前绑定：${maskEmail(user.email)}`,
       status: user.email ? <Tag color="success">已绑定</Tag> : <Tag>未绑定</Tag>,
       icon: <Mail size={20} className="text-orange-500" />,
-      action: <Button type="link" onClick={() => openBindModal("email")}>{user.email ? "更换邮箱" : "立即绑定"}</Button>
+      action: user.email ? (
+        <div className="flex items-center gap-2">
+          <Button type="link" onClick={() => openBindModal("email")}>更换邮箱</Button>
+          <Button type="text" danger icon={<Unlink size={16} />} onClick={() => handleUnbindContact("email")} />
+        </div>
+      ) : (
+        <Button type="link" onClick={() => openBindModal("email")}>立即绑定</Button>
+      )
     },
     {
       key: "github",
@@ -309,7 +358,7 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       />
 
       <Modal
-        title="修改登录密码"
+        title={hasPasswordConfigured ? "修改登录密码" : "设置登录密码"}
         open={passwordModalVisible}
         onCancel={() => setPasswordModalVisible(false)}
         footer={null}
@@ -317,7 +366,10 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
         centered
       >
         <div className="pt-4">
-          <PasswordChangeForm onSuccess={() => setPasswordModalVisible(false)} />
+          <PasswordChangeForm
+            passwordConfigured={hasPasswordConfigured}
+            onSuccess={() => setPasswordModalVisible(false)}
+          />
         </div>
       </Modal>
 

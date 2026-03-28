@@ -92,6 +92,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             User user = new User();
             user.setUserAccount(userAccount);
             user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes()));
+            user.setPasswordConfigured(1);
             user.setUserName("智面用户_" + RandomUtil.randomNumbers(4));
             user.setUserRole(UserRoleEnum.USER.getValue());
             boolean saveResult = this.save(user);
@@ -113,6 +114,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }
+        if (!hasUsablePasswordLogin(user)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未设置可用密码，请使用验证码或第三方方式登录");
+        }
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
@@ -126,7 +130,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user = new User();
             user.setUnionId(socialId);
             user.setUserAccount("u_" + RandomUtil.randomString(8));
-            user.setUserPassword(DigestUtils.md5DigestAsHex(("social_" + socialId).getBytes()));
+            user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+            user.setPasswordConfigured(0);
             user.setUserName(nickname);
             user.setUserAvatar(avatar);
             user.setUserRole(UserRoleEnum.USER.getValue());
@@ -238,7 +243,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setPhone(target);
                 user.setUserAccount("u_" + RandomUtil.randomString(8));
                 user.setUserName("智面用户_" + RandomUtil.randomNumbers(4));
-                user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + "12345678").getBytes()));
+                user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                user.setPasswordConfigured(0);
                 user.setUserRole(UserRoleEnum.USER.getValue());
                 this.save(user);
             }
@@ -278,6 +284,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return null;
         LoginUserVO loginUserVO = new LoginUserVO();
         BeanUtils.copyProperties(user, loginUserVO);
+        loginUserVO.setPasswordConfigured(hasUsablePasswordLogin(user) ? 1 : 0);
         return loginUserVO;
     }
 
@@ -324,14 +331,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!StpUtil.isLogin()) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
-        User user = (User) StpUtil.getSession().get(USER_LOGIN_STATE);
+        User user = this.getById((Serializable) StpUtil.getLoginIdAsLong());
         if (user == null) {
-            user = this.getById((Serializable) StpUtil.getLoginIdAsLong());
-            if (user == null) {
-                throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
-            }
-            StpUtil.getSession().set(USER_LOGIN_STATE, user);
+            throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
+        StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
 
@@ -340,7 +344,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!StpUtil.isLogin()) {
             return null;
         }
-        return (User) StpUtil.getSession().get(USER_LOGIN_STATE);
+        User user = this.getById((Serializable) StpUtil.getLoginIdAsLong());
+        if (user != null) {
+            StpUtil.getSession().set(USER_LOGIN_STATE, user);
+        }
+        return user;
     }
 
     @Override
@@ -383,13 +391,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public void changePassword(com.xduo.springbootinit.model.dto.user.UserChangePasswordRequest userChangePasswordRequest, User loginUser) {
         String oldPassword = userChangePasswordRequest.getOldPassword();
         String newPassword = userChangePasswordRequest.getNewPassword();
-        String encryptOld = DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
-        if (!loginUser.getUserPassword().equals(encryptOld)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+        String checkPassword = userChangePasswordRequest.getCheckPassword();
+        if (StringUtils.isBlank(newPassword) || newPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码长度不能少于 8 位");
+        }
+        if (!Objects.equals(newPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");
+        }
+        if (hasUsablePasswordLogin(loginUser)) {
+            String encryptOld = DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
+            if (!loginUser.getUserPassword().equals(encryptOld)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+            }
         }
         User user = new User();
         user.setId(loginUser.getId());
         user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + newPassword).getBytes()));
+        user.setPasswordConfigured(1);
         this.updateById(user);
         StpUtil.logout(); // 修改密码后强制重新登录
     }
@@ -418,6 +436,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "绑定失败，服务器开小差了");
         }
+        refreshLoginSession(loginUser.getId());
     }
 
     @Override
@@ -444,6 +463,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!result) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "绑定失败，服务器开小差了");
         }
+        refreshLoginSession(loginUser.getId());
     }
 
     @Override
@@ -460,6 +480,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setGithubId(githubId);
                     user.setUserAccount("gh_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setPasswordConfigured(0);
                     user.setUserName(userName);
                     user.setUserAvatar(userAvatar);
                     user.setUserRole(UserRoleEnum.USER.getValue());
@@ -492,6 +513,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setGiteeId(giteeId);
                     user.setUserAccount("gt_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setPasswordConfigured(0);
                     user.setUserName(userName);
                     user.setUserAvatar(userAvatar);
                     user.setUserRole(UserRoleEnum.USER.getValue());
@@ -524,6 +546,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setGoogleId(googleId);
                     user.setUserAccount("gl_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                    user.setPasswordConfigured(0);
                     user.setUserName(userName);
                     user.setUserAvatar(userAvatar);
                     user.setUserRole(UserRoleEnum.USER.getValue());
@@ -550,6 +573,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setId(userId);
         user.setGithubId(githubId);
         this.updateById(user);
+        refreshLoginSession(userId);
     }
 
     @Override
@@ -560,6 +584,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setId(userId);
         user.setGiteeId(giteeId);
         this.updateById(user);
+        refreshLoginSession(userId);
     }
 
     @Override
@@ -570,40 +595,83 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setId(userId);
         user.setGoogleId(googleId);
         this.updateById(user);
+        refreshLoginSession(userId);
+    }
+
+    @Override
+    public void unbindPhone(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getPhone())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定手机号");
+        }
+        checkLastLoginMethod(user, "phone");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setPhone("");
+        this.updateById(updateRes);
+        refreshLoginSession(userId);
+    }
+
+    @Override
+    public void unbindEmail(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getEmail())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定邮箱");
+        }
+        checkLastLoginMethod(user, "email");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setEmail("");
+        this.updateById(updateRes);
+        refreshLoginSession(userId);
     }
 
     @Override
     public void unbindGithub(long userId) {
         User user = this.getById(userId);
         if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getGithubId())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定 GitHub");
+        }
         // 校验：不能是唯一的登录方式
         checkLastLoginMethod(user, "githubId");
         User updateRes = new User();
         updateRes.setId(userId);
         updateRes.setGithubId("");
         this.updateById(updateRes);
+        refreshLoginSession(userId);
     }
 
     @Override
     public void unbindGitee(long userId) {
         User user = this.getById(userId);
         if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getGiteeId())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定 Gitee");
+        }
         checkLastLoginMethod(user, "giteeId");
         User updateRes = new User();
         updateRes.setId(userId);
         updateRes.setGiteeId("");
         this.updateById(updateRes);
+        refreshLoginSession(userId);
     }
 
     @Override
     public void unbindGoogle(long userId) {
         User user = this.getById(userId);
         if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getGoogleId())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定 Google");
+        }
         checkLastLoginMethod(user, "googleId");
         User updateRes = new User();
         updateRes.setId(userId);
         updateRes.setGoogleId("");
         this.updateById(updateRes);
+        refreshLoginSession(userId);
     }
 
     /**
@@ -611,15 +679,41 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     private void checkLastLoginMethod(User user, String currentField) {
         int methods = 0;
-        if (StringUtils.isNotBlank(user.getUserPassword())) methods++;
-        if (StringUtils.isNotBlank(user.getPhone())) methods++;
-        if (StringUtils.isNotBlank(user.getEmail())) methods++;
+        if (hasUsablePasswordLogin(user) && !"password".equals(currentField)) methods++;
+        if (StringUtils.isNotBlank(user.getPhone()) && !"phone".equals(currentField)) methods++;
+        if (StringUtils.isNotBlank(user.getEmail()) && !"email".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGithubId()) && !"githubId".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGiteeId()) && !"giteeId".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGoogleId()) && !"googleId".equals(currentField)) methods++;
         
         if (methods == 0) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "解绑失败，请至少保留一种登录方式");
+        }
+    }
+
+    private boolean hasUsablePasswordLogin(User user) {
+        if (user == null || StringUtils.isBlank(user.getUserPassword())) {
+            return false;
+        }
+        if (user.getPasswordConfigured() != null) {
+            return Integer.valueOf(1).equals(user.getPasswordConfigured());
+        }
+        return !isGeneratedVirtualAccount(user.getUserAccount());
+    }
+
+    private boolean isGeneratedVirtualAccount(String userAccount) {
+        if (StringUtils.isBlank(userAccount)) {
+            return true;
+        }
+        return userAccount.matches("^(u|gh|gt|gl)_[A-Za-z0-9]{8}$");
+    }
+
+    private void refreshLoginSession(long userId) {
+        if (StpUtil.isLogin() && Objects.equals(StpUtil.getLoginIdAsLong(), userId)) {
+            User latestUser = this.getById(userId);
+            if (latestUser != null) {
+                StpUtil.getSession().set(USER_LOGIN_STATE, latestUser);
+            }
         }
     }
 }
