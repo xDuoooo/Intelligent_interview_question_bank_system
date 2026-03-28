@@ -56,8 +56,8 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         UserQuestionHistory oldHistory = this.getOne(queryWrapper);
 
         if (oldHistory != null) {
-            // 如果旧状态是更高级的状态，则更新，否则只更新时间
-            if (status > oldHistory.getStatus()) {
+            // 状态值本身不是业务优先级，掌握应高于困难，困难高于浏览
+            if (shouldReplaceStatus(oldHistory.getStatus(), status)) {
                 oldHistory.setStatus(status);
             }
             oldHistory.setUpdateTime(new Date());
@@ -88,7 +88,12 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         
         // 根据题目 id 查询题目详情
         Set<Long> questionIdSet = favourList.stream().map(QuestionFavour::getQuestionId).collect(Collectors.toSet());
-        List<Question> questionList = questionService.listByIds(questionIdSet);
+        Map<Long, Question> questionMap = questionService.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(Question::getId, question -> question, (a, b) -> a));
+        List<Question> questionList = favourList.stream()
+                .map(favour -> questionMap.get(favour.getQuestionId()))
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
         
         // 转换为 VO 分页
         Page<Question> questionPage = new Page<>(favourPage.getCurrent(), favourPage.getSize(), favourPage.getTotal());
@@ -214,6 +219,26 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
             }
         }
         return activeDateList;
+    }
+
+    private boolean shouldReplaceStatus(Integer oldStatus, Integer newStatus) {
+        return getStatusPriority(newStatus) > getStatusPriority(oldStatus);
+    }
+
+    private int getStatusPriority(Integer status) {
+        if (status == null) {
+            return 0;
+        }
+        switch (status) {
+            case 1:
+                return 3;
+            case 2:
+                return 2;
+            case 0:
+                return 1;
+            default:
+                return 0;
+        }
     }
 
     private Date toDate(LocalDate localDate, boolean startOfDay) {

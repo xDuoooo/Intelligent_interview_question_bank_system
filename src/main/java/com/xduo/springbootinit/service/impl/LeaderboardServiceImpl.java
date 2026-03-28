@@ -131,6 +131,10 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
         List<User> userList = listRankableUsers();
         Map<Long, User> userMap = userList.stream().collect(Collectors.toMap(User::getId, user -> user));
+        if (userMap.isEmpty()) {
+            result.setRankingList(Collections.emptyList());
+            return result;
+        }
         QueryWrapper<UserQuestionHistory> historySummaryWrapper = new QueryWrapper<>();
         historySummaryWrapper.select("userId", "count(distinct questionId) as bankPracticeCount", "max(updateTime) as lastActiveTime");
         historySummaryWrapper.in("questionId", bankQuestionIdSet);

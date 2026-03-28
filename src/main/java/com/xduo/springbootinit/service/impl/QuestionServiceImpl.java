@@ -366,14 +366,17 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     .select(QuestionBankQuestion::getQuestionId)
                     .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
             List<QuestionBankQuestion> questionList = questionBankQuestionService.list(lambdaQueryWrapper);
-            if (CollUtil.isNotEmpty(questionList)) {
-                // 取出题目 id 集合
-                Set<Long> questionIdSet = questionList.stream()
-                        .map(QuestionBankQuestion::getQuestionId)
-                        .collect(Collectors.toSet());
-                // 复用原有题目表的查询条件
-                queryWrapper.in("id", questionIdSet);
+            if (CollUtil.isEmpty(questionList)) {
+                Page<Question> emptyPage = new Page<>(current, size, 0);
+                emptyPage.setRecords(Collections.emptyList());
+                return emptyPage;
             }
+            // 取出题目 id 集合
+            Set<Long> questionIdSet = questionList.stream()
+                    .map(QuestionBankQuestion::getQuestionId)
+                    .collect(Collectors.toSet());
+            // 复用原有题目表的查询条件
+            queryWrapper.in("id", questionIdSet);
         }
         // 查询数据库
         Page<Question> questionPage = this.page(new Page<>(current, size), queryWrapper);
