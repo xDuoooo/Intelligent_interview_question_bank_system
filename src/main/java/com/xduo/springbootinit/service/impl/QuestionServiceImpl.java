@@ -11,9 +11,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.constant.CommonConstant;
-import com.xduo.springbootinit.manager.AiManager;
+    import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.QuestionMapper;
+import com.xduo.springbootinit.mapper.UserQuestionHistoryMapper;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
@@ -26,7 +27,6 @@ import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionService;
-import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -84,7 +84,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private QuestionFavourService questionFavourService;
 
     @Resource
-    private UserQuestionHistoryService userQuestionHistoryService;
+    private UserQuestionHistoryMapper userQuestionHistoryMapper;
 
     @Resource
     private AiManager aiManager;
@@ -392,7 +392,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
         historyQueryWrapper.eq("userId", userId);
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
         if (CollUtil.isNotEmpty(historyList)) {
             Set<Long> historyQuestionIdSet = historyList.stream()
                     .map(UserQuestionHistory::getQuestionId)
@@ -665,7 +665,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private void addBehaviorPreferenceWeights(long userId, Map<String, Integer> tagWeightMap) {
         QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
         historyQueryWrapper.eq("userId", userId);
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
         if (CollUtil.isNotEmpty(historyList)) {
             Set<Long> historyQuestionIdSet = historyList.stream()
                     .map(UserQuestionHistory::getQuestionId)
@@ -696,7 +696,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Set<Long> interactedQuestionIdSet = new HashSet<>();
         QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
         historyQueryWrapper.eq("userId", userId);
-        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
         if (CollUtil.isNotEmpty(historyList)) {
             interactedQuestionIdSet.addAll(historyList.stream()
                     .map(UserQuestionHistory::getQuestionId)

@@ -4,12 +4,12 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.mapper.QuestionFavourMapper;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionFavour;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.service.QuestionFavourService;
-import com.xduo.springbootinit.service.QuestionService;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +24,7 @@ public class QuestionFavourServiceImpl extends ServiceImpl<QuestionFavourMapper,
         implements QuestionFavourService {
 
     @Resource
-    private QuestionService questionService;
+    private QuestionMapper questionMapper;
 
     /**
      * 题目收藏
@@ -36,7 +36,7 @@ public class QuestionFavourServiceImpl extends ServiceImpl<QuestionFavourMapper,
     @Override
     public int doQuestionFavour(long questionId, User loginUser) {
         // 判断是否存在
-        Question question = questionService.getById(questionId);
+        Question question = questionMapper.selectById(questionId);
         if (question == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }

@@ -63,8 +63,8 @@ const BatchRemoveQuestionsToBankModal: React.FC<Props> = (props) => {
         sortOrder: "descend",
       });
       setQuestionBankList(res.data?.records ?? []);
-    } catch (e) {
-      message.error("获取题库列表失败，" + e.message);
+    } catch (e: any) {
+      message.error("获取题库列表失败，" + (e?.message || "请稍后重试"));
     }
   };
 

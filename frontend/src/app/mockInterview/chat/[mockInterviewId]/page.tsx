@@ -18,8 +18,9 @@ interface MockInterviewDetail extends API.MockInterview {
   parsedMessages?: Message[];
 }
 
-export default function InterviewRoomPage({ params }) {
+export default function InterviewRoomPage({ params }: { params: { mockInterviewId: string } }) {
   const { mockInterviewId } = params;
+  const interviewId = Number(mockInterviewId);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
@@ -31,7 +32,11 @@ export default function InterviewRoomPage({ params }) {
   // 加载面试数据
   const loadInterview = async () => {
     try {
-      const res = await getMockInterviewByIdUsingGet({ id: mockInterviewId });
+      if (!interviewId) {
+        message.error("面试记录不存在");
+        return;
+      }
+      const res = await getMockInterviewByIdUsingGet({ id: interviewId });
       const data = res.data as MockInterviewDetail;
 
       // 解析历史消息
@@ -69,8 +74,9 @@ export default function InterviewRoomPage({ params }) {
         timestamp: Date.now(),
       };
 
+      const aiContent = res.data || "收到请求";
       const aiResponse: Message = {
-        content: res.data || "收到请求",
+        content: aiContent,
         isAI: true,
         timestamp: Date.now() + 1,
       } as any;
@@ -79,7 +85,7 @@ export default function InterviewRoomPage({ params }) {
 
       // 更新状态
       if (eventType === "start") setIsStarted(true);
-      if (eventType === "chat" && res.data.includes("【面试结束】")) {
+      if (eventType === "chat" && aiContent.includes("【面试结束】")) {
         setIsEnded(true);
       }
       if (eventType === "end") setIsEnded(true);
