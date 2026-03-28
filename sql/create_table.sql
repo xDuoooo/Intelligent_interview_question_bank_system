@@ -26,7 +26,14 @@ create table if not exists user
     updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint      default 0                 not null comment '是否删除',
     index idx_unionId (unionId),
-    index idx_userAccount (userAccount)
+    index idx_userAccount (userAccount),
+    index idx_userRole (userRole),
+    index idx_createTime (createTime),
+    index idx_phone (phone),
+    index idx_email (email),
+    index idx_githubId (githubId),
+    index idx_giteeId (giteeId),
+    index idx_googleId (googleId)
 ) comment '用户' collate = utf8mb4_unicode_ci;
 
 -- 题库表
@@ -58,7 +65,8 @@ create table if not exists question
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete   tinyint  default 0                 not null comment '是否删除',
     index idx_title (title),
-    index idx_userId (userId)
+    index idx_userId (userId),
+    index idx_updateTime (updateTime)
 ) comment '题目' collate = utf8mb4_unicode_ci;
 
 -- 题库题目表
@@ -83,7 +91,8 @@ create table if not exists question_favour
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     unique key uk_question_user (questionId, userId),
     index idx_questionId (questionId),
-    index idx_userId (userId)
+    index idx_userId (userId),
+    index idx_user_createTime (userId, createTime)
 ) comment '题目收藏';
 
 -- 用户刷题轨迹
@@ -97,7 +106,10 @@ create table if not exists user_question_history
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     unique key uk_user_question (userId, questionId),
     index idx_questionId (questionId),
-    index idx_userId (userId)
+    index idx_userId (userId),
+    index idx_updateTime (updateTime),
+    index idx_user_updateTime (userId, updateTime),
+    index idx_user_status_updateTime (userId, status, updateTime)
 ) comment '用户刷题轨迹';
 
 -- 题目评论表
@@ -122,7 +134,9 @@ create table if not exists question_comment
     index idx_parentId (parentId),
     index idx_userId (userId),
     index idx_createTime (createTime),
-    index idx_likeNum (likeNum)
+    index idx_likeNum (likeNum),
+    index idx_question_parent_status_createTime (questionId, parentId, status, createTime),
+    index idx_parent_status_createTime (parentId, status, createTime)
 ) comment '题目评论' collate = utf8mb4_unicode_ci;
 
 -- 评论点赞表
@@ -163,7 +177,8 @@ create table if not exists mock_interview
     isDelete       tinyint  default 0                 not null comment '是否删除',
     index idx_userId (userId),
     index idx_status (status),
-    index idx_jobPosition (jobPosition)
+    index idx_jobPosition (jobPosition),
+    index idx_createTime (createTime)
 ) comment 'AI 模拟面试';
 
 -- 用户学习目标表
@@ -193,7 +208,8 @@ create table if not exists notification
     createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete   tinyint  default 0                 not null comment '是否删除',
-    index idx_userId (userId)
+    index idx_userId (userId),
+    index idx_user_status_createTime (userId, status, createTime)
 ) comment '通知' collate = utf8mb4_unicode_ci;
 
 -- 管理员操作日志表
@@ -252,5 +268,6 @@ create table if not exists security_alert
     index idx_userId (userId),
     index idx_status (status),
     index idx_alertType (alertType),
-    index idx_createTime (createTime)
+    index idx_createTime (createTime),
+    index idx_status_createTime (status, createTime)
 ) comment '安全告警';

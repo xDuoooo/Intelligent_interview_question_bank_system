@@ -383,10 +383,6 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Override
     public List<QuestionVO> listRecommendQuestionVOByUser(long userId, Long currentQuestionId, int size, HttpServletRequest request) {
         size = Math.max(1, Math.min(size, 12));
-        List<Question> allQuestionList = this.list();
-        if (CollUtil.isEmpty(allQuestionList)) {
-            return Collections.emptyList();
-        }
         Map<String, Integer> tagWeightMap = new HashMap<>();
         Set<Long> interactedQuestionIdSet = new HashSet<>();
 
@@ -427,7 +423,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             }
         }
 
-        List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
+        List<Question> candidateQuestionList = listRecommendationCandidateQuestions(300, currentQuestionId);
+        if (CollUtil.isEmpty(candidateQuestionList)) {
+            return Collections.emptyList();
+        }
+
+        List<QuestionRecommendationScore> scoredList = candidateQuestionList.stream()
                 .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
                 .filter(question -> !interactedQuestionIdSet.contains(question.getId()))
                 .map(question -> buildRecommendationScore(question, tagWeightMap, "偏好标签"))
@@ -439,7 +440,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .collect(Collectors.toList());
 
         if (CollUtil.isEmpty(scoredList)) {
-            List<Question> fallbackList = allQuestionList.stream()
+            List<Question> fallbackList = candidateQuestionList.stream()
                     .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
                     .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(size)
@@ -466,9 +467,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return Collections.emptyList();
         }
         List<String> currentTagList = parseTagList(currentQuestion.getTags());
-        List<Question> allQuestionList = this.list();
+        List<Question> candidateQuestionList = listRecommendationCandidateQuestions(300, questionId);
+        if (CollUtil.isEmpty(candidateQuestionList)) {
+            return Collections.emptyList();
+        }
 
-        List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
+        List<QuestionRecommendationScore> scoredList = candidateQuestionList.stream()
                 .filter(question -> !question.getId().equals(questionId))
                 .map(question -> {
                     List<String> candidateTags = parseTagList(question.getTags());
@@ -488,7 +492,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .collect(Collectors.toList());
 
         if (CollUtil.isEmpty(scoredList)) {
-            return allQuestionList.stream()
+            return candidateQuestionList.stream()
                     .filter(question -> !question.getId().equals(questionId))
                     .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(size)
@@ -514,7 +518,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         ThrowUtils.throwIf(trimmedResumeText.length() < 20, ErrorCode.PARAMS_ERROR, "简历内容过短，请补充更多项目经历或技能描述");
         size = Math.max(1, Math.min(size, 12));
 
-        List<Question> allQuestionList = this.list();
+        List<Question> allQuestionList = listRecommendationCandidateQuestions(500, null);
         ResumeQuestionRecommendVO result = new ResumeQuestionRecommendVO();
         if (CollUtil.isEmpty(allQuestionList)) {
             result.setJobDirection("待识别");
@@ -610,6 +614,24 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * 推荐场景只取一批最新题目做候选，避免每次把整张题目表拉到应用层。
+     */
+    private List<Question> listRecommendationCandidateQuestions(int limit, Long excludeQuestionId) {
+        int candidateLimit = Math.max(20, Math.min(limit, 500));
+        QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("updateTime");
+        queryWrapper.last("limit " + (excludeQuestionId == null ? candidateLimit : candidateLimit + 1));
+        List<Question> candidateList = this.list(queryWrapper);
+        if (excludeQuestionId == null) {
+            return candidateList;
+        }
+        return candidateList.stream()
+                .filter(question -> !excludeQuestionId.equals(question.getId()))
+                .limit(candidateLimit)
+                .collect(Collectors.toList());
     }
 
     private QuestionRecommendationScore buildRecommendationScore(Question question, Map<String, Integer> tagWeightMap, String reasonPrefix) {
