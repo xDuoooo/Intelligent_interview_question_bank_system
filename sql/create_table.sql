@@ -1,10 +1,6 @@
-# 数据库初始化
+-- 数据库初始化（完整建表版）
 
-
--- 创建库
 create database if not exists Intelligent_interview_question_bank_system;
-
--- 切换库
 use Intelligent_interview_question_bank_system;
 
 -- 用户表
@@ -20,6 +16,7 @@ create table if not exists user
     userRole     varchar(256) default 'user'            not null comment '用户角色：user/admin/ban',
     phone        varchar(128)                           null comment '手机号',
     email        varchar(128)                           null comment '邮箱',
+    city         varchar(128)                           null comment '所在城市',
     githubId     varchar(256)                           null comment 'GitHub 唯一标识',
     giteeId      varchar(256)                           null comment 'Gitee 唯一标识',
     googleId     varchar(256)                           null comment 'Google 唯一标识',
@@ -27,23 +24,28 @@ create table if not exists user
     createTime   datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete     tinyint      default 0                 not null comment '是否删除',
-    index idx_unionId (unionId)
-    ) comment '用户' collate = utf8mb4_unicode_ci;
+    index idx_unionId (unionId),
+    index idx_userAccount (userAccount)
+) comment '用户' collate = utf8mb4_unicode_ci;
+
+alter table user add column if not exists phone varchar(128) null comment '手机号' after userProfile;
+alter table user add column if not exists email varchar(128) null comment '邮箱' after phone;
+alter table user add column if not exists city varchar(128) null comment '所在城市' after email;
 
 -- 题库表
 create table if not exists question_bank
 (
     id          bigint auto_increment comment 'id' primary key,
     title       varchar(256)                       null comment '标题',
-    description text                               null comment '描述',
-    picture     varchar(2048)                      null comment '图片',
-    userId      bigint                             not null comment '创建用户 id',
+    description text                              null comment '描述',
+    picture     varchar(2048)                     null comment '图片',
+    userId      bigint                            not null comment '创建用户 id',
     editTime    datetime default CURRENT_TIMESTAMP not null comment '编辑时间',
     createTime  datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime  datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete    tinyint  default 0                 not null comment '是否删除',
+    isDelete    tinyint  default 0                not null comment '是否删除',
     index idx_title (title)
-    ) comment '题库' collate = utf8mb4_unicode_ci;
+) comment '题库' collate = utf8mb4_unicode_ci;
 
 -- 题目表
 create table if not exists question
@@ -60,9 +62,9 @@ create table if not exists question
     isDelete   tinyint  default 0                 not null comment '是否删除',
     index idx_title (title),
     index idx_userId (userId)
-    ) comment '题目' collate = utf8mb4_unicode_ci;
+) comment '题目' collate = utf8mb4_unicode_ci;
 
--- 题库题目表（硬删除）
+-- 题库题目表
 create table if not exists question_bank_question
 (
     id             bigint auto_increment comment 'id' primary key,
@@ -71,33 +73,83 @@ create table if not exists question_bank_question
     userId         bigint                             not null comment '创建用户 id',
     createTime     datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    UNIQUE (questionBankId, questionId)
-    ) comment '题库题目' collate = utf8mb4_unicode_ci;
+    unique key uk_bank_question (questionBankId, questionId)
+) comment '题库题目' collate = utf8mb4_unicode_ci;
 
--- 题目收藏表（硬删除）
+-- 题目收藏表
 create table if not exists question_favour
 (
     id         bigint auto_increment comment 'id' primary key,
     questionId bigint                             not null comment '题目 id',
-    userId     bigint                             not null comment '创建用户 id',
+    userId     bigint                             not null comment '用户 id',
     createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_question_user (questionId, userId),
     index idx_questionId (questionId),
     index idx_userId (userId)
 ) comment '题目收藏';
 
--- 刷题记录表（用户题目的记录，硬删除）
+-- 用户刷题轨迹
 create table if not exists user_question_history
 (
     id         bigint auto_increment comment 'id' primary key,
-    questionId bigint                             not null comment '题目 id',
     userId     bigint                             not null comment '用户 id',
-    status     int      default 0                 not null comment '状态：0-未开始, 1-浏览中, 2-已过, 3-困难',
+    questionId bigint                             not null comment '题目 id',
+    status     tinyint  default 0                 not null comment '作答状态：0-浏览, 1-掌握, 2-困难',
     createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_user_question (userId, questionId),
     index idx_questionId (questionId),
     index idx_userId (userId)
-) comment '刷题记录';
+) comment '用户刷题轨迹';
+
+-- 题目评论表
+create table if not exists question_comment
+(
+    id         bigint auto_increment comment 'id' primary key,
+    questionId bigint                             not null comment '题目 id',
+    userId     bigint                             not null comment '发表者 id',
+    parentId   bigint                             null comment '父评论 id（null=顶级评论）',
+    replyToId  bigint                             null comment '回复的具体评论 id',
+    content    text                               not null comment '内容',
+    likeNum    int      default 0                 not null comment '点赞数',
+    reportNum  int      default 0                 not null comment '被举报次数',
+    isPinned   tinyint  default 0                 not null comment '是否置顶：0否 1是',
+    isOfficial tinyint  default 0                 not null comment '是否官方解答：0否 1是',
+    status     tinyint  default 0                 not null comment '状态：0正常 1待审核 2已隐藏',
+    editTime   datetime default CURRENT_TIMESTAMP null comment '编辑时间',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                 not null comment '是否已删除',
+    index idx_questionId (questionId),
+    index idx_parentId (parentId),
+    index idx_userId (userId),
+    index idx_createTime (createTime),
+    index idx_likeNum (likeNum)
+) comment '题目评论' collate = utf8mb4_unicode_ci;
+
+-- 评论点赞表
+create table if not exists question_comment_like
+(
+    id         bigint auto_increment comment 'id' primary key,
+    commentId  bigint                             not null comment '评论 id',
+    userId     bigint                             not null comment '点赞用户 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '点赞时间',
+    unique key uk_comment_user (commentId, userId)
+) comment '评论点赞' collate = utf8mb4_unicode_ci;
+
+-- 评论举报表
+create table if not exists question_comment_report
+(
+    id         bigint auto_increment comment 'id' primary key,
+    commentId  bigint                             not null comment '被举报评论 id',
+    userId     bigint                             not null comment '举报者 id',
+    reason     varchar(512)                       not null comment '举报原因',
+    status     tinyint  default 0                 not null comment '处理状态：0待处理 1已驳回 2已删除',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    unique key uk_comment_report_user (commentId, userId),
+    index idx_commentId (commentId)
+) comment '评论举报' collate = utf8mb4_unicode_ci;
 
 -- AI 模拟面试表
 create table if not exists mock_interview
@@ -131,6 +183,22 @@ create table if not exists user_learning_goal
     unique key uk_userId (userId)
 ) comment '用户学习目标';
 
+-- 通知表
+create table if not exists notification
+(
+    id         bigint auto_increment comment 'id' primary key,
+    userId     bigint                             not null comment '获知通知的用户 id',
+    title      varchar(512)                       not null comment '标题',
+    content    text                               not null comment '内容',
+    type       varchar(256)                       null comment '类型：system, user, post, etc.',
+    status     int      default 0                 not null comment '状态（0-未读, 1-已读）',
+    targetId   bigint                             null comment '关联业务 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                 not null comment '是否删除',
+    index idx_userId (userId)
+) comment '通知' collate = utf8mb4_unicode_ci;
+
 -- 管理员操作日志表
 create table if not exists admin_operation_log
 (
@@ -156,7 +224,7 @@ create table if not exists question_search_log
     searchText  varchar(128)                       not null comment '搜索关键词',
     source      varchar(64)  default 'question'    not null comment '搜索来源',
     resultCount int          default 0             not null comment '搜索命中数量',
-    hasNoResult tinyint      default 0             not null comment '是否无结果：0-否 1-是',
+    hasNoResult tinyint      default 0             not null comment '是否无结果：0否 1是',
     ip          varchar(128)                       null comment 'IP 地址',
     createTime  datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime  datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',

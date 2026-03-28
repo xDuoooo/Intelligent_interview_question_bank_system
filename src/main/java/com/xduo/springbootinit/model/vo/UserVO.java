@@ -47,6 +47,11 @@ public class UserVO implements Serializable {
     private String email;
 
     /**
+     * 所在城市
+     */
+    private String city;
+
+    /**
      * GitHub 唯一标识
      */
     private String githubId;

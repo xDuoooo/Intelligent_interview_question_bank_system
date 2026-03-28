@@ -33,6 +33,7 @@ interface DashboardData {
   todayStats?: Record<string, any>;
   trend?: Record<string, any>;
   searchAnalytics?: Record<string, any>;
+  geoDistribution?: Record<string, any>;
   tagDistribution?: any[];
   questionHealth?: any[];
   riskAlerts?: any[];
@@ -67,6 +68,8 @@ export default function AdminDashboardPage() {
   const trend = dashboard.trend || {};
   const searchAnalytics = dashboard.searchAnalytics || {};
   const searchTrend = searchAnalytics.trend || {};
+  const geoDistribution = dashboard.geoDistribution || {};
+  const geoCityList = geoDistribution.cityList || [];
   const tagDistribution = dashboard.tagDistribution || [];
   const questionHealth = dashboard.questionHealth || [];
   const riskAlerts = dashboard.riskAlerts || [];
@@ -134,6 +137,56 @@ export default function AdminDashboardPage() {
         type: "bar",
         barWidth: 18,
         itemStyle: { color: "#ef4444", borderRadius: [8, 8, 0, 0] },
+      },
+    ],
+  };
+
+  const geoOption = {
+    grid: { top: 20, right: 20, bottom: 40, left: 50 },
+    tooltip: { trigger: "axis" },
+    legend: { top: 0 },
+    xAxis: {
+      type: "category",
+      data: geoCityList.map((item: any) => item.city),
+      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisLabel: { color: "#64748b", rotate: 20, fontWeight: "bold" },
+    },
+    yAxis: [
+      {
+        type: "value",
+        name: "用户数",
+        splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } },
+        axisLabel: { color: "#64748b" },
+      },
+      {
+        type: "value",
+        name: "人均练习",
+        axisLabel: { color: "#64748b" },
+      },
+    ],
+    series: [
+      {
+        name: "用户数",
+        data: geoCityList.map((item: any) => item.userCount || 0),
+        type: "bar",
+        barWidth: 18,
+        itemStyle: { color: "#2563eb", borderRadius: [8, 8, 0, 0] },
+      },
+      {
+        name: "刷题热度",
+        data: geoCityList.map((item: any) => item.practiceCount || 0),
+        type: "bar",
+        barWidth: 18,
+        itemStyle: { color: "#14b8a6", borderRadius: [8, 8, 0, 0] },
+      },
+      {
+        name: "人均练习",
+        data: geoCityList.map((item: any) => item.avgPracticeCount || 0),
+        yAxisIndex: 1,
+        type: "line",
+        smooth: true,
+        lineStyle: { width: 3, color: "#f59e0b" },
+        itemStyle: { color: "#f59e0b" },
       },
     ],
   };
@@ -335,6 +388,78 @@ export default function AdminDashboardPage() {
               extra={<Tag color="green" bordered={false} className="font-bold">{overview.tagTotal || 0} 个标签</Tag>}
             >
               {loading ? <Skeleton active paragraph={{ rows: 8 }} /> : <ReactECharts option={tagOption} style={{ height: "350px" }} />}
+            </Card>
+          </Col>
+        </Row>
+      </section>
+
+      <section>
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={15}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 p-6 sm:p-10 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><Users className="h-5 w-5 text-sky-600" /> 地理热度统计</div>}
+              extra={<Tag color="blue" bordered={false} className="font-bold">基于用户资料中的城市字段</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : geoCityList.length ? (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { label: "覆盖城市数", value: geoDistribution.cityCount || 0, color: "bg-sky-50 text-sky-700" },
+                      { label: "已完善城市用户", value: geoDistribution.filledUserCount || 0, color: "bg-emerald-50 text-emerald-700" },
+                      { label: "资料覆盖率", value: `${geoDistribution.coverageRate || 0}%`, color: "bg-amber-50 text-amber-700" },
+                    ].map((item) => (
+                      <div key={item.label} className={`rounded-2xl border border-slate-100 px-5 py-4 ${item.color}`}>
+                        <div className="text-xs font-black uppercase tracking-wider opacity-70">{item.label}</div>
+                        <div className="mt-3 text-3xl font-black tracking-tight">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <ReactECharts option={geoOption} style={{ height: "340px" }} />
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 px-6 py-16 text-center text-slate-400">
+                  目前还没有足够的城市数据。让用户在个人资料中补充所在城市后，这里会自动形成地区热度统计。
+                </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={9}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><TrendingUp className="h-5 w-5 text-emerald-500" /> 城市活跃榜</div>}
+              extra={<Tag color="green" bordered={false}>用户数 / 刷题量 / 人均练习</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : geoCityList.length ? (
+                <List
+                  dataSource={geoCityList}
+                  renderItem={(item: any, index) => (
+                    <List.Item>
+                      <div className="w-full flex items-center justify-between gap-4">
+                        <div className="min-w-0 flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate font-semibold text-slate-800">{item.city}</div>
+                            <div className="text-xs text-slate-500 mt-1">用户 {item.userCount || 0} 人</div>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Tag color="blue">{item.practiceCount || 0} 次练习</Tag>
+                          <div className="text-xs text-slate-500 mt-1">人均 {item.avgPracticeCount || 0}</div>
+                        </div>
+                      </div>
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <div className="py-16 text-center text-slate-400">等待城市数据沉淀中</div>
+              )}
             </Card>
           </Col>
         </Row>

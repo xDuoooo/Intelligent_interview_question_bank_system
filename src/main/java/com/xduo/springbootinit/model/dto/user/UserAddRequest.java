@@ -30,5 +30,10 @@ public class UserAddRequest implements Serializable {
      */
     private String userRole;
 
+    /**
+     * 所在城市
+     */
+    private String city;
+
     private static final long serialVersionUID = 1L;
 }
