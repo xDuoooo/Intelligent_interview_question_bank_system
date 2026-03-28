@@ -108,9 +108,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
+        String loginIdentifier = userAccount.trim();
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
-        User user = this
-                .getOne(new QueryWrapper<User>().eq("userAccount", userAccount).eq("userPassword", encryptPassword));
+        QueryWrapper<User> queryWrapper = new QueryWrapper<User>()
+                .eq("userPassword", encryptPassword)
+                .and(wrapper -> wrapper.eq("userAccount", loginIdentifier)
+                        .or()
+                        .eq("phone", loginIdentifier)
+                        .or()
+                        .eq("email", loginIdentifier));
+        User user = this.getOne(queryWrapper);
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }

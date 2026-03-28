@@ -2,10 +2,11 @@ import { Button, Form, Input, message } from "antd";
 import { changePasswordUsingPost } from "@/api/userController";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import { DEFAULT_USER } from "@/constants/user";
+import { RootState } from "@/stores";
 
 interface Props {
   onSuccess?: () => void;
@@ -20,6 +21,7 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = t
   const [form] = Form.useForm();
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const loginUser = useSelector((state: RootState) => state.loginUser);
 
   const doSubmit = async (values: API.UserChangePasswordRequest) => {
     const hide = message.loading("正在操作");
@@ -30,7 +32,14 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = t
       form.resetFields();
       dispatch(setLoginUser(DEFAULT_USER));
       onSuccess?.();
-      router.replace(`/user/login?msg=${encodeURIComponent("密码修改成功，请重新登录")}`);
+      const query = new URLSearchParams({
+        msg: "密码修改成功，请重新登录",
+        loginType: "password",
+      });
+      if (loginUser?.userAccount) {
+        query.set("account", loginUser.userAccount);
+      }
+      router.replace(`/user/login?${query.toString()}`);
     } catch (error: any) {
       hide();
       message.error("修改失败，" + (error?.message || "请稍后重试"));
