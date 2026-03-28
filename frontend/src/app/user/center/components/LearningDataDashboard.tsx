@@ -32,7 +32,7 @@ const LearningDataDashboard: React.FC = () => {
   const fetchGoal = async () => {
     try {
       const res = await getMyLearningGoalUsingGet();
-      const data = res.data || {};
+      const data: API.LearningGoalData = res.data ?? {};
       setDailyTarget(Number(data.dailyTarget || 3));
       setReminderEnabled(Boolean(data.reminderEnabled));
     } catch (error) {

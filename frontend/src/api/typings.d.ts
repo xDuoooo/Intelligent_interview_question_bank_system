@@ -11,6 +11,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseLearningGoalData_ = {
+    code?: number;
+    data?: LearningGoalData;
+    message?: string;
+  };
+
   type BaseResponseInt_ = {
     code?: number;
     data?: number;
@@ -321,6 +327,12 @@ declare namespace API {
     userId?: number;
     userName?: string;
     userRole?: string;
+  };
+
+  type LearningGoalData = {
+    dailyTarget?: number;
+    reminderEnabled?: boolean;
+    lastReminderTime?: string;
   };
 
   type LeaderboardBoardVO = {

@@ -35,8 +35,8 @@ const UpdateBankModal: React.FC<Props> = (props) => {
       const list = (res.data?.records ?? []).map((item) => item.questionBankId);
       console.log(list);
       form.setFieldValue("questionBankIdList" as any, list);
-    } catch (e) {
-      message.error("获取题目所属题库列表失败，" + e.message);
+    } catch (e: any) {
+      message.error("获取题目所属题库列表失败，" + (e?.message || "请稍后重试"));
     }
   };
 
@@ -58,8 +58,8 @@ const UpdateBankModal: React.FC<Props> = (props) => {
         sortOrder: "descend",
       });
       setQuestionBankList(res.data?.records ?? []);
-    } catch (e) {
-      message.error("获取题库列表失败，" + e.message);
+    } catch (e: any) {
+      message.error("获取题库列表失败，" + (e?.message || "请稍后重试"));
     }
   };
 

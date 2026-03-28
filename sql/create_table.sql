@@ -28,10 +28,6 @@ create table if not exists user
     index idx_userAccount (userAccount)
 ) comment '用户' collate = utf8mb4_unicode_ci;
 
-alter table user add column if not exists phone varchar(128) null comment '手机号' after userProfile;
-alter table user add column if not exists email varchar(128) null comment '邮箱' after phone;
-alter table user add column if not exists city varchar(128) null comment '所在城市' after email;
-
 -- 题库表
 create table if not exists question_bank
 (

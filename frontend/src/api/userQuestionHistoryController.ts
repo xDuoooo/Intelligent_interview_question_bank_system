@@ -86,7 +86,7 @@ export async function getMyQuestionStatsUsingGet(options?: { [key: string]: any 
 
 /** getMyLearningGoal GET /api/user_question_history/my/goal */
 export async function getMyLearningGoalUsingGet(options?: { [key: string]: any }) {
-  return request<API.BaseResponseMapStringObject_>(
+  return request<API.BaseResponseLearningGoalData_>(
     '/api/user_question_history/my/goal',
     {
       method: 'GET',

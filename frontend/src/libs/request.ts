@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { type AxiosRequestConfig } from "axios";
 
 // 创建 Axios 实例
 // 区分开发和生产环境
@@ -51,4 +51,34 @@ myAxios.interceptors.response.use(
   },
 );
 
-export default myAxios;
+type RequestInstance = {
+  <T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+};
+
+const request = ((url: string, config?: AxiosRequestConfig) =>
+  myAxios.request<any, any>({
+    url,
+    ...(config || {}),
+  })) as RequestInstance;
+
+request.get = <T = any>(url: string, config?: AxiosRequestConfig) =>
+  myAxios.get<any, T>(url, config);
+
+request.post = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
+  myAxios.post<any, T>(url, data, config);
+
+request.put = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
+  myAxios.put<any, T>(url, data, config);
+
+request.delete = <T = any>(url: string, config?: AxiosRequestConfig) =>
+  myAxios.delete<any, T>(url, config);
+
+request.patch = <T = any>(url: string, data?: any, config?: AxiosRequestConfig) =>
+  myAxios.patch<any, T>(url, data, config);
+
+export default request;

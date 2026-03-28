@@ -64,9 +64,9 @@ spring:
 
   # Elasticsearch 配置
   elasticsearch:
-    uris: ${ES_URIS:http://localhost:9200}
+    uris: ${ES_URIS:https://localhost:9200}
     username: ${ES_USERNAME:elastic}
-    password: ${ES_PASSWORD:}
+    password: ${ES_PASSWORD:*jJUA7k*ftJ36aEjqQG7}
   # 文件上传
   servlet:
     multipart:
