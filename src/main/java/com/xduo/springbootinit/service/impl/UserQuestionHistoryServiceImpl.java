@@ -12,16 +12,22 @@ import java.util.Date;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionFavour;
+import com.xduo.springbootinit.model.entity.UserLearningGoal;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.UserQuestionHistoryVO;
 import com.xduo.springbootinit.service.QuestionFavourService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.UserLearningGoalService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +42,9 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
 
     @Resource
     private QuestionService questionService;
+
+    @Resource
+    private UserLearningGoalService userLearningGoalService;
 
     @Override
     public boolean addQuestionHistory(long userId, long questionId, int status) {
@@ -133,26 +142,118 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
     @Override
     public Map<String, Object> getUserQuestionStats(long userId) {
         Map<String, Object> stats = new java.util.HashMap<>();
-        
+
         // 总刷题量
         QueryWrapper<UserQuestionHistory> totalWrapper = new QueryWrapper<>();
         totalWrapper.eq("userId", userId);
         long totalCount = this.count(totalWrapper);
         stats.put("totalCount", totalCount);
-        
+
         // 已掌握数量 (status = 1)
         QueryWrapper<UserQuestionHistory> masteredWrapper = new QueryWrapper<>();
         masteredWrapper.eq("userId", userId);
         masteredWrapper.eq("status", 1);
         long masteredCount = this.count(masteredWrapper);
         stats.put("masteredCount", masteredCount);
-        
+
         // 收藏数量
         QueryWrapper<QuestionFavour> favourWrapper = new QueryWrapper<>();
         favourWrapper.eq("userId", userId);
         long favourCount = questionFavourService.count(favourWrapper);
         stats.put("favourCount", favourCount);
-        
+
+        // 活跃天数、连续天数
+        List<LocalDate> activeDateList = getActiveDateList(userId);
+        long activeDays = activeDateList.size();
+        long currentStreak = calculateCurrentStreak(activeDateList);
+        stats.put("activeDays", activeDays);
+        stats.put("currentStreak", currentStreak);
+
+        // 今日刷题量与学习目标
+        long todayCount = getTodayQuestionCount(userId);
+        UserLearningGoal learningGoal = userLearningGoalService.getOrInitByUserId(userId);
+        int dailyTarget = learningGoal.getDailyTarget() == null ? 3 : learningGoal.getDailyTarget();
+        boolean reminderEnabled = learningGoal.getReminderEnabled() != null && learningGoal.getReminderEnabled() == 1;
+        stats.put("todayCount", todayCount);
+        stats.put("dailyTarget", dailyTarget);
+        stats.put("reminderEnabled", reminderEnabled);
+        stats.put("goalCompletedToday", todayCount >= dailyTarget);
+        stats.put("todayProgress", Math.min(todayCount, dailyTarget));
+
+        // 成就列表
+        stats.put("achievementList", buildAchievementList(totalCount, masteredCount, favourCount, activeDays, currentStreak));
         return stats;
+    }
+
+    @Override
+    public long getTodayQuestionCount(long userId) {
+        QueryWrapper<UserQuestionHistory> todayWrapper = new QueryWrapper<>();
+        todayWrapper.eq("userId", userId);
+        todayWrapper.apply("DATE(updateTime) = CURDATE()");
+        return this.count(todayWrapper);
+    }
+
+    private List<LocalDate> getActiveDateList(long userId) {
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(updateTime) as date");
+        queryWrapper.eq("userId", userId);
+        queryWrapper.groupBy("DATE(updateTime)");
+        queryWrapper.orderByDesc("DATE(updateTime)");
+        List<Map<String, Object>> dateMapList = this.listMaps(queryWrapper);
+        List<LocalDate> activeDateList = new ArrayList<>();
+        for (Map<String, Object> item : dateMapList) {
+            Object dateObj = item.get("date");
+            if (dateObj != null) {
+                activeDateList.add(LocalDate.parse(String.valueOf(dateObj)));
+            }
+        }
+        return activeDateList;
+    }
+
+    private long calculateCurrentStreak(List<LocalDate> activeDateList) {
+        if (activeDateList.isEmpty()) {
+            return 0;
+        }
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        LocalDate latestActiveDate = activeDateList.get(0);
+        if (latestActiveDate.isBefore(today.minusDays(1))) {
+            return 0;
+        }
+        long streak = 1;
+        LocalDate previousDate = latestActiveDate;
+        for (int i = 1; i < activeDateList.size(); i++) {
+            LocalDate currentDate = activeDateList.get(i);
+            if (currentDate.equals(previousDate.minusDays(1))) {
+                streak++;
+                previousDate = currentDate;
+            } else {
+                break;
+            }
+        }
+        return streak;
+    }
+
+    private List<Map<String, Object>> buildAchievementList(long totalCount, long masteredCount, long favourCount,
+                                                           long activeDays, long currentStreak) {
+        List<Map<String, Object>> achievementList = new ArrayList<>();
+        achievementList.add(buildAchievement("first_practice", "初试锋芒", "完成 1 道题，正式开始备战面试。", totalCount, 1));
+        achievementList.add(buildAchievement("practice_10", "刷题新秀", "累计刷题达到 10 道。", totalCount, 10));
+        achievementList.add(buildAchievement("master_20", "知识掌握者", "标记掌握题目达到 20 道。", masteredCount, 20));
+        achievementList.add(buildAchievement("favour_10", "收藏达人", "收藏题目达到 10 道。", favourCount, 10));
+        achievementList.add(buildAchievement("active_7", "持续学习者", "累计活跃学习达到 7 天。", activeDays, 7));
+        achievementList.add(buildAchievement("streak_7", "连续冲刺", "连续学习达到 7 天。", currentStreak, 7));
+        return achievementList;
+    }
+
+    private Map<String, Object> buildAchievement(String key, String title, String description, long current, long target) {
+        Map<String, Object> achievement = new HashMap<>();
+        achievement.put("key", key);
+        achievement.put("title", title);
+        achievement.put("description", description);
+        achievement.put("current", current);
+        achievement.put("target", target);
+        achievement.put("achieved", current >= target);
+        achievement.put("progress", Math.min(current, target));
+        return achievement;
     }
 }

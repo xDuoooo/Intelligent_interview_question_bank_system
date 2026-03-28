@@ -1,11 +1,15 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { getQuestionBankLeaderboardUsingGet } from "@/api/leaderboardController";
 import { getQuestionBankVoByIdUsingGet } from "@/api/questionBankController";
 import QuestionList from "@/components/QuestionList";
+import QuestionBankLeaderboardCard from "@/components/QuestionBankLeaderboardCard";
 import { Play, BookOpen, Clock, Users, Sparkles } from "lucide-react";
 import { headers } from "next/headers";
-import { cn } from "@/lib/utils";
+import { cn, validateImageSrc } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
 
 /**
  * 题库详情页
@@ -15,6 +19,7 @@ export default async function BankPage({ params }: { params: { questionBankId: s
   const { questionBankId } = params;
   // 获取题库详情
   let bank: API.QuestionBankVO | undefined = undefined;
+  let leaderboard: API.QuestionBankLeaderboardVO | undefined = undefined;
   let isNotLogin = false;
 
   try {
@@ -35,6 +40,19 @@ export default async function BankPage({ params }: { params: { questionBankId: s
     }
   } catch (e) {
     console.error("获取题库详情失败", e);
+  }
+
+  try {
+    const leaderboardRes = (await getQuestionBankLeaderboardUsingGet({
+      questionBankId: Number(questionBankId),
+    }, {
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
+    })) as unknown as API.BaseResponseQuestionBankLeaderboardVO_;
+    leaderboard = leaderboardRes.data;
+  } catch (e) {
+    console.error("获取题库榜单失败", e);
   }
 
   if (!bank) {
@@ -67,7 +85,7 @@ export default async function BankPage({ params }: { params: { questionBankId: s
         <div className="flex flex-col md:flex-row gap-10 items-start">
           <div className="relative h-32 w-32 sm:h-48 sm:w-48 rounded-[2.5rem] overflow-hidden shadow-2xl ring-4 ring-slate-50 shrink-0">
             <Image
-              src={bank.picture || "/assets/logo.png"}
+              src={validateImageSrc(bank.picture)}
               fill
               alt={bank.title || "题库"}
               className="object-cover"
@@ -115,6 +133,8 @@ export default async function BankPage({ params }: { params: { questionBankId: s
         </div>
       </section>
 
+      <QuestionBankLeaderboardCard leaderboard={leaderboard} />
+
       {/* Questions Explorer */}
       <section className="space-y-8">
         <QuestionList
@@ -126,4 +146,3 @@ export default async function BankPage({ params }: { params: { questionBankId: s
     </div>
   );
 }
-

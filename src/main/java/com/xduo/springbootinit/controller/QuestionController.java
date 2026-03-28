@@ -2,6 +2,8 @@ package com.xduo.springbootinit.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.csp.sentinel.Entry;
 import com.alibaba.csp.sentinel.EntryType;
@@ -22,9 +24,15 @@ import com.xduo.springbootinit.model.dto.question.*;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionVO;
+import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
+import com.xduo.springbootinit.service.QuestionSearchLogService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.SecurityAlertService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.NetUtils;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +43,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import com.xduo.springbootinit.manager.AiManager;
+
 /**
  * 题目接口
  */
@@ -44,6 +54,9 @@ import java.util.concurrent.TimeUnit;
 public class QuestionController {
 
     @Resource
+    private AiManager aiManager;
+
+    @Resource
     private QuestionService questionService;
 
     @Resource
@@ -51,6 +64,12 @@ public class QuestionController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private QuestionSearchLogService questionSearchLogService;
+
+    @Resource
+    private SecurityAlertService securityAlertService;
 
     @Resource
     private CounterManager counterManager;
@@ -154,7 +173,7 @@ public class QuestionController {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
         //爬虫检测
         User loginUser = userService.getLoginUser(request);
-        crawlerDetect(loginUser.getId());
+        crawlerDetect(loginUser, request);
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
@@ -162,6 +181,46 @@ public class QuestionController {
         userQuestionHistoryService.addQuestionHistory(loginUser.getId(), id, 0);
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));
+    }
+
+    /**
+     * 获取个性化推荐题目
+     */
+    @GetMapping("/recommend/personal")
+    public BaseResponse<List<QuestionVO>> listPersonalRecommendQuestionVO(Long questionId,
+                                                                          @RequestParam(defaultValue = "6") Integer size,
+                                                                          HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        return ResultUtils.success(questionService.listRecommendQuestionVOByUser(loginUser.getId(), questionId, size, request));
+    }
+
+    /**
+     * 获取相关题目推荐
+     */
+    @GetMapping("/recommend/related")
+    public BaseResponse<List<QuestionVO>> listRelatedQuestionVO(@RequestParam Long questionId,
+                                                                @RequestParam(defaultValue = "6") Integer size,
+                                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(questionService.listRelatedQuestionVO(questionId, size, request));
+    }
+
+    /**
+     * 基于简历内容推荐题目
+     */
+    @PostMapping("/recommend/resume")
+    public BaseResponse<ResumeQuestionRecommendVO> recommendQuestionsByResume(@RequestBody QuestionResumeRecommendRequest resumeRecommendRequest,
+                                                                              HttpServletRequest request) {
+        ThrowUtils.throwIf(resumeRecommendRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        int size = resumeRecommendRequest.getSize() == null ? 6 : resumeRecommendRequest.getSize();
+        ResumeQuestionRecommendVO result = questionService.recommendQuestionsByResume(
+                loginUser.getId(),
+                resumeRecommendRequest.getResumeText(),
+                size,
+                request
+        );
+        return ResultUtils.success(result);
     }
 
     /**
@@ -292,6 +351,20 @@ public class QuestionController {
         // 限制爬虫
         ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
         Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
+        if (StringUtils.isNotBlank(questionQueryRequest.getSearchText())) {
+            try {
+                User loginUser = userService.getLoginUserPermitNull(request);
+                questionSearchLogService.recordSearch(
+                        loginUser == null ? null : loginUser.getId(),
+                        questionQueryRequest.getSearchText(),
+                        questionPage.getTotal(),
+                        "question",
+                        request.getRemoteAddr()
+                );
+            } catch (Exception e) {
+                log.warn("记录题目搜索日志失败，searchText={}", questionQueryRequest.getSearchText(), e);
+            }
+        }
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
 
@@ -305,21 +378,88 @@ public class QuestionController {
     }
 
     /**
+     * AI 批量生成题目
+     *
+     * @param questionAiGenerateRequest
+     * @return
+     */
+    @PostMapping("/ai/generate/question")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Integer> batchGenerateQuestionsByAi(@RequestBody QuestionAIGenerateRequest questionAiGenerateRequest,
+                                                            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionAiGenerateRequest == null, ErrorCode.PARAMS_ERROR);
+        String questionType = questionAiGenerateRequest.getQuestionType();
+        Integer number = questionAiGenerateRequest.getNumber();
+        ThrowUtils.throwIf(StringUtils.isBlank(questionType), ErrorCode.PARAMS_ERROR, "题目方向不能为空");
+        ThrowUtils.throwIf(number == null || number < 1 || number > 20, ErrorCode.PARAMS_ERROR, "生成数量需在 1 到 20 之间");
+
+        // 获取登录用户
+        User loginUser = userService.getLoginUser(request);
+
+        // 构造 Prompt
+        String systemPrompt = "你是一位资深技术面试官，负责为面试题库生产可直接入库的高质量题目。"
+                + "请严格输出 JSON 数组，不要输出 Markdown 代码块，不要输出额外解释。"
+                + "数组中的每个对象必须包含 title、content、tags、answer 四个字段。"
+                + "其中 tags 必须是字符串数组，title 简洁明确，content 描述题目要求，answer 给出结构化参考答案。";
+        String userPrompt = String.format("知识点：%s，数量：%d", questionType, number);
+
+        // 调用 AI
+        String result = aiManager.doChat(systemPrompt, userPrompt);
+
+        try {
+            List<AiGeneratedQuestion> generatedQuestionList = parseAiGeneratedQuestions(result);
+            int successCount = 0;
+            for (AiGeneratedQuestion generatedQuestion : generatedQuestionList) {
+                if (StringUtils.isAnyBlank(generatedQuestion.getTitle(), generatedQuestion.getContent(), generatedQuestion.getAnswer())) {
+                    continue;
+                }
+                Question question = new Question();
+                question.setTitle(generatedQuestion.getTitle().trim());
+                question.setContent(generatedQuestion.getContent().trim());
+                question.setAnswer(generatedQuestion.getAnswer().trim());
+                if (generatedQuestion.getTags() != null) {
+                    question.setTags(JSONUtil.toJsonStr(generatedQuestion.getTags()));
+                }
+                question.setUserId(loginUser.getId());
+                questionService.validQuestion(question, true);
+                questionService.save(question);
+                successCount++;
+            }
+            ThrowUtils.throwIf(successCount == 0, ErrorCode.SYSTEM_ERROR, "AI 未生成可保存的题目");
+            return ResultUtils.success(successCount);
+        } catch (Exception e) {
+            log.error("AI 结果解析失败", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成数据格式不正确");
+        }
+    }
+
+    /**
      * 检测爬虫
      *
      * @param loginUserId
      */
-    private void crawlerDetect(long loginUserId) {
+    private void crawlerDetect(User loginUser, HttpServletRequest request) {
+        long loginUserId = loginUser.getId();
         // 调用多少次时告警
         final int WARN_COUNT = 10;
         // 超过多少次封号
         final int BAN_COUNT = 20;
+        String ip = NetUtils.getIpAddress(request);
         // 拼接访问 key
         String key = String.format("user:access:%s", loginUserId);
         // 一分钟内访问次数，180 秒过期
         long count = counterManager.incrAndGetCounter(key, 1, TimeUnit.MINUTES, 180);
         // 是否封号
         if (count > BAN_COUNT) {
+            securityAlertService.recordAlert(
+                    loginUserId,
+                    loginUser.getUserName(),
+                    "HIGH_FREQUENCY_ACCESS_BAN",
+                    "high",
+                    "用户在 1 分钟内访问题目详情次数过多，已自动封禁",
+                    String.format("当前访问次数：%d，阈值：%d", count, BAN_COUNT),
+                    ip
+            );
             // 踢下线
             StpUtil.kickout(loginUserId);
             // 封号
@@ -331,8 +471,16 @@ public class QuestionController {
         }
         // 是否告警
         if (count == WARN_COUNT) {
-            // 可以改为向管理员发送邮件通知
-            throw new BusinessException(110, "警告访问太频繁");
+            securityAlertService.recordAlert(
+                    loginUserId,
+                    loginUser.getUserName(),
+                    "HIGH_FREQUENCY_ACCESS_WARN",
+                    "medium",
+                    "用户在 1 分钟内高频访问题目详情，已触发预警",
+                    String.format("当前访问次数：%d，预警阈值：%d", count, WARN_COUNT),
+                    ip
+            );
+            log.warn("用户访问频率过高，userId={}, count={}", loginUserId, count);
         }
     }
 
@@ -343,6 +491,42 @@ public class QuestionController {
                                                          HttpServletRequest request, Throwable ex) {
         // 可以返回本地数据或空数据
         return ResultUtils.success(new Page<>());
+    }
+
+    private List<AiGeneratedQuestion> parseAiGeneratedQuestions(String rawContent) {
+        String jsonText = normalizeAiJson(rawContent);
+        if (jsonText.startsWith("[")) {
+            return JSONUtil.toList(jsonText, AiGeneratedQuestion.class);
+        }
+        if (jsonText.startsWith("{")) {
+            JSONObject jsonObject = JSONUtil.parseObj(jsonText);
+            JSONArray questions = jsonObject.getJSONArray("questions");
+            ThrowUtils.throwIf(questions == null || questions.isEmpty(), ErrorCode.SYSTEM_ERROR, "AI 未返回题目数组");
+            return JSONUtil.toList(questions, AiGeneratedQuestion.class);
+        }
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 返回内容不是合法 JSON");
+    }
+
+    private String normalizeAiJson(String rawContent) {
+        String content = StringUtils.trimToEmpty(rawContent);
+        if (content.startsWith("```")) {
+            int firstLineBreak = content.indexOf('\n');
+            if (firstLineBreak > -1) {
+                content = content.substring(firstLineBreak + 1);
+            }
+            if (content.endsWith("```")) {
+                content = content.substring(0, content.lastIndexOf("```"));
+            }
+        }
+        return content.trim();
+    }
+
+    @Data
+    private static class AiGeneratedQuestion {
+        private String title;
+        private String content;
+        private List<String> tags;
+        private String answer;
     }
 
 }

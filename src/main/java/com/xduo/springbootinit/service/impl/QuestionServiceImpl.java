@@ -1,6 +1,9 @@
 package com.xduo.springbootinit.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -8,6 +11,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.constant.CommonConstant;
+import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
@@ -15,11 +19,14 @@ import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.QuestionFavour;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.entity.UserQuestionHistory;
 import com.xduo.springbootinit.service.QuestionFavourService;
 import com.xduo.springbootinit.model.vo.QuestionVO;
+import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +53,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -68,6 +82,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Resource
     @Lazy
     private QuestionFavourService questionFavourService;
+
+    @Resource
+    private UserQuestionHistoryService userQuestionHistoryService;
+
+    @Resource
+    private AiManager aiManager;
 
     /**
      * 校验数据
@@ -358,6 +378,606 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 查询数据库
         Page<Question> questionPage = this.page(new Page<>(current, size), queryWrapper);
         return questionPage;
+    }
+
+    @Override
+    public List<QuestionVO> listRecommendQuestionVOByUser(long userId, Long currentQuestionId, int size, HttpServletRequest request) {
+        size = Math.max(1, Math.min(size, 12));
+        List<Question> allQuestionList = this.list();
+        if (CollUtil.isEmpty(allQuestionList)) {
+            return Collections.emptyList();
+        }
+        Map<String, Integer> tagWeightMap = new HashMap<>();
+        Set<Long> interactedQuestionIdSet = new HashSet<>();
+
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        if (CollUtil.isNotEmpty(historyList)) {
+            Set<Long> historyQuestionIdSet = historyList.stream()
+                    .map(UserQuestionHistory::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            interactedQuestionIdSet.addAll(historyQuestionIdSet);
+            Map<Long, Integer> historyStatusMap = historyList.stream()
+                    .filter(item -> item.getQuestionId() != null)
+                    .collect(Collectors.toMap(UserQuestionHistory::getQuestionId, UserQuestionHistory::getStatus, (a, b) -> Math.max(a, b)));
+            this.listByIds(historyQuestionIdSet).forEach(question -> {
+                int weight = convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0));
+                addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
+            });
+        }
+
+        QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+        favourQueryWrapper.eq("userId", userId);
+        List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
+        if (CollUtil.isNotEmpty(favourList)) {
+            Set<Long> favourQuestionIdSet = favourList.stream()
+                    .map(QuestionFavour::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            interactedQuestionIdSet.addAll(favourQuestionIdSet);
+            this.listByIds(favourQuestionIdSet).forEach(question -> addTagWeights(tagWeightMap, parseTagList(question.getTags()), 5));
+        }
+
+        if (currentQuestionId != null && currentQuestionId > 0) {
+            Question currentQuestion = this.getById(currentQuestionId);
+            if (currentQuestion != null) {
+                addTagWeights(tagWeightMap, parseTagList(currentQuestion.getTags()), 2);
+            }
+        }
+
+        List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
+                .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
+                .filter(question -> !interactedQuestionIdSet.contains(question.getId()))
+                .map(question -> buildRecommendationScore(question, tagWeightMap, "偏好标签"))
+                .filter(item -> item.getScore() > 0)
+                .sorted(Comparator
+                        .comparingInt(QuestionRecommendationScore::getScore).reversed()
+                        .thenComparing(QuestionRecommendationScore::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(size)
+                .collect(Collectors.toList());
+
+        if (CollUtil.isEmpty(scoredList)) {
+            List<Question> fallbackList = allQuestionList.stream()
+                    .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
+                    .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(size)
+                    .collect(Collectors.toList());
+            return fallbackList.stream().map(question -> {
+                QuestionVO questionVO = this.getQuestionVO(question, request);
+                questionVO.setRecommendReason("根据最新题目为你补充推荐");
+                return questionVO;
+            }).collect(Collectors.toList());
+        }
+
+        return scoredList.stream().map(item -> {
+            QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
+            questionVO.setRecommendReason(item.getReason());
+            return questionVO;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<QuestionVO> listRelatedQuestionVO(long questionId, int size, HttpServletRequest request) {
+        size = Math.max(1, Math.min(size, 12));
+        Question currentQuestion = this.getById(questionId);
+        if (currentQuestion == null) {
+            return Collections.emptyList();
+        }
+        List<String> currentTagList = parseTagList(currentQuestion.getTags());
+        List<Question> allQuestionList = this.list();
+
+        List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
+                .filter(question -> !question.getId().equals(questionId))
+                .map(question -> {
+                    List<String> candidateTags = parseTagList(question.getTags());
+                    List<String> overlapTags = candidateTags.stream()
+                            .filter(currentTagList::contains)
+                            .distinct()
+                            .collect(Collectors.toList());
+                    int score = overlapTags.size() * 100;
+                    String reason = overlapTags.isEmpty() ? "" : "关联标签：" + String.join(" / ", overlapTags);
+                    return new QuestionRecommendationScore(question, score, reason);
+                })
+                .filter(item -> item.getScore() > 0)
+                .sorted(Comparator
+                        .comparingInt(QuestionRecommendationScore::getScore).reversed()
+                        .thenComparing(QuestionRecommendationScore::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(size)
+                .collect(Collectors.toList());
+
+        if (CollUtil.isEmpty(scoredList)) {
+            return allQuestionList.stream()
+                    .filter(question -> !question.getId().equals(questionId))
+                    .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(size)
+                    .map(question -> {
+                        QuestionVO questionVO = this.getQuestionVO(question, request);
+                        questionVO.setRecommendReason("为你补充同主题下的最新题目");
+                        return questionVO;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        return scoredList.stream().map(item -> {
+            QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
+            questionVO.setRecommendReason(item.getReason());
+            return questionVO;
+        }).collect(Collectors.toList());
+    }
+
+    @Override
+    public ResumeQuestionRecommendVO recommendQuestionsByResume(long userId, String resumeText, int size, HttpServletRequest request) {
+        ThrowUtils.throwIf(StringUtils.isBlank(resumeText), ErrorCode.PARAMS_ERROR, "请先粘贴简历内容");
+        String trimmedResumeText = resumeText.trim();
+        ThrowUtils.throwIf(trimmedResumeText.length() < 20, ErrorCode.PARAMS_ERROR, "简历内容过短，请补充更多项目经历或技能描述");
+        size = Math.max(1, Math.min(size, 12));
+
+        List<Question> allQuestionList = this.list();
+        ResumeQuestionRecommendVO result = new ResumeQuestionRecommendVO();
+        if (CollUtil.isEmpty(allQuestionList)) {
+            result.setJobDirection("待识别");
+            result.setExtractedTags(Collections.emptyList());
+            result.setAnalysisSummary("当前题库为空，暂时无法给出题目推荐。");
+            result.setRecommendFocus("请先补充题目数据");
+            result.setAnalysisSource("系统规则分析");
+            result.setQuestionList(Collections.emptyList());
+            return result;
+        }
+
+        Set<String> candidateTagSet = allQuestionList.stream()
+                .flatMap(question -> parseTagList(question.getTags()).stream())
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        ResumeAnalysisProfile profile = buildResumeAnalysisProfile(trimmedResumeText, candidateTagSet);
+
+        Map<String, Integer> tagWeightMap = new HashMap<>();
+        addTagWeights(tagWeightMap, profile.getExtractedTags(), 6);
+        addBehaviorPreferenceWeights(userId, tagWeightMap);
+        Set<Long> interactedQuestionIdSet = getInteractedQuestionIdSet(userId);
+
+        List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
+                .filter(question -> !interactedQuestionIdSet.contains(question.getId()))
+                .map(question -> buildResumeRecommendationScore(question, tagWeightMap, profile.getExtractedTags()))
+                .filter(item -> item.getScore() > 0)
+                .sorted(Comparator
+                        .comparingInt(QuestionRecommendationScore::getScore).reversed()
+                        .thenComparing(QuestionRecommendationScore::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(size)
+                .collect(Collectors.toList());
+
+        List<QuestionVO> questionVOList;
+        if (CollUtil.isEmpty(scoredList)) {
+            questionVOList = allQuestionList.stream()
+                    .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                    .limit(size)
+                    .map(question -> {
+                        QuestionVO questionVO = this.getQuestionVO(question, request);
+                        questionVO.setRecommendReason("根据简历关键词为你补充推荐最新题目");
+                        return questionVO;
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            questionVOList = scoredList.stream().map(item -> {
+                QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
+                questionVO.setRecommendReason(item.getReason());
+                return questionVO;
+            }).collect(Collectors.toList());
+        }
+
+        result.setJobDirection(profile.getJobDirection());
+        result.setExtractedTags(profile.getExtractedTags());
+        result.setAnalysisSummary(profile.getAnalysisSummary());
+        result.setRecommendFocus(profile.getRecommendFocus());
+        result.setAnalysisSource(profile.getAnalysisSource());
+        result.setQuestionList(questionVOList);
+        return result;
+    }
+
+    private int convertHistoryStatusToWeight(Integer status) {
+        if (status == null) {
+            return 1;
+        }
+        switch (status) {
+            case 1:
+                return 4;
+            case 2:
+                return 3;
+            default:
+                return 1;
+        }
+    }
+
+    private void addTagWeights(Map<String, Integer> tagWeightMap, List<String> tagList, int weight) {
+        if (CollUtil.isEmpty(tagList) || weight <= 0) {
+            return;
+        }
+        for (String tag : tagList) {
+            if (StringUtils.isBlank(tag)) {
+                continue;
+            }
+            tagWeightMap.merge(tag.trim(), weight, Integer::sum);
+        }
+    }
+
+    private List<String> parseTagList(String tags) {
+        if (StringUtils.isBlank(tags)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSONUtil.toList(tags, String.class);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private QuestionRecommendationScore buildRecommendationScore(Question question, Map<String, Integer> tagWeightMap, String reasonPrefix) {
+        List<String> matchedTagList = new ArrayList<>();
+        int score = 0;
+        for (String tag : parseTagList(question.getTags())) {
+            Integer weight = tagWeightMap.get(tag);
+            if (weight != null && weight > 0) {
+                score += weight;
+                matchedTagList.add(tag);
+            }
+        }
+        String reason = matchedTagList.isEmpty() ? "" : reasonPrefix + "：" + String.join(" / ", matchedTagList.stream().distinct().limit(3).collect(Collectors.toList()));
+        return new QuestionRecommendationScore(question, score, reason);
+    }
+
+    private QuestionRecommendationScore buildResumeRecommendationScore(Question question, Map<String, Integer> tagWeightMap, List<String> extractedTags) {
+        List<String> matchedTagList = new ArrayList<>();
+        int score = 0;
+        for (String tag : parseTagList(question.getTags())) {
+            Integer weight = tagWeightMap.get(tag);
+            if (weight != null && weight > 0) {
+                score += weight;
+                matchedTagList.add(tag);
+            }
+        }
+        List<String> matchedKeywordList = new ArrayList<>();
+        String normalizedQuestionText = normalizeKeyword(question.getTitle() + " " + question.getContent() + " " + question.getAnswer());
+        for (String tag : extractedTags) {
+            if (StringUtils.isBlank(tag) || matchedTagList.contains(tag)) {
+                continue;
+            }
+            if (normalizedQuestionText.contains(normalizeKeyword(tag))) {
+                score += 2;
+                matchedKeywordList.add(tag);
+            }
+        }
+        String reason = buildResumeRecommendationReason(matchedTagList, matchedKeywordList);
+        return new QuestionRecommendationScore(question, score, reason);
+    }
+
+    private String buildResumeRecommendationReason(List<String> matchedTagList, List<String> matchedKeywordList) {
+        List<String> reasonList = new ArrayList<>();
+        if (CollUtil.isNotEmpty(matchedTagList)) {
+            reasonList.add("简历技能匹配：" + String.join(" / ", matchedTagList.stream().distinct().limit(3).collect(Collectors.toList())));
+        }
+        if (CollUtil.isNotEmpty(matchedKeywordList)) {
+            reasonList.add("内容关键词命中：" + String.join(" / ", matchedKeywordList.stream().distinct().limit(2).collect(Collectors.toList())));
+        }
+        return String.join("；", reasonList);
+    }
+
+    private void addBehaviorPreferenceWeights(long userId, Map<String, Integer> tagWeightMap) {
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        if (CollUtil.isNotEmpty(historyList)) {
+            Set<Long> historyQuestionIdSet = historyList.stream()
+                    .map(UserQuestionHistory::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Map<Long, Integer> historyStatusMap = historyList.stream()
+                    .filter(item -> item.getQuestionId() != null)
+                    .collect(Collectors.toMap(UserQuestionHistory::getQuestionId, UserQuestionHistory::getStatus, (a, b) -> Math.max(a, b)));
+            this.listByIds(historyQuestionIdSet).forEach(question -> {
+                int weight = Math.max(1, convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0)) - 1);
+                addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
+            });
+        }
+
+        QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+        favourQueryWrapper.eq("userId", userId);
+        List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
+        if (CollUtil.isNotEmpty(favourList)) {
+            Set<Long> favourQuestionIdSet = favourList.stream()
+                    .map(QuestionFavour::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet());
+            this.listByIds(favourQuestionIdSet).forEach(question -> addTagWeights(tagWeightMap, parseTagList(question.getTags()), 2));
+        }
+    }
+
+    private Set<Long> getInteractedQuestionIdSet(long userId) {
+        Set<Long> interactedQuestionIdSet = new HashSet<>();
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        if (CollUtil.isNotEmpty(historyList)) {
+            interactedQuestionIdSet.addAll(historyList.stream()
+                    .map(UserQuestionHistory::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet()));
+        }
+        QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+        favourQueryWrapper.eq("userId", userId);
+        List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
+        if (CollUtil.isNotEmpty(favourList)) {
+            interactedQuestionIdSet.addAll(favourList.stream()
+                    .map(QuestionFavour::getQuestionId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toSet()));
+        }
+        return interactedQuestionIdSet;
+    }
+
+    private ResumeAnalysisProfile buildResumeAnalysisProfile(String resumeText, Set<String> candidateTagSet) {
+        ResumeAnalysisProfile fallbackProfile = buildResumeAnalysisProfileByRule(resumeText, candidateTagSet);
+        try {
+            String systemPrompt = "你是一名技术面试教练，请从候选人的简历中提取岗位方向、核心技能标签和建议补强方向。"
+                    + "请严格返回 JSON，不要输出额外解释。JSON 结构为："
+                    + "{\"jobDirection\":\"\","
+                    + "\"analysisSummary\":\"\","
+                    + "\"suggestedTags\":[\"\"],"
+                    + "\"recommendFocus\":\"\"}";
+            String tagPoolText = candidateTagSet.stream().limit(80).collect(Collectors.joining("、"));
+            String userPrompt = "候选标签池：" + tagPoolText + "\n"
+                    + "请优先从标签池中选择最相关的技能标签，如果标签池不足也可以补充少量简洁标签。\n"
+                    + "简历内容如下：\n" + resumeText;
+            String aiResult = aiManager.doChat(systemPrompt, userPrompt);
+            ResumeAnalysisProfile aiProfile = parseResumeAnalysisProfile(aiResult);
+            if (CollUtil.isEmpty(aiProfile.getExtractedTags())) {
+                aiProfile.setExtractedTags(fallbackProfile.getExtractedTags());
+            }
+            if (StringUtils.isBlank(aiProfile.getJobDirection())) {
+                aiProfile.setJobDirection(fallbackProfile.getJobDirection());
+            }
+            if (StringUtils.isBlank(aiProfile.getAnalysisSummary())) {
+                aiProfile.setAnalysisSummary(fallbackProfile.getAnalysisSummary());
+            }
+            if (StringUtils.isBlank(aiProfile.getRecommendFocus())) {
+                aiProfile.setRecommendFocus(fallbackProfile.getRecommendFocus());
+            }
+            if (StringUtils.isBlank(aiProfile.getAnalysisSource())) {
+                aiProfile.setAnalysisSource("AI 智能解析");
+            }
+            return aiProfile;
+        } catch (Exception e) {
+            log.info("简历 AI 解析失败，改用规则分析：{}", e.getMessage());
+            return fallbackProfile;
+        }
+    }
+
+    private ResumeAnalysisProfile parseResumeAnalysisProfile(String aiResult) {
+        String jsonText = extractJsonText(aiResult);
+        JSONObject jsonObject = JSONUtil.parseObj(jsonText);
+        ResumeAnalysisProfile profile = new ResumeAnalysisProfile();
+        profile.setJobDirection(jsonObject.getStr("jobDirection"));
+        profile.setAnalysisSummary(jsonObject.getStr("analysisSummary"));
+        profile.setRecommendFocus(jsonObject.getStr("recommendFocus"));
+        profile.setAnalysisSource("AI 智能解析");
+        profile.setExtractedTags(parseJsonStringList(jsonObject.get("suggestedTags")));
+        return profile;
+    }
+
+    private ResumeAnalysisProfile buildResumeAnalysisProfileByRule(String resumeText, Set<String> candidateTagSet) {
+        String normalizedResumeText = normalizeKeyword(resumeText);
+        LinkedHashSet<String> matchedTagSet = new LinkedHashSet<>();
+        for (String tag : candidateTagSet) {
+            if (StringUtils.isBlank(tag)) {
+                continue;
+            }
+            String normalizedTag = normalizeKeyword(tag);
+            if (StringUtils.isNotBlank(normalizedTag) && normalizedResumeText.contains(normalizedTag)) {
+                matchedTagSet.add(tag.trim());
+            }
+        }
+
+        Map<String, List<String>> aliasMap = buildTagAliasMap();
+        for (Map.Entry<String, List<String>> entry : aliasMap.entrySet()) {
+            for (String alias : entry.getValue()) {
+                if (normalizedResumeText.contains(normalizeKeyword(alias))) {
+                    matchedTagSet.add(entry.getKey());
+                    break;
+                }
+            }
+        }
+
+        List<String> extractedTags = matchedTagSet.stream().limit(8).collect(Collectors.toList());
+        String jobDirection = inferJobDirection(extractedTags);
+        String recommendFocus = extractedTags.isEmpty()
+                ? "建议先补充目标岗位、项目经历和核心技术栈描述，系统才能给出更精准的推荐。"
+                : "建议围绕 " + String.join(" / ", extractedTags.stream().limit(4).collect(Collectors.toList())) + " 做专项强化。";
+        String analysisSummary = extractedTags.isEmpty()
+                ? "系统暂未从简历中提取到明确技能关键词，先按通用高频面试题为你兜底推荐。"
+                : "系统识别你更偏向 " + jobDirection + "，并从简历中提取出 " + String.join(" / ", extractedTags.stream().limit(5).collect(Collectors.toList())) + " 等技能关键词。";
+
+        ResumeAnalysisProfile profile = new ResumeAnalysisProfile();
+        profile.setJobDirection(jobDirection);
+        profile.setExtractedTags(extractedTags);
+        profile.setAnalysisSummary(analysisSummary);
+        profile.setRecommendFocus(recommendFocus);
+        profile.setAnalysisSource("系统规则分析");
+        return profile;
+    }
+
+    private Map<String, List<String>> buildTagAliasMap() {
+        Map<String, List<String>> aliasMap = new LinkedHashMap<>();
+        aliasMap.put("Java", List.of("java", "jvm", "spring", "spring boot", "mybatis"));
+        aliasMap.put("Spring Boot", List.of("spring boot", "springboot", "spring cloud"));
+        aliasMap.put("MySQL", List.of("mysql", "sql", "innodb"));
+        aliasMap.put("Redis", List.of("redis", "缓存", "cache"));
+        aliasMap.put("消息队列", List.of("kafka", "rocketmq", "rabbitmq", "消息队列"));
+        aliasMap.put("微服务", List.of("微服务", "spring cloud", "nacos", "gateway"));
+        aliasMap.put("Linux", List.of("linux", "shell", "centos", "ubuntu"));
+        aliasMap.put("Docker", List.of("docker", "容器"));
+        aliasMap.put("前端", List.of("react", "vue", "next.js", "javascript", "typescript", "css", "html"));
+        aliasMap.put("React", List.of("react", "react hooks", "next.js"));
+        aliasMap.put("Vue", List.of("vue", "vue3", "nuxt"));
+        aliasMap.put("JavaScript", List.of("javascript", "js", "es6"));
+        aliasMap.put("TypeScript", List.of("typescript", "ts"));
+        aliasMap.put("Python", List.of("python", "django", "flask", "fastapi"));
+        aliasMap.put("算法", List.of("算法", "数据结构", "leetcode", "复杂度"));
+        aliasMap.put("计算机网络", List.of("tcp", "udp", "http", "https", "网络"));
+        aliasMap.put("操作系统", List.of("操作系统", "进程", "线程", "内存管理"));
+        return aliasMap;
+    }
+
+    private String inferJobDirection(List<String> extractedTags) {
+        List<String> lowerTagList = extractedTags.stream()
+                .map(tag -> tag == null ? "" : tag.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toList());
+        if (lowerTagList.stream().anyMatch(tag -> tag.contains("react") || tag.contains("vue") || tag.contains("javascript") || tag.contains("typescript") || tag.contains("前端"))) {
+            return "前端开发";
+        }
+        if (lowerTagList.stream().anyMatch(tag -> tag.contains("python") || tag.contains("算法"))) {
+            return "算法 / AI 岗位";
+        }
+        if (lowerTagList.stream().anyMatch(tag -> tag.contains("java") || tag.contains("spring") || tag.contains("redis") || tag.contains("mysql") || tag.contains("微服务"))) {
+            return "Java 后端开发";
+        }
+        if (lowerTagList.stream().anyMatch(tag -> tag.contains("测试") || tag.contains("qa"))) {
+            return "测试开发";
+        }
+        return "综合技术岗位";
+    }
+
+    private String normalizeKeyword(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.toLowerCase(Locale.ROOT).replaceAll("[\\s_\\-./()（）:：,，;；]+", "");
+    }
+
+    private String extractJsonText(String text) {
+        if (StringUtils.isBlank(text)) {
+            return "{}";
+        }
+        String cleanedText = text.trim();
+        if (cleanedText.startsWith("```")) {
+            cleanedText = cleanedText.replaceFirst("^```[a-zA-Z]*\\s*", "").replaceFirst("\\s*```$", "");
+        }
+        int start = cleanedText.indexOf('{');
+        int end = cleanedText.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return cleanedText.substring(start, end + 1);
+        }
+        return cleanedText;
+    }
+
+    private List<String> parseJsonStringList(Object value) {
+        if (value == null) {
+            return Collections.emptyList();
+        }
+        if (value instanceof JSONArray jsonArray) {
+            return jsonArray.stream()
+                    .map(String::valueOf)
+                    .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        if (value instanceof List<?> list) {
+            return list.stream()
+                    .map(String::valueOf)
+                    .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+        String text = String.valueOf(value);
+        if (StringUtils.isBlank(text)) {
+            return Collections.emptyList();
+        }
+        return java.util.Arrays.stream(text.split("[,，/、\\s]+"))
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private static class QuestionRecommendationScore {
+        private final Question question;
+        private final int score;
+        private final String reason;
+
+        private QuestionRecommendationScore(Question question, int score, String reason) {
+            this.question = question;
+            this.score = score;
+            this.reason = reason;
+        }
+
+        public Question getQuestion() {
+            return question;
+        }
+
+        public int getScore() {
+            return score;
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        public java.util.Date getUpdateTime() {
+            return question.getUpdateTime();
+        }
+    }
+
+    private static class ResumeAnalysisProfile {
+        private String jobDirection;
+        private List<String> extractedTags = Collections.emptyList();
+        private String analysisSummary;
+        private String recommendFocus;
+        private String analysisSource;
+
+        public String getJobDirection() {
+            return jobDirection;
+        }
+
+        public void setJobDirection(String jobDirection) {
+            this.jobDirection = jobDirection;
+        }
+
+        public List<String> getExtractedTags() {
+            return extractedTags;
+        }
+
+        public void setExtractedTags(List<String> extractedTags) {
+            this.extractedTags = extractedTags == null ? Collections.emptyList() : extractedTags.stream()
+                    .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
+                    .distinct()
+                    .collect(Collectors.toList());
+        }
+
+        public String getAnalysisSummary() {
+            return analysisSummary;
+        }
+
+        public void setAnalysisSummary(String analysisSummary) {
+            this.analysisSummary = analysisSummary;
+        }
+
+        public String getRecommendFocus() {
+            return recommendFocus;
+        }
+
+        public void setRecommendFocus(String recommendFocus) {
+            this.recommendFocus = recommendFocus;
+        }
+
+        public String getAnalysisSource() {
+            return analysisSource;
+        }
+
+        public void setAnalysisSource(String analysisSource) {
+            this.analysisSource = analysisSource;
+        }
     }
 
 

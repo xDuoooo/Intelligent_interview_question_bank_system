@@ -90,6 +90,13 @@ spring:
 
 3）启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
 
+### 默认管理员账号
+
+执行 `sql/add_admin.sql` 脚本，即可添加默认管理员账号：
+
+- 账号：admin
+- 密码：12345678
+
 ![](doc/swagger.png)
 
 ### Redis 分布式登录

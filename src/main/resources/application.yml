@@ -23,17 +23,17 @@ spring:
   # todo 需替换配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/Intelligent_interview_question_bank_system
-    username: root
-    password: root123456
+    url: ${DB_URL:jdbc:mysql://localhost:3306/Intelligent_interview_question_bank_system}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123456}
   # Redis 配置
   data:
     redis:
       database: 0
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       timeout: 5000
-      password: redis123
+      password: ${REDIS_PASSWORD:}
   lettuce:
     pool:
       # 连接池最大连接数
@@ -46,10 +46,10 @@ spring:
       min-idle: 0
   # 邮件服务配置
   mail:
-    host: smtp.qq.com
-    port: 465
-    username: auto-sender@zhimian.com
-    password: your-smtp-password
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:auto-sender@example.com}
+    password: ${MAIL_PASSWORD:}
     protocol: smtps
     default-encoding: UTF-8
     properties:
@@ -64,9 +64,9 @@ spring:
 
   # Elasticsearch 配置
   elasticsearch:
-    uris: https://localhost:9200
-    username: elastic
-    password: '*jJUA7k*ftJ36aEjqQG7'
+    uris: ${ES_URIS:http://localhost:9200}
+    username: ${ES_USERNAME:elastic}
+    password: ${ES_PASSWORD:}
   # 文件上传
   servlet:
     multipart:
@@ -119,10 +119,10 @@ mybatis-plus:
 # todo 需替换配置
 cos:
   client:
-    accessKey: xxx
-    secretKey: xxx
-    region: xxx
-    bucket: xxx
+    accessKey: ${COS_ACCESS_KEY:xxx}
+    secretKey: ${COS_SECRET_KEY:xxx}
+    region: ${COS_REGION:xxx}
+    bucket: ${COS_BUCKET:xxx}
 # 接口文档配置
 knife4j:
   enable: true
@@ -163,12 +163,17 @@ social:
   github:
     id: ${GITHUB_CLIENT_ID:}
     secret: ${GITHUB_CLIENT_SECRET:}
-    redirect-uri: http://localhost:8101/api/user/login/github/callback
+    redirect-uri: ${GITHUB_REDIRECT_URI:http://localhost:8101/api/user/login/github/callback}
   gitee:
     id: ${GITEE_CLIENT_ID:}
     secret: ${GITEE_CLIENT_SECRET:}
-    redirect-uri: http://localhost:8101/api/user/login/gitee/callback
+    redirect-uri: ${GITEE_REDIRECT_URI:http://localhost:8101/api/user/login/gitee/callback}
   google:
     id: ${GOOGLE_CLIENT_ID:}
     secret: ${GOOGLE_CLIENT_SECRET:}
-    redirect-uri: http://localhost:8101/api/user/login/google/callback
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8101/api/user/login/google/callback}
+# AI 配置
+ai:
+  api-key: ${AI_API_KEY:}
+  host: ${AI_HOST:https://api.deepseek.com/v1}
+  model: ${AI_MODEL:deepseek-chat}

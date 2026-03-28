@@ -35,6 +35,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListQuestionVO_ = {
+    code?: number;
+    data?: QuestionVO[];
+    message?: string;
+  };
+
   type BaseResponseMockInterview_ = {
     code?: number;
     data?: MockInterview;
@@ -95,6 +101,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseGlobalLeaderboardVO_ = {
+    code?: number;
+    data?: GlobalLeaderboardVO;
+    message?: string;
+  };
+
   type BaseResponsePageUser_ = {
     code?: number;
     data?: PageUser_;
@@ -128,6 +140,18 @@ declare namespace API {
   type BaseResponseQuestionVO_ = {
     code?: number;
     data?: QuestionVO;
+    message?: string;
+  };
+
+  type BaseResponseQuestionBankLeaderboardVO_ = {
+    code?: number;
+    data?: QuestionBankLeaderboardVO;
+    message?: string;
+  };
+
+  type BaseResponseResumeQuestionRecommendVO_ = {
+    code?: number;
+    data?: ResumeQuestionRecommendVO;
     message?: string;
   };
 
@@ -286,6 +310,29 @@ declare namespace API {
     githubId?: string;
     giteeId?: string;
     googleId?: string;
+  };
+
+  type LeaderboardUserVO = {
+    metricText?: string;
+    metricValue?: number;
+    rank?: number;
+    userAvatar?: string;
+    userId?: number;
+    userName?: string;
+    userRole?: string;
+  };
+
+  type LeaderboardBoardVO = {
+    currentUserItem?: LeaderboardUserVO;
+    description?: string;
+    key?: string;
+    metricLabel?: string;
+    rankingList?: LeaderboardUserVO[];
+    title?: string;
+  };
+
+  type GlobalLeaderboardVO = {
+    boardList?: LeaderboardBoardVO[];
   };
 
   type MockInterview = {
@@ -751,6 +798,20 @@ declare namespace API {
     userId?: number;
   };
 
+  type QuestionResumeRecommendRequest = {
+    resumeText?: string;
+    size?: number;
+  };
+
+  type QuestionBankLeaderboardVO = {
+    currentUserItem?: LeaderboardUserVO;
+    description?: string;
+    metricLabel?: string;
+    questionBankId?: number;
+    questionBankTitle?: string;
+    rankingList?: LeaderboardUserVO[];
+  };
+
   type QuestionUpdateRequest = {
     answer?: string;
     content?: string;
@@ -766,11 +827,25 @@ declare namespace API {
     favourNum?: number;
     hasFavour?: boolean;
     id?: number;
+    recommendReason?: string;
     tagList?: string[];
     title?: string;
     updateTime?: string;
     user?: UserVO;
     userId?: number;
+  };
+
+  type ResumeQuestionRecommendVO = {
+    analysisSource?: string;
+    analysisSummary?: string;
+    extractedTags?: string[];
+    jobDirection?: string;
+    questionList?: QuestionVO[];
+    recommendFocus?: string;
+  };
+
+  type SecurityAlertHandleRequest = {
+    id?: number;
   };
 
   type uploadFileUsingPOSTParams = {

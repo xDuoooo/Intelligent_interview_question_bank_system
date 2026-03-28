@@ -6,11 +6,14 @@ import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.model.dto.userquestionhistory.UserQuestionHistoryAddRequest;
+import com.xduo.springbootinit.model.dto.userquestionhistory.UserLearningGoalUpdateRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.entity.UserQuestionHistory;
+import com.xduo.springbootinit.model.entity.UserLearningGoal;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.UserQuestionHistoryVO;
+import com.xduo.springbootinit.service.UserLearningGoalService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,9 @@ public class UserQuestionHistoryController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private UserLearningGoalService userLearningGoalService;
 
     /**
      * 添加/修改刷题记录
@@ -99,5 +105,35 @@ public class UserQuestionHistoryController {
         final User loginUser = userService.getLoginUser(request);
         Map<String, Object> stats = userQuestionHistoryService.getUserQuestionStats(loginUser.getId());
         return ResultUtils.success(stats);
+    }
+
+    /**
+     * 获取我的学习目标配置
+     */
+    @GetMapping("/my/goal")
+    public BaseResponse<Map<String, Object>> getMyLearningGoal(HttpServletRequest request) {
+        final User loginUser = userService.getLoginUser(request);
+        UserLearningGoal learningGoal = userLearningGoalService.getOrInitByUserId(loginUser.getId());
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("dailyTarget", learningGoal.getDailyTarget());
+        result.put("reminderEnabled", learningGoal.getReminderEnabled() != null && learningGoal.getReminderEnabled() == 1);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 更新我的学习目标配置
+     */
+    @PostMapping("/my/goal/update")
+    public BaseResponse<Boolean> updateMyLearningGoal(@RequestBody UserLearningGoalUpdateRequest updateRequest,
+                                                      HttpServletRequest request) {
+        if (updateRequest == null || updateRequest.getDailyTarget() == null || updateRequest.getDailyTarget() < 1
+                || updateRequest.getDailyTarget() > 200) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "每日目标需在 1 到 200 之间");
+        }
+        final User loginUser = userService.getLoginUser(request);
+        boolean result = userLearningGoalService.updateUserLearningGoal(loginUser.getId(),
+                updateRequest.getDailyTarget(),
+                Boolean.TRUE.equals(updateRequest.getReminderEnabled()));
+        return ResultUtils.success(result);
     }
 }

@@ -43,4 +43,9 @@ public interface UserQuestionHistoryService extends IService<UserQuestionHistory
      * 获取用户的学习统计信息
      */
     java.util.Map<String, Object> getUserQuestionStats(long userId);
+
+    /**
+     * 获取用户今日刷题数
+     */
+    long getTodayQuestionCount(long userId);
 }

@@ -51,7 +51,7 @@ export default function GlobalFooter() {
             <h4 className="text-xs font-black uppercase tracking-[0.2em] text-slate-900/40">我的学习笔记</h4>
               <div className="h-28 w-28 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-100 p-1">
                 <img
-                  src="/assets/go-notes-qr.png?v=1774635300"
+                  src="/assets/go-notes-qr.png"
                   alt="My Notes QR"
                   className="object-contain w-full h-full"
                 />

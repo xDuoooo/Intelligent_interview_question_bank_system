@@ -17,7 +17,7 @@ import {
   pinComment,
   setOfficialAnswer,
 } from "@/api/commentController";
-import { cn } from "@/lib/utils";
+import { cn, validateImageSrc } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
@@ -39,10 +39,11 @@ function timeAgo(dateStr: string) {
 // ---------------------- 头像组件 ----------------------
 function Avatar({ src, name, size = 36 }: { src?: string | null; name?: string; size?: number }) {
   const initials = (name || "?").charAt(0).toUpperCase();
-  if (src) {
+  const validSrc = validateImageSrc(src || undefined, "");
+  if (validSrc) {
     return (
       <div style={{ width: size, height: size }} className="rounded-full overflow-hidden ring-2 ring-white shadow-sm shrink-0">
-        <Image src={src} width={size} height={size} alt={name || "用户"} className="object-cover" />
+        <Image src={validSrc} width={size} height={size} alt={name || "用户"} className="object-cover" />
       </div>
     );
   }
