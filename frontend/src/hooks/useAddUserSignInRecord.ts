@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { addUserSignInUsingPost } from "@/api/userController";
 import { useSelector } from "react-redux";
 import { RootState } from "@/stores";
@@ -14,7 +14,7 @@ const useAddUserSignInRecord = () => {
   const loginUser = useSelector((state: RootState) => state.loginUser);
 
   // 请求后端执行签到
-  const doFetch = async () => {
+  const doFetch = useCallback(async () => {
     // 如果未登录，不执行签到逻辑
     if (!loginUser || !loginUser.id || loginUser.userRole === ACCESS_ENUM.NOT_LOGIN) {
       setLoading(false);
@@ -29,12 +29,12 @@ const useAddUserSignInRecord = () => {
       console.error("获取刷题签到记录失败，" + e.message);
     }
     setLoading(false);
-  };
+  }, [loginUser]);
 
   // 依赖 loginUser.id，确保用户登录状态变化时能正确触发
   useEffect(() => {
-    doFetch();
-  }, [loginUser.id]);
+    void doFetch();
+  }, [doFetch]);
 
   return { loading };
 };

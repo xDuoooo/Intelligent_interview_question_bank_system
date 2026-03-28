@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { message, Modal } from "antd";
 import {
   ThumbsUp, MessageCircle, MoreHorizontal, Flag, Trash2,
   Pin, ShieldCheck, ChevronDown, Send, Loader2, AlertCircle, Sparkles
@@ -154,9 +155,9 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
       await reportComment({ commentId: comment.id, reason: reportReason });
       setShowReport(false);
       setShowMenu(false);
-      alert("举报已提交，感谢您的反馈");
+      message.success("举报已提交，感谢你的反馈");
     } catch {
-      alert("举报失败，请稍后重试");
+      message.error("举报失败，请稍后重试");
     } finally {
       setReporting(false);
     }
@@ -394,8 +395,8 @@ export default function CommentSection({ questionId }: Props) {
   }, [questionId, sortField]);
 
   useEffect(() => {
-    fetchComments(1, sortField, false);
-  }, [questionId, sortField]);
+    void fetchComments(1, sortField, false);
+  }, [fetchComments, sortField]);
 
   // ---- 发表顶级评论 ----
   const handleAddComment = async (content: string) => {
@@ -418,7 +419,10 @@ export default function CommentSection({ questionId }: Props) {
 
   // ---- 点赞（乐观更新） ----
   const handleLike = async (commentId: number) => {
-    if (!loginUser?.id) { alert("请先登录"); return; }
+    if (!loginUser?.id) {
+      message.warning("请先登录后再点赞");
+      return;
+    }
     const update = (list: CommentVO[]): CommentVO[] =>
       list.map((c) => {
         if (c.id === commentId) {
@@ -437,17 +441,29 @@ export default function CommentSection({ questionId }: Props) {
 
   // ---- 删除 ----
   const handleDelete = async (commentId: number) => {
-    if (!confirm("确定要删除这条评论吗？")) return;
-    const remove = (list: CommentVO[]): CommentVO[] =>
-      list
-        .map((c) => ({ ...c, replies: remove(c.replies) }))
-        .filter((c) => c.id !== commentId);
-    setComments((prev) => remove(prev));
-    try {
-      await deleteComment(commentId);
-    } catch {
-      fetchComments(current, sortField, false);
-    }
+    Modal.confirm({
+      title: "确定要删除这条评论吗？",
+      content: "删除后将无法恢复，请确认操作。",
+      okText: "确认删除",
+      cancelText: "取消",
+      okButtonProps: {
+        danger: true,
+      },
+      onOk: async () => {
+        const remove = (list: CommentVO[]): CommentVO[] =>
+          list
+            .map((c) => ({ ...c, replies: remove(c.replies) }))
+            .filter((c) => c.id !== commentId);
+        setComments((prev) => remove(prev));
+        try {
+          await deleteComment(commentId);
+          message.success("评论已删除");
+        } catch {
+          await fetchComments(current, sortField, false);
+          message.error("删除失败，请稍后重试");
+        }
+      },
+    });
   };
 
   // ---- 置顶 ----

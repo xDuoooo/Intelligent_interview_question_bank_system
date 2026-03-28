@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { List, message } from "antd";
 import Link from "next/link";
 import { listMyFavourQuestionByPageUsingGet } from "@/api/userQuestionHistoryController";
@@ -14,7 +14,7 @@ const MyFavourList: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [params, setParams] = useState({ current: 1, pageSize: 12 });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await listMyFavourQuestionByPageUsingGet({
@@ -28,11 +28,11 @@ const MyFavourList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params]);
 
   useEffect(() => {
-    fetchData();
-  }, [params]);
+    void fetchData();
+  }, [fetchData]);
 
   return (
     <List

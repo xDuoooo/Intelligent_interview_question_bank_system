@@ -8,6 +8,7 @@ import QuestionList from "@/components/QuestionList";
 import LeaderboardSection from "@/components/LeaderboardSection";
 import Image from "next/image";
 import { Trophy, Zap, ArrowRight } from "lucide-react";
+import { APP_CONFIG } from "@/config/appConfig";
 
 // 本页面使用服务端渲染，禁用静态生成
 export const dynamic = 'force-dynamic';
@@ -99,17 +100,17 @@ export default async function HomePage() {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-primary/5 border border-primary/10 text-xs sm:text-sm font-black tracking-widest uppercase text-primary animate-in fade-in slide-in-from-left-4 duration-1000">
                 <Zap className="h-4 w-4 animate-pulse" />
-                <span>2026 真题库已同步更新</span>
+                <span>{APP_CONFIG.home.heroBadge}</span>
               </div>
               
               <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] text-slate-900 animate-in fade-in slide-in-from-left-6 duration-1000 delay-100">
-                 智面 <br />
+                 {APP_CONFIG.brand.name} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600 drop-shadow-sm">
-                  IntelliFace
+                  {APP_CONFIG.brand.englishName}
                 </span>
               </h1>
               <p className="text-lg sm:text-xl text-slate-500 font-medium leading-relaxed max-w-2xl animate-in fade-in slide-in-from-left-8 duration-1000 delay-200 mx-auto md:mx-0">
-                全方位真题解析，沉浸式刷题体验。助你精准攻克面试难题，从此大厂 Offer 触手可及。
+                {APP_CONFIG.home.heroDescription}
               </p>
             </div>
 

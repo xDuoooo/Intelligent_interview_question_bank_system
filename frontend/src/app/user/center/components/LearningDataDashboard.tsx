@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Button, Card, Col, Empty, InputNumber, Progress, Row, Space, Statistic, Switch, Tag, Typography, message } from "antd";
 import { BookOutlined, CheckCircleOutlined, HeartOutlined } from "@ant-design/icons";
 import { FireOutlined, CalendarOutlined, TrophyOutlined } from "@ant-design/icons";
@@ -20,16 +20,16 @@ const LearningDataDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const res = await getMyQuestionStatsUsingGet();
       setStats(res.data || {});
     } catch (error) {
       console.error("获取统计数据失败", error);
     }
-  };
+  }, []);
 
-  const fetchGoal = async () => {
+  const fetchGoal = useCallback(async () => {
     try {
       const res = await getMyLearningGoalUsingGet();
       const data: API.LearningGoalData = res.data ?? {};
@@ -38,17 +38,17 @@ const LearningDataDashboard: React.FC = () => {
     } catch (error) {
       console.error("获取学习目标失败", error);
     }
-  };
+  }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     await Promise.all([fetchStats(), fetchGoal()]);
     setLoading(false);
-  };
+  }, [fetchGoal, fetchStats]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const saveGoal = async () => {
     setSaving(true);

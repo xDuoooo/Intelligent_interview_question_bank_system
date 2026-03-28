@@ -1,5 +1,5 @@
 import { Form, message, Modal, Select } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   addQuestionBankQuestionUsingPost,
   listQuestionBankQuestionVoByPageUsingPost,
@@ -26,28 +26,27 @@ const UpdateBankModal: React.FC<Props> = (props) => {
   >([]);
 
   // 获取所属题库列表
-  const getCurrentQuestionBankIdList = async () => {
+  const getCurrentQuestionBankIdList = useCallback(async () => {
     try {
       const res = await listQuestionBankQuestionVoByPageUsingPost({
         questionId,
         pageSize: 20,
       });
       const list = (res.data?.records ?? []).map((item) => item.questionBankId);
-      console.log(list);
       form.setFieldValue("questionBankIdList" as any, list);
     } catch (e: any) {
       message.error("获取题目所属题库列表失败，" + (e?.message || "请稍后重试"));
     }
-  };
+  }, [form, questionId]);
 
   useEffect(() => {
     if (questionId) {
-      getCurrentQuestionBankIdList();
+      void getCurrentQuestionBankIdList();
     }
-  }, [questionId]);
+  }, [getCurrentQuestionBankIdList, questionId]);
 
   // 获取题库列表
-  const getQuestionBankList = async () => {
+  const getQuestionBankList = useCallback(async () => {
     // 题库数量不多，直接全量获取
     const pageSize = 200;
 
@@ -61,11 +60,11 @@ const UpdateBankModal: React.FC<Props> = (props) => {
     } catch (e: any) {
       message.error("获取题库列表失败，" + (e?.message || "请稍后重试"));
     }
-  };
+  }, []);
 
   useEffect(() => {
-    getQuestionBankList();
-  }, []);
+    void getQuestionBankList();
+  }, [getQuestionBankList]);
 
   return (
     <Modal

@@ -73,6 +73,7 @@ const QuestionBankAdminPage: React.FC = () => {
       render: (_, record) => (
         <Image 
           src={record.picture} 
+          alt={record.title || "题库图片"}
           width={64} 
           className="rounded-xl border border-slate-100 shadow-sm object-cover" 
           fallback="https://placehold.co/100x100?text=No+Image"
@@ -197,4 +198,3 @@ const QuestionBankAdminPage: React.FC = () => {
 };
 
 export default QuestionBankAdminPage;
-

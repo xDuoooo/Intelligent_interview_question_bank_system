@@ -1,5 +1,5 @@
 import React from "react";
-import { List, Space, Tooltip, Divider } from "antd";
+import { List, Divider } from "antd";
 import { 
   Phone, 
   Mail, 
@@ -10,6 +10,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import Image from "next/image";
+import { SOCIAL_AUTH_PROVIDERS } from "@/config/auth";
 import "./index.css";
 
 interface Props {
@@ -22,30 +23,27 @@ interface Props {
 const UserInfo = (props: Props) => {
   const { user } = props;
 
+  const getSocialAccountValue = (key: "github" | "gitee" | "google") => {
+    if (key === "github") {
+      return user.githubId;
+    }
+    if (key === "gitee") {
+      return user.giteeId;
+    }
+    return user.googleId;
+  };
+
   // 社交账号绑定状态配置
-  const socialAccounts = [
-    {
-      key: "github",
-      name: "GitHub",
-      icon: <Image src="/assets/github-logo.png" width={20} height={20} alt="GitHub" />,
-      isBound: !!user.githubId,
-      label: user.githubId || "未绑定",
-    },
-    {
-      key: "gitee",
-      name: "Gitee",
-      icon: <Image src="/assets/gitee-logo.png" width={20} height={20} alt="Gitee" />,
-      isBound: !!user.giteeId,
-      label: user.giteeId || "未绑定",
-    },
-    {
-      key: "google",
-      name: "Google",
-      icon: <Image src="/assets/google-logo.png" width={20} height={20} alt="Google" />,
-      isBound: !!user.googleId,
-      label: user.googleId || "未绑定",
-    },
-  ];
+  const socialAccounts = SOCIAL_AUTH_PROVIDERS.map((provider) => {
+    const accountValue = getSocialAccountValue(provider.key);
+    return {
+      key: provider.key,
+      name: provider.label,
+      icon: <Image src={provider.iconSrc} width={20} height={20} alt={provider.label} />,
+      isBound: !!accountValue,
+      label: accountValue || "未绑定",
+    };
+  });
 
   return (
     <div className="user-info-container">

@@ -3,11 +3,12 @@ import BasicLayout from "@/layouts/BasicLayout";
 import React from "react";
 import AccessLayout from "@/access/AccessLayout";
 import ClientLayout from "./ClientLayout";
+import { APP_CONFIG } from "@/config/appConfig";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "智面 (IntelliFace) - 智能面试题库系统",
-  description: "全方位面试官视角，深度技术解析，助你锁定大厂名额。",
+  title: APP_CONFIG.brand.fullTitle,
+  description: APP_CONFIG.brand.description,
 };
 
 export default function RootLayout({

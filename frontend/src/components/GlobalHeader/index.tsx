@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -9,12 +10,19 @@ import { AppDispatch, RootState } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import { userLogoutUsingPost } from "@/api/userController";
 import { DEFAULT_USER } from "@/constants/user";
+import { APP_CONFIG } from "@/config/appConfig";
 import ACCESS_ENUM from "@/access/accessEnum";
 import getAccessibleMenus from "@/access/menuAccess";
 import { menus } from "../../../config/menu";
 import { cn, validateImageSrc } from "@/lib/utils";
 import { Search, Menu, X, LogOut, User, Settings, Crown, ChevronDown } from "lucide-react";
-import NotificationPopover from "../NotificationPopover";
+
+const NotificationPopover = dynamic(() => import("../NotificationPopover"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-9 w-9 rounded-full bg-muted/60 animate-pulse" />
+  ),
+});
 
 export default function GlobalHeader() {
   const pathname = usePathname();
@@ -45,17 +53,17 @@ export default function GlobalHeader() {
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <div className="relative h-10 w-10 overflow-hidden rounded-xl shadow-md ring-2 ring-slate-50 transform group-hover:scale-105 transition-transform duration-300">
                <div className="absolute inset-0 bg-white flex items-center justify-center p-1.5">
-                 <Image
+                <Image
                   src="/assets/logo.png"
                   height={28}
                   width={28}
-                  alt="智面"
+                  alt={APP_CONFIG.brand.displayName}
                   className="object-contain transition-transform duration-500 group-hover:scale-110"
                 />
               </div>
             </div>
             <span className="hidden sm:inline-block text-xl font-black tracking-tight bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-              智面
+              {APP_CONFIG.brand.name}
             </span>
           </Link>
 

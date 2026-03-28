@@ -11,6 +11,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,6 +37,9 @@ public class GoogleController {
 
     @Resource
     private UserService userService;
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     /**
      * 跳转到 Google 授权页
@@ -104,15 +108,15 @@ public class GoogleController {
             if ("bind".equals(state) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
                 userService.bindGoogle(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), googleId);
                 // 重定向回中心页
-                response.sendRedirect("http://localhost:3000/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
+                response.sendRedirect(frontendUrl + "/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
             } else {
                 userService.googleLogin(googleId, userName, userAvatar);
                 // 登录成功重定向首页
-                response.sendRedirect("http://localhost:3000/");
+                response.sendRedirect(frontendUrl + "/");
             }
         } catch (BusinessException e) {
             log.error("Google callback error", e);
-            String redirectUrl = "bind".equals(state) ? "http://localhost:3000/user/center" : "http://localhost:3000/user/login";
+            String redirectUrl = "bind".equals(state) ? frontendUrl + "/user/center" : frontendUrl + "/user/login";
             response.sendRedirect(redirectUrl + "?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
         }
     }

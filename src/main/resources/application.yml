@@ -177,3 +177,6 @@ ai:
   api-key: ${AI_API_KEY:}
   host: ${AI_HOST:https://api.deepseek.com/v1}
   model: ${AI_MODEL:deepseek-chat}
+
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}

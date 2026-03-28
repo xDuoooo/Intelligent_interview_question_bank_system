@@ -22,6 +22,7 @@ import {
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
+import { getSocialAuthProviderLabel, getSocialAuthUrl } from "@/config/auth";
 import PasswordChangeForm from "../PasswordChangeForm";
 
 const { Text } = Typography;
@@ -43,9 +44,10 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
 
   // 解绑逻辑
   const handleUnbind = async (type: "github" | "gitee" | "google") => {
+    const providerLabel = getSocialAuthProviderLabel(type);
     Modal.confirm({
       title: "确认解绑",
-      content: `确定要解绑您的 ${type.toUpperCase()} 账号吗？解绑后将无法通过该方式登录。`,
+      content: `确定要解绑您的 ${providerLabel} 账号吗？解绑后将无法通过该方式登录。`,
       onOk: async () => {
         try {
           if (type === "github") await unbindGithubUsingPost();
@@ -96,7 +98,7 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       action: user.githubId ? (
         <Button title="解绑" type="text" danger icon={<Unlink size={16}/>} onClick={() => handleUnbind("github")} />
       ) : (
-        <Button type="link" href={`http://localhost:8101/api/user/login/github?action=bind`}>立即关联</Button>
+        <Button type="link" href={getSocialAuthUrl("github", "bind")}>立即关联</Button>
       )
     },
     {
@@ -108,7 +110,7 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       action: user.giteeId ? (
         <Button title="解绑" type="text" danger icon={<Unlink size={16}/>} onClick={() => handleUnbind("gitee")} />
       ) : (
-        <Button type="link" href={`http://localhost:8101/api/user/login/gitee?action=bind`}>立即关联</Button>
+        <Button type="link" href={getSocialAuthUrl("gitee", "bind")}>立即关联</Button>
       )
     },
     {
@@ -120,7 +122,7 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       action: user.googleId ? (
         <Button title="解绑" type="text" danger icon={<Unlink size={16}/>} onClick={() => handleUnbind("google")} />
       ) : (
-        <Button type="link" href={`http://localhost:8101/api/user/login/google?action=bind`}>立即关联</Button>
+        <Button type="link" href={getSocialAuthUrl("google", "bind")}>立即关联</Button>
       )
     }
   ];

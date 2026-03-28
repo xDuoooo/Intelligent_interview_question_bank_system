@@ -1,6 +1,6 @@
 "use client";
 import { Button, Card, Input, List, message, Tag } from "antd";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   getMockInterviewByIdUsingGet,
   handleMockInterviewEventUsingPost,
@@ -30,7 +30,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const [isEnded, setIsEnded] = useState(false);
 
   // 加载面试数据
-  const loadInterview = async () => {
+  const loadInterview = useCallback(async () => {
     try {
       if (!interviewId) {
         message.error("面试记录不存在");
@@ -51,11 +51,11 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     } catch (error) {
       message.error("加载面试数据失败");
     }
-  };
+  }, [interviewId]);
 
   useEffect(() => {
-    loadInterview();
-  }, []);
+    void loadInterview();
+  }, [loadInterview]);
 
   // 处理事件
   const handleEvent = async (eventType: string, msg?: string) => {
@@ -81,7 +81,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
         timestamp: Date.now() + 1,
       } as any;
 
-      setMessages([...messages, newMessage, aiResponse]);
+      setMessages((prev) => [...prev, newMessage, aiResponse]);
 
       // 更新状态
       if (eventType === "start") setIsStarted(true);
