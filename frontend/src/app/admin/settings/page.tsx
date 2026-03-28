@@ -16,7 +16,6 @@ import {
 } from "antd";
 import { 
   Settings as SettingsIcon, 
-  Globe, 
   ShieldCheck, 
   Bell, 
   Save,
@@ -24,6 +23,7 @@ import {
   Lock,
   Zap
 } from "lucide-react";
+import { APP_CONFIG } from "@/config/appConfig";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -44,13 +44,13 @@ export default function AdminSettingsPage() {
 
   const basicSettings = (
     <div className="space-y-6 animate-in slide-in-from-left-4 duration-500">
-      <Form.Item label="站点名称" name="siteName" initialValue="Intelliface 智面">
+      <Form.Item label="站点名称" name="siteName" initialValue={APP_CONFIG.adminDefaults.siteName}>
         <Input size="large" className="rounded-xl bg-slate-50 border-slate-100" />
       </Form.Item>
-      <Form.Item label="SEO 关键词" name="seoKeywords" initialValue="面试, 刷题, Java, 互联网">
+      <Form.Item label="SEO 关键词" name="seoKeywords" initialValue={APP_CONFIG.adminDefaults.seoKeywords}>
         <Input size="large" className="rounded-xl bg-slate-50 border-slate-100" />
       </Form.Item>
-      <Form.Item label="系统公告" name="announcement" initialValue="欢迎来到智面 1.0 版本，体验 AI 智能面经！">
+      <Form.Item label="系统公告" name="announcement" initialValue={APP_CONFIG.adminDefaults.announcement}>
         <Input.TextArea rows={4} className="rounded-xl bg-slate-50 border-slate-100" />
       </Form.Item>
     </div>

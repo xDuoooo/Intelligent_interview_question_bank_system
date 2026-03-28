@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { Button, Form, Input, message, Typography, Upload } from "antd";
 import { 
   updateMyUserUsingPost, 
@@ -8,6 +9,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import { User, FileText, ArrowRight, Camera, Loader2 } from "lucide-react";
+import { validateImageSrc } from "@/lib/utils";
 
 const { Text } = Typography;
 
@@ -119,7 +121,12 @@ const UserInfoEditForm = (props: Props) => {
           >
             {avatarUrl ? (
               <div className="relative group w-full h-full rounded-full overflow-hidden border-2 border-slate-100 p-1">
-                <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-full" />
+                <Image
+                  src={validateImageSrc(avatarUrl)}
+                  alt="avatar"
+                  fill
+                  className="w-full h-full object-cover rounded-full"
+                />
                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   {uploadLoading ? <Loader2 size={24} className="text-white animate-spin" /> : <Camera size={24} className="text-white" />}
                   <span className="text-[10px] text-white font-bold mt-1">更换头像</span>

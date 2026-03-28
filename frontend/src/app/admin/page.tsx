@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Card, Row, Col, Typography, Button, Tag, List, message, Skeleton, Popconfirm } from "antd";
 import {
   Users,
@@ -21,12 +22,16 @@ import {
   AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
-import ReactECharts from "echarts-for-react";
 import dayjs from "dayjs";
 import { getDashboardOverviewUsingGet } from "@/api/adminDashboardController";
 import { banUserByAlertUsingPost, ignoreAlertUsingPost } from "@/api/securityAlertController";
 
 const { Title, Text, Paragraph } = Typography;
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), {
+  ssr: false,
+  loading: () => <Skeleton active paragraph={{ rows: 8 }} />,
+});
 
 interface DashboardData {
   overview?: Record<string, any>;
@@ -47,7 +52,7 @@ export default function AdminDashboardPage() {
   const [dashboard, setDashboard] = useState<DashboardData>({});
   const [loading, setLoading] = useState(true);
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getDashboardOverviewUsingGet();
@@ -57,11 +62,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboard();
-  }, []);
+  }, [fetchDashboard]);
 
   const overview = dashboard.overview || {};
   const todayStats = dashboard.todayStats || {};

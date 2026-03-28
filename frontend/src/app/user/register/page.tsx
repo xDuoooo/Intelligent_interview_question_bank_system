@@ -14,6 +14,7 @@ import {
 } from "@/api/userController";
 import { message } from "antd";
 import { User, Lock, ArrowRight, Loader2, ShieldCheck } from "lucide-react";
+import { APP_CONFIG } from "@/config/appConfig";
 
 export default function UserRegisterPage() {
   const [formData, setFormData] = useState<API.UserRegisterRequest>({
@@ -93,9 +94,9 @@ export default function UserRegisterPage() {
               </div>
             </div>
             <div className="space-y-1">
-              <h1 className="text-2xl font-black tracking-tight text-foreground">加入智面</h1>
+              <h1 className="text-2xl font-black tracking-tight text-foreground">{APP_CONFIG.auth.registerTitle}</h1>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
-                START YOUR JOURNEY
+                {APP_CONFIG.auth.registerSubtitle}
               </p>
             </div>
           </div>

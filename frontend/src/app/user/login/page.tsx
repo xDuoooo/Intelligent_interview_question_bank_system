@@ -9,6 +9,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 import request from "@/libs/request";
+import { APP_CONFIG } from "@/config/appConfig";
+import { getSocialAuthUrl, SOCIAL_AUTH_PROVIDERS } from "@/config/auth";
 import {
   getLoginUserUsingGet,
   sendVerificationCodeUsingPost,
@@ -163,7 +165,7 @@ const UserLoginPage: React.FC = () => {
                 <Image src="/assets/logo.png" height={64} width={64} alt="Logo" className="object-contain" />
               </div>
             </div>
-            <h1 className="text-2xl font-black text-foreground">智面 IntelliFace</h1>
+            <h1 className="text-2xl font-black text-foreground">{APP_CONFIG.brand.displayName}</h1>
           </div>
 
           <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8">
@@ -256,7 +258,14 @@ const UserLoginPage: React.FC = () => {
                       title="点击刷新"
                     >
                       {captchaData ? (
-                        <img src={captchaData.image} alt="captcha" className="h-full w-full object-cover rounded-xl" />
+                        <Image
+                          src={captchaData.image}
+                          alt="captcha"
+                          width={112}
+                          height={48}
+                          unoptimized
+                          className="h-full w-full object-cover rounded-xl"
+                        />
                       ) : (
                         <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
                       )}
@@ -295,42 +304,32 @@ const UserLoginPage: React.FC = () => {
               disabled={loginLoading}
               className="w-full h-14 mt-4 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center disabled:opacity-70"
             >
-              {loginLoading ? <div className="h-6 w-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : "进入智面"}
+              {loginLoading ? <div className="h-6 w-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : APP_CONFIG.auth.loginActionText}
             </button>
           </form>
 
           <div className="mt-8 text-center text-slate-400 text-xs font-medium">
-            首次使用验证码登录将自动创建账号
+            {APP_CONFIG.auth.firstLoginHint}
           </div>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-300">第三方登录</span></div>
+            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-300">{APP_CONFIG.auth.socialLoginTitle}</span></div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {[ 
-              { icon: <Image src="/assets/gitee-logo.png" width={22} height={22} alt="Gitee" />, label: "Gitee" },
-              { icon: <Image src="/assets/github-logo.png" width={22} height={22} alt="GitHub" />, label: "GitHub" },
-              { icon: <Image src="/assets/google-logo.png" width={22} height={22} alt="Google" />, label: "Google" }
-            ].map((social, idx) => (
+            {SOCIAL_AUTH_PROVIDERS.map((social) => (
               <button 
-                key={idx} 
+                key={social.key}
                 type="button"
                 onClick={() => {
-                  if (social.label === "GitHub") {
-                    window.location.href = "http://localhost:8101/api/user/login/github";
-                  } else if (social.label === "Gitee") {
-                    window.location.href = "http://localhost:8101/api/user/login/gitee";
-                  } else if (social.label === "Google") {
-                    window.location.href = "http://localhost:8101/api/user/login/google";
-                  } else {
-                    message.info(`${social.label} 关联功能即将上线，敬请期待！`);
-                  }
+                  window.location.href = getSocialAuthUrl(social.key);
                 }}
                 className="flex flex-col items-center justify-center h-16 rounded-2xl border border-slate-50 bg-slate-50/30 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all gap-1 group"
               >
-                <div className="group-hover:scale-110 transition-transform">{social.icon}</div>
+                <div className="group-hover:scale-110 transition-transform">
+                  <Image src={social.iconSrc} width={22} height={22} alt={social.label} />
+                </div>
                 <span className="text-[10px] font-bold text-slate-400">{social.label}</span>
               </button>
             ))}

@@ -1,11 +1,22 @@
 import axios, { type AxiosRequestConfig } from "axios";
 
-// 创建 Axios 实例
-// 区分开发和生产环境
-const DEV_BASE_URL = "http://localhost:8101";
-const PROD_BASE_URL = "http://xx.xx.xx.xx";
+const isServer = typeof window === "undefined";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "development" || isServer ? "http://localhost:8101" : "");
+
+export function buildApiUrl(path: string) {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+  if (!API_BASE_URL) {
+    return path;
+  }
+  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
 const myAxios = axios.create({
-  baseURL: DEV_BASE_URL,
+  baseURL: API_BASE_URL || undefined,
   timeout: 60000,
   withCredentials: true,
 });
@@ -36,7 +47,7 @@ myAxios.interceptors.response.use(
         !window.location.pathname.includes("/user/login") &&
         !response.config.url?.includes("user/get/login")
       ) {
-        window.location.href = `/user/login?redirect=${window.location.href}`;
+        window.location.href = `/user/login?redirect=${encodeURIComponent(window.location.href)}`;
       }
     } else if (data.code !== 0) {
       // 其他错误

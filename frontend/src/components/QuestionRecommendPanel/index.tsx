@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, Empty, List, Spin, Tag, Typography, message } from "antd";
 import { ArrowRight, Compass, Sparkles } from "lucide-react";
@@ -24,7 +24,7 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
   const [personalList, setPersonalList] = useState<API.QuestionVO[]>([]);
   const [relatedList, setRelatedList] = useState<API.QuestionVO[]>([]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [personalRes, relatedRes] = await Promise.all([
@@ -38,14 +38,14 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [questionId]);
 
   useEffect(() => {
     if (!questionId) {
       return;
     }
-    loadData();
-  }, [questionId]);
+    void loadData();
+  }, [loadData, questionId]);
 
   const renderQuestionList = (dataList: API.QuestionVO[], emptyText: string) => {
     if (loading) {

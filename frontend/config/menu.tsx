@@ -19,6 +19,27 @@ export const menus = [
   {
     path: "/mockInterview/add",
     name: "AI 模拟面试",
+    access: ACCESS_ENUM.USER,
+  },
+  {
+    path: "/mockInterview",
+    name: "模拟面试记录",
+    access: ACCESS_ENUM.USER,
+  },
+  {
+    path: "/mockInterview/chat/[mockInterviewId]",
+    name: "模拟面试会话",
+    access: ACCESS_ENUM.USER,
+  },
+  {
+    path: "/user/center",
+    name: "个人中心",
+    access: ACCESS_ENUM.USER,
+  },
+  {
+    path: "/user/notifications",
+    name: "通知中心",
+    access: ACCESS_ENUM.USER,
   },
   {
     path: "/admin",
@@ -41,6 +62,21 @@ export const menus = [
         name: "题目管理",
         access: ACCESS_ENUM.ADMIN,
       },
+      {
+        path: "/admin/question/ai",
+        name: "AI 出题",
+        access: ACCESS_ENUM.ADMIN,
+      },
+      {
+        path: "/admin/logs",
+        name: "日志中心",
+        access: ACCESS_ENUM.ADMIN,
+      },
+      {
+        path: "/admin/settings",
+        name: "系统设置",
+        access: ACCESS_ENUM.ADMIN,
+      },
     ],
   },
 ] as MenuDataItem[];
@@ -56,7 +92,7 @@ export const findMenuItemByPath = (
   path: string,
 ): MenuDataItem | null => {
   for (const menu of menus) {
-    if (menu.path === path) {
+    if (isMenuPathMatch(menu.path, path)) {
       return menu;
     }
     if (menu.children) {
@@ -67,4 +103,21 @@ export const findMenuItemByPath = (
     }
   }
   return null;
+};
+
+const isMenuPathMatch = (menuPath?: string, currentPath?: string) => {
+  if (!menuPath || !currentPath) {
+    return false;
+  }
+  const menuSegments = menuPath.split("/").filter(Boolean);
+  const currentSegments = currentPath.split("/").filter(Boolean);
+  if (menuSegments.length !== currentSegments.length) {
+    return false;
+  }
+  return menuSegments.every((segment, index) => {
+    if (segment.startsWith("[") && segment.endsWith("]")) {
+      return true;
+    }
+    return segment === currentSegments[index];
+  });
 };

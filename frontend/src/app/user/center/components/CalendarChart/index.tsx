@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactECharts from "echarts-for-react";
 import dayjs from "dayjs";
 import { message } from "antd";
@@ -23,7 +23,7 @@ const CalendarChart = (props: Props) => {
   const loginUser = useSelector((state: RootState) => state.loginUser);
 
   // 请求后端获取数据
-  const fetchDataList = async () => {
+  const fetchDataList = useCallback(async () => {
     if (!loginUser || !loginUser.id || loginUser.userRole === ACCESS_ENUM.NOT_LOGIN) {
       return;
     }
@@ -35,12 +35,12 @@ const CalendarChart = (props: Props) => {
     } catch (e: any) {
       message.error("获取刷题记录失败，" + e.message);
     }
-  };
+  }, [loginUser, year]);
 
   // 当登录用户变化时重新获取数据
   useEffect(() => {
-    fetchDataList();
-  }, [loginUser.id]);
+    void fetchDataList();
+  }, [fetchDataList]);
 
   // 计算图表所需的数据
   const optionsData = dataList.map((item) => {
