@@ -2,6 +2,8 @@ package com.xduo.springbootinit.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xduo.springbootinit.common.ErrorCode;
+import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.mapper.UserQuestionHistoryMapper;
 import com.xduo.springbootinit.model.entity.UserQuestionHistory;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
@@ -49,6 +51,9 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
 
     @Override
     public boolean addQuestionHistory(long userId, long questionId, int status) {
+        if (status < 0 || status > 2) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "刷题状态不合法");
+        }
         // 先查询是否已经有记录
         QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", userId);

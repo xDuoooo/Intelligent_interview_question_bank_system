@@ -11,6 +11,7 @@ import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.QuestionCommentLikeMapper;
 import com.xduo.springbootinit.mapper.QuestionCommentMapper;
 import com.xduo.springbootinit.mapper.QuestionCommentReportMapper;
+import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
@@ -52,6 +53,9 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
     private QuestionCommentReportMapper commentReportMapper;
 
     @Resource
+    private QuestionMapper questionMapper;
+
+    @Resource
     private UserService userService;
 
     @Resource
@@ -71,12 +75,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "内容不能为空");
         ThrowUtils.throwIf(content.length() > MAX_CONTENT_LENGTH, ErrorCode.PARAMS_ERROR,
                 "内容不能超过 " + MAX_CONTENT_LENGTH + " 字");
+        ThrowUtils.throwIf(questionMapper.selectById(questionId) == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
 
         // 深度校验：若有父评论则计算层级
         Long parentId = request.getParentId();
         if (parentId != null) {
             QuestionComment parent = getById(parentId);
             ThrowUtils.throwIf(parent == null || parent.getIsDelete() == 1, ErrorCode.NOT_FOUND_ERROR, "父评论不存在");
+            ThrowUtils.throwIf(!questionId.equals(parent.getQuestionId()), ErrorCode.PARAMS_ERROR, "父评论与题目不匹配");
             // 检查深度，父评论若已有 parentId 则已经是第 2 级，再回复就是第 3 级
             // 若父评论是第 3 级，则将 parentId 设为该评论的 parentId（"引用上一级"）
             if (parent.getParentId() != null) {
@@ -86,6 +92,11 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     parentId = parent.getParentId();
                 }
             }
+        }
+        if (request.getReplyToId() != null) {
+            QuestionComment replyToComment = getById(request.getReplyToId());
+            ThrowUtils.throwIf(replyToComment == null || replyToComment.getIsDelete() == 1, ErrorCode.NOT_FOUND_ERROR, "回复目标不存在");
+            ThrowUtils.throwIf(!questionId.equals(replyToComment.getQuestionId()), ErrorCode.PARAMS_ERROR, "回复目标与题目不匹配");
         }
 
         QuestionComment comment = new QuestionComment();
