@@ -155,6 +155,14 @@ public interface UserService extends IService<User> {
     void checkUserNameUnique(String userName, Long userId);
 
     /**
+     * 检查账号是否唯一
+     *
+     * @param userAccount 待检查账号
+     * @param userId 当前用户 ID（排除自身）
+     */
+    void checkUserAccountUnique(String userAccount, Long userId);
+
+    /**
      * 发送验证码
      *
      * @param userSendCodeRequest 发送请求

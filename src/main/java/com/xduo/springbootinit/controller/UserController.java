@@ -314,11 +314,16 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
+        if (StringUtils.isNotBlank(userUpdateMyRequest.getUserAccount())) {
+            String userAccount = userUpdateMyRequest.getUserAccount().trim();
+            userService.checkUserAccountUnique(userAccount, loginUser.getId());
+            userUpdateMyRequest.setUserAccount(userAccount);
+        }
         // 校验昵称唯一性
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
         User user = new User();
-        // 仅允许修改昵称、头像、简介、城市
+        // 仅允许修改账号、昵称、头像、简介、城市
         BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "githubId", "giteeId", "googleId");
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);

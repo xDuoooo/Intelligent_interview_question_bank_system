@@ -22,6 +22,9 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = t
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const loginUser = useSelector((state: RootState) => state.loginUser);
+  const canResetWithoutOldPassword = Boolean(
+    loginUser?.phone || loginUser?.email || loginUser?.githubId || loginUser?.giteeId || loginUser?.googleId
+  );
 
   const doSubmit = async (values: API.UserChangePasswordRequest) => {
     const hide = message.loading("正在操作");
@@ -58,14 +61,18 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = t
         <div className="mb-6 rounded-2xl bg-blue-50/70 px-4 py-3 text-sm text-blue-700">
           当前账号还没有单独设置登录密码。设置完成后，你就可以在解绑第三方账号后继续使用账号密码登录。
         </div>
+      ) : canResetWithoutOldPassword ? (
+        <div className="mb-6 rounded-2xl bg-amber-50/80 px-4 py-3 text-sm text-amber-700">
+          当前账号已绑定其他登录方式。如果你忘记了旧密码，可以直接留空并重置为新密码。
+        </div>
       ) : null}
       {passwordConfigured ? (
         <Form.Item
           label="旧密码"
           name="oldPassword"
-          rules={[{ required: true, message: "请输入旧密码" }]}
+          rules={canResetWithoutOldPassword ? [] : [{ required: true, message: "请输入旧密码" }]}
         >
-          <Input.Password placeholder="请输入旧密码" />
+          <Input.Password placeholder={canResetWithoutOldPassword ? "记得的话可以输入旧密码" : "请输入旧密码"} />
         </Form.Item>
       ) : null}
       <Form.Item

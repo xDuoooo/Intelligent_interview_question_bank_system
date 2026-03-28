@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import { Lock, Mail, Phone, User, ShieldCheck } from "lucide-react";
 import { message } from "antd";
@@ -54,6 +54,7 @@ const UserLoginPage: React.FC = () => {
   const [count, setCount] = useState(0);
   const [captchaData, setCaptchaData] = useState<{ image: string; uuid: string } | null>(null);
   const [captchaInput, setCaptchaInput] = useState("");
+  const hasHandledQueryFeedback = useRef(false);
 
   // 获取图形验证码
   const refreshCaptcha = async () => {
@@ -75,11 +76,19 @@ const UserLoginPage: React.FC = () => {
     if (typeof window === "undefined") {
       return;
     }
+    if (hasHandledQueryFeedback.current) {
+      return;
+    }
     const searchParams = new URLSearchParams(window.location.search);
     const error = searchParams.get("error");
     const msg = searchParams.get("msg");
     const account = searchParams.get("account");
     const nextLoginType = searchParams.get("loginType");
+
+    if (!error && !msg && !account && !nextLoginType) {
+      return;
+    }
+    hasHandledQueryFeedback.current = true;
 
     if (account) {
       setPasswordData((prev) => ({
@@ -95,9 +104,7 @@ const UserLoginPage: React.FC = () => {
     } else if (msg) {
       message.success(msg);
     }
-    if (error || msg || account || nextLoginType) {
-      router.replace(window.location.pathname);
-    }
+    router.replace(window.location.pathname);
   }, [router]);
 
   // 定时器处理

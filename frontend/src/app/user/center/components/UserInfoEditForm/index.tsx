@@ -8,7 +8,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
-import { User, FileText, ArrowRight, Camera, Loader2 } from "lucide-react";
+import { User, FileText, ArrowRight, Camera, Loader2, AtSign } from "lucide-react";
 import { validateImageSrc } from "@/lib/utils";
 import { buildApiUrl } from "@/libs/request";
 
@@ -146,6 +146,29 @@ const UserInfoEditForm = (props: Props) => {
         </div>
 
         <div className="grid grid-cols-1 gap-6">
+          <Form.Item
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <AtSign size={16} className="text-primary"/> 登录账号
+              </span>
+            }
+            name="userAccount"
+            rules={[
+              { required: true, message: '请输入登录账号' },
+              { min: 4, message: '账号至少 4 个字符' },
+              { max: 20, message: '账号最多 20 个字符' },
+              { pattern: /^[A-Za-z0-9_]+$/, message: '账号仅支持字母、数字和下划线' }
+            ]}
+            extra="这个账号会用于账号密码登录。建议改成你容易记住的名称。"
+          >
+            <Input
+              placeholder="例如：xduo_java"
+              showCount
+              maxLength={20}
+              className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
+            />
+          </Form.Item>
+
           <Form.Item
             label={
               <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
