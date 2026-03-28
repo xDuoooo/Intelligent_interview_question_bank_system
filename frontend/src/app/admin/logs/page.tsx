@@ -1,6 +1,7 @@
 "use client";
 import React, { useRef } from "react";
-import { ProTable, ActionType, ProColumns } from "@ant-design/pro-components";
+import ProTable from "@/components/DynamicProTable";
+import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Card, Typography, Space, Tag, Tooltip } from "antd";
 import { 
   ShieldAlert, 

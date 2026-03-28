@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import CreateModal from "./components/CreateModal";
-import UpdateModal from "./components/UpdateModal";
+import dynamic from "next/dynamic";
 import {
   deleteQuestionBankUsingPost,
   listQuestionBankByPageUsingPost,
 } from "@/api/questionBankController";
 import { Plus, Trash2, Edit3, Briefcase } from "lucide-react";
-import { ProTable } from "@ant-design/pro-components";
+import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Space, Typography, Image } from "antd";
+import { message, Space, Image } from "antd";
+
+const CreateModal = dynamic(() => import("./components/CreateModal"));
+const UpdateModal = dynamic(() => import("./components/UpdateModal"));
 
 /**
  * 题库管理页面
@@ -173,26 +175,30 @@ const QuestionBankAdminPage: React.FC = () => {
         />
       </div>
 
-      <CreateModal
-        visible={createModalVisible}
-        columns={columns}
-        onSubmit={() => {
-          setCreateModalVisible(false);
-          actionRef.current?.reload();
-        }}
-        onCancel={() => setCreateModalVisible(false)}
-      />
-      <UpdateModal
-        visible={updateModalVisible}
-        columns={columns}
-        oldData={currentRow}
-        onSubmit={() => {
-          setUpdateModalVisible(false);
-          setCurrentRow(undefined);
-          actionRef.current?.reload();
-        }}
-        onCancel={() => setUpdateModalVisible(false)}
-      />
+      {createModalVisible && (
+        <CreateModal
+          visible={createModalVisible}
+          columns={columns}
+          onSubmit={() => {
+            setCreateModalVisible(false);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setCreateModalVisible(false)}
+        />
+      )}
+      {updateModalVisible && currentRow && (
+        <UpdateModal
+          visible={updateModalVisible}
+          columns={columns}
+          oldData={currentRow}
+          onSubmit={() => {
+            setUpdateModalVisible(false);
+            setCurrentRow(undefined);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setUpdateModalVisible(false)}
+        />
+      )}
     </div>
   );
 };

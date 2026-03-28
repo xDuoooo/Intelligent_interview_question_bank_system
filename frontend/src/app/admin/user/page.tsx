@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import CreateModal from "./components/CreateModal";
-import UpdateModal from "./components/UpdateModal";
+import dynamic from "next/dynamic";
 import { deleteUserUsingPost, listUserByPageUsingPost } from "@/api/userController";
 import { Plus, Trash2, Edit3, UserCog } from "lucide-react";
-import { ProTable } from "@ant-design/pro-components";
+import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Space, Typography, Tag, Avatar } from "antd";
+import { message, Space, Tag, Avatar } from "antd";
+
+const CreateModal = dynamic(() => import("./components/CreateModal"));
+const UpdateModal = dynamic(() => import("./components/UpdateModal"));
 
 /**
  * 用户管理页面
@@ -189,27 +191,31 @@ const UserAdminPage: React.FC = () => {
         />
       </div>
 
-      <CreateModal
-        visible={createModalVisible}
-        columns={columns}
-        onSubmit={() => {
-          setCreateModalVisible(false);
-          actionRef.current?.reload();
-        }}
-        onCancel={() => setCreateModalVisible(false)}
-      />
-      
-      <UpdateModal
-        visible={updateModalVisible}
-        columns={columns}
-        oldData={currentRow}
-        onSubmit={() => {
-          setUpdateModalVisible(false);
-          setCurrentRow(undefined);
-          actionRef.current?.reload();
-        }}
-        onCancel={() => setUpdateModalVisible(false)}
-      />
+      {createModalVisible && (
+        <CreateModal
+          visible={createModalVisible}
+          columns={columns}
+          onSubmit={() => {
+            setCreateModalVisible(false);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setCreateModalVisible(false)}
+        />
+      )}
+
+      {updateModalVisible && currentRow && (
+        <UpdateModal
+          visible={updateModalVisible}
+          columns={columns}
+          oldData={currentRow}
+          onSubmit={() => {
+            setUpdateModalVisible(false);
+            setCurrentRow(undefined);
+            actionRef.current?.reload();
+          }}
+          onCancel={() => setUpdateModalVisible(false)}
+        />
+      )}
     </div>
   );
 };

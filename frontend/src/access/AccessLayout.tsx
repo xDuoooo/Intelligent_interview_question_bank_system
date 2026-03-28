@@ -19,7 +19,7 @@ const AccessLayout: React.FC<
     children: React.ReactNode;
   }>
 > = ({ children }) => {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const authInitialized = useAuthInitialized();
   // 当前登录用户
   const loginUser = useSelector((state: RootState) => state.loginUser);
