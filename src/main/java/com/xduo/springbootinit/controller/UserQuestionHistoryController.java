@@ -54,11 +54,15 @@ public class UserQuestionHistoryController {
         if (historyAddRequest == null || historyAddRequest.getQuestionId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        Integer status = historyAddRequest.getStatus();
+        if (status == null || status < 0 || status > 2) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "刷题状态不合法");
+        }
         final User loginUser = userService.getLoginUser(request);
         boolean result = userQuestionHistoryService.addQuestionHistory(
                 loginUser.getId(),
                 historyAddRequest.getQuestionId(),
-                historyAddRequest.getStatus()
+                status
         );
         return ResultUtils.success(result);
     }
@@ -69,6 +73,9 @@ public class UserQuestionHistoryController {
     @GetMapping("/my/favour/list")
     public BaseResponse<Page<QuestionVO>> listMyFavourQuestionByPage(int current, int pageSize,
                                                                     HttpServletRequest request) {
+        if (current <= 0 || pageSize <= 0 || pageSize > 50) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        }
         final User loginUser = userService.getLoginUser(request);
         Page<Question> page = new Page<>(current, pageSize);
         Page<QuestionVO> questionVOPage = userQuestionHistoryService.listMyFavourQuestionByPage(page, loginUser.getId(), request);
@@ -81,6 +88,9 @@ public class UserQuestionHistoryController {
     @GetMapping("/my/history/list")
     public BaseResponse<Page<UserQuestionHistoryVO>> listMyQuestionHistoryByPage(int current, int pageSize,
                                                                       HttpServletRequest request) {
+        if (current <= 0 || pageSize <= 0 || pageSize > 50) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        }
         final User loginUser = userService.getLoginUser(request);
         Page<UserQuestionHistory> page = new Page<>(current, pageSize);
         Page<UserQuestionHistoryVO> voPage = userQuestionHistoryService.listMyQuestionHistoryByPage(page, loginUser.getId(), request);
