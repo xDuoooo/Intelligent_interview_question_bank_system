@@ -61,6 +61,12 @@ const UserAdminPage: React.FC = () => {
       valueType: "text",
     },
     {
+      title: "城市",
+      dataIndex: "city",
+      valueType: "text",
+      render: (text) => text || <span className="text-slate-300">未填写</span>,
+    },
+    {
       title: "头像",
       dataIndex: "userAvatar",
       valueType: "image",
@@ -209,4 +215,3 @@ const UserAdminPage: React.FC = () => {
 };
 
 export default UserAdminPage;
-

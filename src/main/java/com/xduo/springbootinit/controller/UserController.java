@@ -317,7 +317,7 @@ public class UserController {
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
         User user = new User();
-        // 仅允许修改昵称、头像、简介
+        // 仅允许修改昵称、头像、简介、城市
         BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "githubId", "giteeId", "googleId");
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);

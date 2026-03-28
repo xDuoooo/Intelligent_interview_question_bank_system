@@ -30,6 +30,11 @@ public class UserUpdateRequest implements Serializable {
     private String userProfile;
 
     /**
+     * 所在城市
+     */
+    private String city;
+
+    /**
      * 用户角色：user/admin/ban
      */
     private String userRole;

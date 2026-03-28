@@ -86,13 +86,15 @@ spring:
     password: 123456
 ```
 
-2）执行 `sql/create_table.sql` 中的数据库语句，自动创建库表
+2）执行 `sql/create_table.sql` 中的数据库语句，自动创建完整库表
 
-3）启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
+3）如需导入默认管理员和演示题库数据，再执行 `sql/import_data.sql`
+
+4）启动项目，访问 `http://localhost:8101/api/doc.html` 即可打开接口文档，不需要写前端就能在线调试接口了~
 
 ### 默认管理员账号
 
-执行 `sql/add_admin.sql` 脚本，即可添加默认管理员账号：
+执行 `sql/import_data.sql` 脚本，即可初始化默认管理员账号和演示数据：
 
 - 账号：admin
 - 密码：12345678

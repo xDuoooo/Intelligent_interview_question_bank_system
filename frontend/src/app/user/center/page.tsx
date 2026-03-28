@@ -123,6 +123,11 @@ function UserCenterContent() {
                 <Tag className="rounded-full px-3 m-0 bg-slate-50 border-slate-100">
                   ID: {user.id}
                 </Tag>
+                {user.city ? (
+                  <Tag className="rounded-full px-3 m-0 bg-emerald-50 border-emerald-100 text-emerald-700">
+                    城市: {user.city}
+                  </Tag>
+                ) : null}
               </div>
 
               {/* 侧边栏快查数据 */}

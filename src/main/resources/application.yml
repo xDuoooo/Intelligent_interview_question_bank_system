@@ -33,7 +33,7 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 5000
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD:redis123}
   lettuce:
     pool:
       # 连接池最大连接数

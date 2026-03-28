@@ -161,6 +161,25 @@ const UserInfoEditForm = (props: Props) => {
           <Form.Item
             label={
               <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <FileText size={16} className="text-primary"/> 所在城市
+              </span>
+            }
+            name="city"
+            rules={[
+              { max: 20, message: '城市最多 20 个字符' }
+            ]}
+          >
+            <Input
+              placeholder="例如：沈阳 / 北京 / 杭州"
+              showCount
+              maxLength={20}
+              className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
                 <FileText size={16} className="text-primary"/> 个人简介
               </span>
             }

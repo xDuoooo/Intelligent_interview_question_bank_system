@@ -81,6 +81,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     @Override
     public Map<String, Object> getDashboardOverview() {
+        List<User> userList = userService.list();
         List<Question> questionList = questionService.list();
         List<UserQuestionHistory> historyList = userQuestionHistoryService.list();
         List<QuestionComment> commentList = questionCommentService.list();
@@ -94,6 +95,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         overviewData.put("todayStats", buildTodayStats(historyList, commentList, mockInterviewList, securityAlertList));
         overviewData.put("trend", buildTrend(historyList, commentList));
         overviewData.put("searchAnalytics", buildSearchAnalytics(searchLogList));
+        overviewData.put("geoDistribution", buildGeoDistribution(userList, historyList));
         overviewData.put("tagDistribution", buildTagDistribution(questionList));
         overviewData.put("questionHealth", buildQuestionHealth(questionList, historyList));
         overviewData.put("riskAlerts", buildRiskAlerts(securityAlertList));
@@ -318,6 +320,54 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return trend;
     }
 
+    private Map<String, Object> buildGeoDistribution(List<User> userList, List<UserQuestionHistory> historyList) {
+        Map<String, Object> geoDistribution = new HashMap<>();
+        Map<Long, String> userCityMap = userList.stream()
+                .filter(user -> StringUtils.isNotBlank(user.getCity()))
+                .collect(Collectors.toMap(User::getId, user -> normalizeCity(user.getCity()), (a, b) -> a));
+
+        Map<String, Long> cityUserCountMap = userCityMap.values().stream()
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.groupingBy(city -> city, Collectors.counting()));
+        Map<String, Long> cityPracticeCountMap = new HashMap<>();
+        for (UserQuestionHistory history : historyList) {
+            if (history.getUserId() == null) {
+                continue;
+            }
+            String city = userCityMap.get(history.getUserId());
+            if (StringUtils.isBlank(city)) {
+                continue;
+            }
+            cityPracticeCountMap.merge(city, 1L, Long::sum);
+        }
+
+        List<Map<String, Object>> cityList = cityUserCountMap.entrySet().stream()
+                .map(entry -> {
+                    String city = entry.getKey();
+                    long userCount = entry.getValue();
+                    long practiceCount = cityPracticeCountMap.getOrDefault(city, 0L);
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("city", city);
+                    item.put("userCount", userCount);
+                    item.put("practiceCount", practiceCount);
+                    item.put("avgPracticeCount", userCount == 0 ? 0D : Math.round(practiceCount * 100D / userCount) / 100D);
+                    return item;
+                })
+                .sorted(Comparator
+                        .comparingLong((Map<String, Object> item) -> ((Number) item.get("practiceCount")).longValue()).reversed()
+                        .thenComparing(Comparator.comparingLong((Map<String, Object> item) -> ((Number) item.get("userCount")).longValue()).reversed())
+                        .thenComparing(Comparator.comparingDouble((Map<String, Object> item) -> ((Number) item.get("avgPracticeCount")).doubleValue()).reversed()))
+                .limit(10)
+                .collect(Collectors.toList());
+
+        long filledUserCount = cityUserCountMap.values().stream().mapToLong(Long::longValue).sum();
+        geoDistribution.put("cityCount", cityUserCountMap.size());
+        geoDistribution.put("filledUserCount", filledUserCount);
+        geoDistribution.put("coverageRate", userList.isEmpty() ? 0D : Math.round(filledUserCount * 10000D / userList.size()) / 100D);
+        geoDistribution.put("cityList", cityList);
+        return geoDistribution;
+    }
+
     private List<Map<String, Object>> buildRiskAlerts(List<SecurityAlert> securityAlertList) {
         return securityAlertList.stream()
                 .filter(alert -> alert.getStatus() != null && alert.getStatus() == 0)
@@ -439,6 +489,17 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private Date toDate(LocalDate localDate, boolean startOfDay) {
         LocalDateTime localDateTime = startOfDay ? localDate.atStartOfDay() : localDate.atTime(LocalTime.MAX);
         return Date.from(localDateTime.atZone(ZoneId.of("Asia/Shanghai")).toInstant());
+    }
+
+    private String normalizeCity(String city) {
+        if (city == null) {
+            return null;
+        }
+        String normalizedCity = city.trim();
+        if (normalizedCity.endsWith("市")) {
+            normalizedCity = normalizedCity.substring(0, normalizedCity.length() - 1);
+        }
+        return normalizedCity;
     }
 
     private LocalDate toLocalDate(Date date) {

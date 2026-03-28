@@ -298,6 +298,7 @@ declare namespace API {
   };
 
   type LoginUserVO = {
+    city?: string;
     createTime?: string;
     email?: string;
     id?: number;
@@ -853,6 +854,7 @@ declare namespace API {
   };
 
   type User = {
+    city?: string;
     createTime?: string;
     editTime?: string;
     email?: string;
@@ -888,6 +890,7 @@ declare namespace API {
   };
 
   type UserAddRequest = {
+    city?: string;
     userAccount?: string;
     userAvatar?: string;
     userName?: string;
@@ -935,6 +938,7 @@ declare namespace API {
   };
 
   type UserUpdateMyRequest = {
+    city?: string;
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
@@ -958,6 +962,7 @@ declare namespace API {
   };
 
   type UserUpdateRequest = {
+    city?: string;
     id?: number;
     userAvatar?: string;
     userName?: string;
@@ -966,6 +971,7 @@ declare namespace API {
   };
 
   type UserVO = {
+    city?: string;
     createTime?: string;
     id?: number;
     userAvatar?: string;
