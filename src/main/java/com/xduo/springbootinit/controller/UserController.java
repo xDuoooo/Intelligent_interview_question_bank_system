@@ -319,6 +319,15 @@ public class UserController {
             userService.checkUserAccountUnique(userAccount, loginUser.getId());
             userUpdateMyRequest.setUserAccount(userAccount);
         }
+        if (StringUtils.isNotBlank(loginUser.getCity())) {
+            if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())
+                    && !StringUtils.equals(loginUser.getCity(), userUpdateMyRequest.getCity().trim())) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "城市信息已锁定，如需修改请联系管理员");
+            }
+            userUpdateMyRequest.setCity(loginUser.getCity());
+        } else if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())) {
+            userUpdateMyRequest.setCity(userUpdateMyRequest.getCity().trim());
+        }
         // 校验昵称唯一性
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
