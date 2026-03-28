@@ -3,6 +3,8 @@ import QuestionTable from "@/components/QuestionTable";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 /**
  * 题目列表页面
  * @constructor
@@ -67,4 +69,3 @@ export default async function QuestionsPage({
     </div>
   );
 }
-

@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ListFilter, Bookmark, Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 /**
  * 题库题目详情页
  * @constructor
@@ -136,4 +138,3 @@ export default async function BankQuestionPage({ params }: { params: { questionB
     </div>
   );
 }
-

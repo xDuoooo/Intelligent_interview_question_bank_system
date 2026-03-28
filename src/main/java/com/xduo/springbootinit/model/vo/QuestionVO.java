@@ -71,6 +71,11 @@ public class QuestionVO implements Serializable {
     private Integer favourNum;
 
     /**
+     * 推荐原因
+     */
+    private String recommendReason;
+
+    /**
      * 封装类转对象
      */
     public static Question voToObj(QuestionVO questionVO) {

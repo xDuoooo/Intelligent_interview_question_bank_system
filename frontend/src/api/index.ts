@@ -3,6 +3,7 @@
 // API 更新时间：
 // API 唯一标识：
 import * as wxMpController from './wxMpController';
+import * as adminDashboardController from './adminDashboardController';
 import * as fileController from './fileController';
 import * as mockInterviewController from './mockInterviewController';
 import * as postController from './postController';
@@ -14,6 +15,7 @@ import * as questionBankQuestionController from './questionBankQuestionControlle
 import * as testSaTokenLoginController from './testSaTokenLoginController';
 import * as userController from './userController';
 export default {
+  adminDashboardController,
   wxMpController,
   fileController,
   mockInterviewController,

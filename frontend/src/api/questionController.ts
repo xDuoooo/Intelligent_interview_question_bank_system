@@ -92,6 +92,55 @@ export async function getQuestionVoByIdUsingGet(
   });
 }
 
+/** listPersonalRecommendQuestionVO GET /api/question/recommend/personal */
+export async function listPersonalRecommendQuestionVoUsingGet(
+  params: {
+    questionId?: number;
+    size?: number;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseListQuestionVO_>('/api/question/recommend/personal', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** listRelatedQuestionVO GET /api/question/recommend/related */
+export async function listRelatedQuestionVoUsingGet(
+  params: {
+    questionId?: number;
+    size?: number;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseListQuestionVO_>('/api/question/recommend/related', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
+/** recommendQuestionsByResume POST /api/question/recommend/resume */
+export async function recommendQuestionsByResumeUsingPost(
+  body: API.QuestionResumeRecommendRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseResumeQuestionRecommendVO_>('/api/question/recommend/resume', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** listQuestionByPage POST /api/question/list/page */
 export async function listQuestionByPageUsingPost(
   body: API.QuestionQueryRequest,

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 /**
  * 题目详情页
  * @constructor
@@ -62,4 +64,3 @@ export default async function QuestionPage({ params }: { params: { questionId: s
     </div>
   );
 }
-

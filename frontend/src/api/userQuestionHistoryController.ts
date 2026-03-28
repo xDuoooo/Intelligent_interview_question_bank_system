@@ -83,3 +83,32 @@ export async function getMyQuestionStatsUsingGet(options?: { [key: string]: any 
     },
   );
 }
+
+/** getMyLearningGoal GET /api/user_question_history/my/goal */
+export async function getMyLearningGoalUsingGet(options?: { [key: string]: any }) {
+  return request<API.BaseResponseMapStringObject_>(
+    '/api/user_question_history/my/goal',
+    {
+      method: 'GET',
+      ...(options || {}),
+    },
+  );
+}
+
+/** updateMyLearningGoal POST /api/user_question_history/my/goal/update */
+export async function updateMyLearningGoalUsingPost(
+  body: { dailyTarget?: number; reminderEnabled?: boolean },
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>(
+    '/api/user_question_history/my/goal/update',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      data: body,
+      ...(options || {}),
+    },
+  );
+}

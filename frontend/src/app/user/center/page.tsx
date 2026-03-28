@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { Avatar, Card, Col, Row, Tag, Button, Typography, Modal, message, Popover } from "antd";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/stores";
@@ -29,6 +29,7 @@ import AccountSecurityCenter from "@/app/user/center/components/AccountSecurityC
 import LearningDataDashboard from "@/app/user/center/components/LearningDataDashboard";
 import MyFavourList from "@/app/user/center/components/MyFavourList";
 import LearningHistoryList from "@/app/user/center/components/LearningHistoryList";
+import ResumeRecommendPanel from "@/app/user/center/components/ResumeRecommendPanel";
 import "./index.css";
 
 const { Title, Paragraph, Text } = Typography;
@@ -36,7 +37,7 @@ const { Title, Paragraph, Text } = Typography;
 /**
  * 用户中心页面
  */
-export default function UserCenterPage() {
+function UserCenterContent() {
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const user = loginUser;
   const [activeTabKey, setActiveTabKey] = useState<string>("overview");
@@ -164,6 +165,9 @@ export default function UserCenterPage() {
             {activeTabKey === "overview" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <LearningDataDashboard />
+                <div className="mb-8">
+                  <ResumeRecommendPanel />
+                </div>
                 <Title level={5} className="flex items-center gap-2 mb-6">
                   <Calendar size={18} className="text-primary" /> 刷题热力图
                 </Title>
@@ -213,5 +217,13 @@ export default function UserCenterPage() {
         </div>
       </Modal>
     </div>
+  );
+}
+
+export default function UserCenterPage() {
+  return (
+    <Suspense fallback={<div className="max-width-content py-16 text-center text-slate-400">正在加载用户中心...</div>}>
+      <UserCenterContent />
+    </Suspense>
   );
 }

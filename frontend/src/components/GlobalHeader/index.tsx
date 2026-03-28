@@ -12,7 +12,7 @@ import { DEFAULT_USER } from "@/constants/user";
 import ACCESS_ENUM from "@/access/accessEnum";
 import getAccessibleMenus from "@/access/menuAccess";
 import { menus } from "../../../config/menu";
-import { cn } from "@/lib/utils";
+import { cn, validateImageSrc } from "@/lib/utils";
 import { Search, Menu, X, LogOut, User, Settings, Crown, ChevronDown } from "lucide-react";
 import NotificationPopover from "../NotificationPopover";
 
@@ -114,7 +114,7 @@ export default function GlobalHeader() {
                   </span>
                   <div className="relative h-8 w-8 rounded-full overflow-hidden ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all shadow-sm">
                     <Image
-                      src={loginUser.userAvatar || "/assets/logo.png"}
+                      src={validateImageSrc(loginUser.userAvatar)}
                       fill
                       alt="Avatar"
                       className="object-cover"

@@ -3,6 +3,8 @@ import QuestionBankList from "@/components/QuestionBankList";
 import { Compass } from "lucide-react";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 /**
  * 题库列表页面
  * @constructor
@@ -53,4 +55,3 @@ export default async function BanksPage() {
     </div>
   );
 }
-

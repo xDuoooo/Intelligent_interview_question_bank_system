@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.vo.QuestionVO;
+import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -62,4 +63,19 @@ public interface QuestionService extends IService<Question> {
 
     //分页查询题目
     Page<Question> listQuestionByPage(QuestionQueryRequest questionQueryRequest);
+
+    /**
+     * 获取个性化推荐题目
+     */
+    List<QuestionVO> listRecommendQuestionVOByUser(long userId, Long currentQuestionId, int size, HttpServletRequest request);
+
+    /**
+     * 获取当前题目的相关推荐
+     */
+    List<QuestionVO> listRelatedQuestionVO(long questionId, int size, HttpServletRequest request);
+
+    /**
+     * 根据简历内容推荐题目
+     */
+    ResumeQuestionRecommendVO recommendQuestionsByResume(long userId, String resumeText, int size, HttpServletRequest request);
 }

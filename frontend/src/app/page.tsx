@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
+import { getGlobalLeaderboardUsingGet } from "@/api/leaderboardController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import { headers } from "next/headers";
 import QuestionBankList from "@/components/QuestionBankList";
 import QuestionList from "@/components/QuestionList";
+import LeaderboardSection from "@/components/LeaderboardSection";
 import Image from "next/image";
 import { Trophy, Zap, ArrowRight } from "lucide-react";
 
@@ -17,6 +19,7 @@ export const dynamic = 'force-dynamic';
 export default async function HomePage() {
   let questionBankList: API.QuestionBankVO[] = [];
   let questionList: API.QuestionVO[] = [];
+  let leaderboard: API.GlobalLeaderboardVO | undefined = undefined;
   
   try {
     const questionBankRes = (await listQuestionBankVoByPageUsingPost({
@@ -46,6 +49,17 @@ export default async function HomePage() {
     questionList = latestQuestionListRes.data?.records ?? [];
   } catch (e) {
     console.error("获取题目列表失败", e);
+  }
+
+  try {
+    const leaderboardRes = (await getGlobalLeaderboardUsingGet({
+      headers: {
+        cookie: headers().get("cookie") || "",
+      }
+    })) as unknown as API.BaseResponseGlobalLeaderboardVO_;
+    leaderboard = leaderboardRes.data;
+  } catch (e) {
+    console.error("获取全站榜单失败", e);
   }
 
   return (
@@ -111,6 +125,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <LeaderboardSection leaderboard={leaderboard} />
 
       {/* Featured Banks Section */}
       <section className="relative space-y-10">

@@ -125,17 +125,17 @@ const UserAdminPage: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       {/* Premium Admin Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-           <UserCog className="h-24 w-24 text-primary" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-12 border border-white shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-5">
+           <UserCog className="h-32 w-32 text-slate-900" />
         </div>
-        <div className="relative z-10 space-y-2">
-           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-wider text-xs">
+        <div className="relative z-10 space-y-3">
+           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs">
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              ADMIN CONTROL PANEL
+              User Control Center
            </div>
-           <h1 className="text-3xl sm:text-4xl font-black tracking-tight">用户权限管理</h1>
-           <p className="text-slate-400 font-medium">查看、编辑和管理平台所有效户的访问权限。</p>
+           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">用户权限管理</h1>
+           <p className="text-slate-500 font-medium text-lg">高效查阅、编辑和精细化管理所有效户的访问权限。</p>
         </div>
         <div className="relative z-10">
           <button
@@ -168,7 +168,7 @@ const UserAdminPage: React.FC = () => {
               sortField,
               sortOrder,
               ...filter,
-            } as API.UserQueryRequest);
+            } as API.UserQueryRequest) as unknown as API.BaseResponsePageUser_;
             return {
               success: res.code === 0,
               data: res.data?.records || [],

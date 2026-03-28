@@ -8,6 +8,7 @@ import CommentSection from "@/components/CommentSection";
 import { Button, message, Segmented, Space, Typography } from "antd";
 import { doQuestionFavourUsingPost } from "@/api/questionFavourController";
 import { addQuestionHistoryUsingPost } from "@/api/userQuestionHistoryController";
+import QuestionRecommendPanel from "@/components/QuestionRecommendPanel";
 
 const { Text } = Typography;
 
@@ -127,6 +128,8 @@ const QuestionCard = (props: Props) => {
         </div>
       </section>
 
+      <QuestionRecommendPanel questionId={Number(question.id)} />
+
       {/* Discussion Section */}
       <CommentSection questionId={Number(question.id)} />
     </div>
@@ -134,4 +137,3 @@ const QuestionCard = (props: Props) => {
 };
 
 export default QuestionCard;
-

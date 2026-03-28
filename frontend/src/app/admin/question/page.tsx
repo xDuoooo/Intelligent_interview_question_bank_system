@@ -132,23 +132,22 @@ const QuestionAdminPage: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 rounded-[2.5rem] p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
-           <Database className="h-24 w-24 text-primary" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-12 border border-white shadow-2xl shadow-slate-200/50 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-5">
+           <Database className="h-32 w-32 text-slate-900" />
         </div>
-        <div className="relative z-10 space-y-2">
-           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-wider text-xs">
+        <div className="relative z-10 space-y-3">
+           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs">
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-              CONTENT MANAGEMENT
+              Question Repository
            </div>
-           <h1 className="text-3xl sm:text-4xl font-black tracking-tight">题目库管理</h1>
-           <p className="text-slate-400 font-medium">创建、编辑和批量组织平台的面试题目。</p>
+           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">题目库管理</h1>
+           <p className="text-slate-500 font-medium text-lg">高效组织、编辑和批量维护平台的面试题目内容。</p>
         </div>
         <div className="relative z-10 flex flex-wrap gap-3">
           <a
             href="/admin/question/ai"
-            target="_blank"
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white h-14 px-8 rounded-2xl font-black text-lg transition-all backdrop-blur-md border border-white/10"
+            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 h-14 px-8 rounded-2xl font-black text-lg transition-all border border-slate-200 shadow-sm"
           >
             <Wand2 className="h-6 w-6 text-primary" />
             AI 生成
@@ -211,7 +210,7 @@ const QuestionAdminPage: React.FC = () => {
               sortField,
               sortOrder,
               ...filter,
-            } as API.QuestionQueryRequest);
+            } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestionVO_;
             return {
               success: code === 0,
               data: data?.records || [],

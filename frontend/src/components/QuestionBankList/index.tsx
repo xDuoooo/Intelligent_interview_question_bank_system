@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { validateImageSrc } from "@/lib/utils";
 
 interface Props {
     questionBankList: API.QuestionBankVO[];
@@ -14,14 +15,10 @@ interface Props {
  */
 const QuestionBankList = (props: Props) => {
     const {questionBankList = []} = props;
-    const processedList = questionBankList.map(bank => ({
-        ...bank,
-        picture: (bank.picture || '/assets/logo.png')
-    }));
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {processedList.map((bank) => (
+            {questionBankList.map((bank) => (
                 <Link
                     key={bank.id}
                     href={`/bank/${bank.id}`}
@@ -30,7 +27,7 @@ const QuestionBankList = (props: Props) => {
                     <div
                         className="relative h-20 w-20 mb-4 rounded-3xl overflow-hidden ring-4 ring-slate-50 group-hover:ring-primary/20 transition-all shadow-inner">
                         <Image
-                            src={bank.picture || "/assets/logo.png"}
+                            src={validateImageSrc(bank.picture)}
                             fill
                             alt={bank.title || "题库"}
                             className="object-cover group-hover:scale-110 transition-transform duration-500"
