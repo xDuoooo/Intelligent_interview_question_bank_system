@@ -1,39 +1,27 @@
 # 公共配置文件
+# 说明：
+# 1. 这里只放所有环境都通用的基础配置
+# 2. 不要在这里放数据库、Redis、ES、邮件、第三方登录回调等强环境相关信息
+# 3. 环境相关配置分别放到 application-local.yml / application-test.yml / application-prod.yml
 
 spring:
+  # 应用基础信息
   application:
     name: Intelligent-interview-question-bank-system
-  devtools:
-    restart:
-      enabled: false
-  # 默认 dev 环境
+  # 默认使用 local 环境，可通过 SPRING_PROFILES_ACTIVE 覆盖
   profiles:
-    active: dev
-  # 支持 swagger3
+    default: local
+  # 兼容 Swagger / Knife4j 在 Spring Boot 3 下的路径匹配
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
-  # session 配置
+  # 会话配置
   session:
-    # todo 取消注释开启分布式 session（须先配置 Redis）
+    # 如需开启分布式登录，可取消下面注释并确保 Redis 配好
     # store-type: redis
-    # 30 天过期
+    # Session 过期时间：30 天
     timeout: 2592000
-  # 数据库配置
-  # todo 需替换配置
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/Intelligent_interview_question_bank_system}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:root123456}
-  # Redis 配置
-  data:
-    redis:
-      database: 0
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: 5000
-      password: ${REDIS_PASSWORD:redis123}
+  # Redis 连接池参数
   lettuce:
     pool:
       # 连接池最大连接数
@@ -44,88 +32,45 @@ spring:
       max-idle: 10
       # 连接池中的最小空闲连接
       min-idle: 0
-  # 邮件服务配置
-  mail:
-    host: ${MAIL_HOST:smtp.qq.com}
-    port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:auto-sender@example.com}
-    password: ${MAIL_PASSWORD:}
-    protocol: smtps
-    default-encoding: UTF-8
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          ssl:
-            enable: true
-
-  # Elasticsearch 配置
-  elasticsearch:
-    uris: ${ES_URIS:https://localhost:9200}
-    username: ${ES_USERNAME:elastic}
-    password: ${ES_PASSWORD:*jJUA7k*ftJ36aEjqQG7}
-  # 文件上传
+  # 文件上传限制
   servlet:
     multipart:
       # 单个文件限制
       max-file-size: 2MB
       # 单次请求总限制
       max-request-size: 4MB
-  cloud:
-    nacos:
-      discovery:
-        server-addr: 127.0.0.1:8848
-      config:
-        server-addr: 127.0.0.1:8848
-        file-extension: yml
-        shared-configs:
-          - data-id: common.yml
-            refresh: true
-    sentinel:
-      transport:
-        dashboard: localhost:8138
-  # Spring Boot 3 推荐使用这种方式导入 Nacos 配置
-  config:
-    import:
-      - optional:nacos:Intelligent-interview-question-bank-system.yml
 
-# 自定义 Nacos 配置属性（给 NacosListener 使用）
+# Nacos 黑名单监听器自定义配置
 nacos:
   config:
+    # 远程黑名单配置文件名
     data-id: black-ip-list.yml
+    # 所属分组
     group: DEFAULT_GROUP
+
+# Web 服务基础配置
 server:
-  address: 0.0.0.0
-  port: 8101
   servlet:
+    # 所有后端接口统一以 /api 开头
     context-path: /api
-    # cookie 30 天过期
+    # Session Cookie 30 天过期
     session:
       cookie:
         max-age: 2592000
+
+# MyBatis Plus 全局行为
 mybatis-plus:
   configuration:
+    # false 表示严格按数据库字段名映射，不自动转驼峰
     map-underscore-to-camel-case: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名
       logic-delete-value: 1 # 逻辑已删除值（默认为 1）
       logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
-# 对象存储
-# todo 需替换配置
-cos:
-  client:
-    accessKey: ${COS_ACCESS_KEY:xxx}
-    secretKey: ${COS_SECRET_KEY:xxx}
-    region: ${COS_REGION:xxx}
-    bucket: ${COS_BUCKET:xxx}
-# 接口文档配置
+
+# Knife4j / OpenAPI 文档元信息
 knife4j:
-  enable: true
   openapi:
     title: "接口文档"
     version: 1.0
@@ -134,7 +79,7 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.xduo.springbootinit.controller
-# Sa-Token 配置
+# Sa-Token 登录态与权限框架配置
 sa-token:
   # token 名称（同时也是 cookie 名称）
   token-name: zhimian
@@ -150,33 +95,3 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
-# 阿里云短信配置
-aliyun:
-  sms:
-    accessKeyId: your_access_key_id
-    accessKeySecret: your_access_key_secret
-    signName: 智面平台
-    templateCode: SMS_xxxxxxx
-# 社交登录配置
-# 社交登录配置
-social:
-  github:
-    id: ${GITHUB_CLIENT_ID:}
-    secret: ${GITHUB_CLIENT_SECRET:}
-    redirect-uri: ${GITHUB_REDIRECT_URI:http://localhost:8101/api/user/login/github/callback}
-  gitee:
-    id: ${GITEE_CLIENT_ID:}
-    secret: ${GITEE_CLIENT_SECRET:}
-    redirect-uri: ${GITEE_REDIRECT_URI:http://localhost:8101/api/user/login/gitee/callback}
-  google:
-    id: ${GOOGLE_CLIENT_ID:}
-    secret: ${GOOGLE_CLIENT_SECRET:}
-    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8101/api/user/login/google/callback}
-# AI 配置
-ai:
-  api-key: ${AI_API_KEY:}
-  host: ${AI_HOST:https://api.deepseek.com/v1}
-  model: ${AI_MODEL:deepseek-chat}
-
-app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}

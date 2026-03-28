@@ -6,6 +6,8 @@ import com.alibaba.nacos.api.config.listener.Listener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.Resource;
@@ -13,6 +15,8 @@ import java.util.concurrent.Executor;
 
 @Slf4j
 @Component
+@ConditionalOnBean(NacosConfigManager.class)
+@ConditionalOnProperty(prefix = "spring.cloud.nacos.config", name = "enabled", havingValue = "true")
 public class NacosListener implements InitializingBean {
 
     @Resource
