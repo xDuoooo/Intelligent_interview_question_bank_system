@@ -15,22 +15,50 @@ export const dynamic = "force-dynamic";
  */
 export default async function BankQuestionPage({ params }: { params: { questionBankId: string, questionId: string } }) {
   const { questionBankId, questionId } = params;
+  const requestOptions = {
+    headers: {
+      cookie: headers().get("cookie") || "",
+    },
+  };
 
   // 获取题库详情
   let bank: API.QuestionBankVO | undefined = undefined;
-  try {
-    const res = await getQuestionBankVoByIdUsingGet({
-      id: Number(questionBankId),
-      needQueryQuestionList: true,
-      pageSize: 200,
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    }) as unknown as API.BaseResponseQuestionBankVO_;
+  let question: API.QuestionVO | undefined = undefined;
+  let isNotLogin = false;
+
+  const [bankResult, questionResult] = await Promise.allSettled([
+    getQuestionBankVoByIdUsingGet(
+      {
+        id: Number(questionBankId),
+        needQueryQuestionList: true,
+        pageSize: 200,
+      },
+      requestOptions,
+    ),
+    getQuestionVoByIdUsingGet(
+      {
+        id: Number(questionId),
+      },
+      requestOptions,
+    ),
+  ]);
+
+  if (bankResult.status === "fulfilled") {
+    const res = bankResult.value as unknown as API.BaseResponseQuestionBankVO_;
     bank = res.data;
-  } catch (e) {
-    console.error("获取题库详情失败", e);
+  } else {
+    console.error("获取题库详情失败", bankResult.reason);
+  }
+
+  if (questionResult.status === "fulfilled") {
+    const res = questionResult.value as unknown as API.BaseResponseQuestionVO_;
+    if (res.code === 40100) {
+      isNotLogin = true;
+    } else {
+      question = res.data;
+    }
+  } else {
+    console.error("获取题目详情失败", questionResult.reason);
   }
 
   if (!bank) {
@@ -44,28 +72,6 @@ export default async function BankQuestionPage({ params }: { params: { questionB
         <Link href="/" className="text-primary font-bold hover:underline">返回首页</Link>
       </div>
     );
-  }
-
-  // 获取题目详情
-  let question: API.QuestionVO | undefined = undefined;
-  let isNotLogin = false;
-
-  try {
-    const res = await getQuestionVoByIdUsingGet({
-      id: Number(questionId),
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    }) as unknown as API.BaseResponseQuestionVO_;
-
-    if (res.code === 40100) {
-      isNotLogin = true;
-    } else {
-      question = res.data;
-    }
-  } catch (e) {
-    console.error("获取题目详情失败", e);
   }
 
   if (!question) {

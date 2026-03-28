@@ -20,46 +20,52 @@ export default async function HomePage() {
   let questionBankList: API.QuestionBankVO[] = [];
   let questionList: API.QuestionVO[] = [];
   let leaderboard: API.GlobalLeaderboardVO | undefined = undefined;
-  
-  try {
-    const questionBankRes = (await listQuestionBankVoByPageUsingPost({
-      pageSize: 8,
-      sortField: "createTime",
-      sortOrder: "descend",
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponsePageQuestionBankVO_;
+  const cookie = headers().get("cookie") || "";
+  const requestOptions = {
+    headers: {
+      cookie,
+    },
+  };
+
+  const [questionBankResult, latestQuestionResult, leaderboardResult] = await Promise.allSettled([
+    listQuestionBankVoByPageUsingPost(
+      {
+        pageSize: 8,
+        sortField: "createTime",
+        sortOrder: "descend",
+      },
+      requestOptions,
+    ),
+    listQuestionVoByPageUsingPost(
+      {
+        pageSize: 12,
+        sortField: "createTime",
+        sortOrder: "descend",
+      },
+      requestOptions,
+    ),
+    getGlobalLeaderboardUsingGet(requestOptions),
+  ]);
+
+  if (questionBankResult.status === "fulfilled") {
+    const questionBankRes = questionBankResult.value as unknown as API.BaseResponsePageQuestionBankVO_;
     questionBankList = questionBankRes.data?.records ?? [];
-  } catch (e) {
-    console.error("获取题库列表失败", e);
+  } else {
+    console.error("获取题库列表失败", questionBankResult.reason);
   }
 
-  try {
-    const latestQuestionListRes = (await listQuestionVoByPageUsingPost({
-      pageSize: 12,
-      sortField: "createTime",
-      sortOrder: "descend",
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponsePageQuestionVO_;
+  if (latestQuestionResult.status === "fulfilled") {
+    const latestQuestionListRes = latestQuestionResult.value as unknown as API.BaseResponsePageQuestionVO_;
     questionList = latestQuestionListRes.data?.records ?? [];
-  } catch (e) {
-    console.error("获取题目列表失败", e);
+  } else {
+    console.error("获取题目列表失败", latestQuestionResult.reason);
   }
 
-  try {
-    const leaderboardRes = (await getGlobalLeaderboardUsingGet({
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponseGlobalLeaderboardVO_;
+  if (leaderboardResult.status === "fulfilled") {
+    const leaderboardRes = leaderboardResult.value as unknown as API.BaseResponseGlobalLeaderboardVO_;
     leaderboard = leaderboardRes.data;
-  } catch (e) {
-    console.error("获取全站榜单失败", e);
+  } else {
+    console.error("获取全站榜单失败", leaderboardResult.reason);
   }
 
   return (

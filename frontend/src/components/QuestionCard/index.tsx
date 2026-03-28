@@ -1,16 +1,31 @@
 "use client";
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import TagList from "@/components/TagList";
 import MdViewer from "@/components/MdViewer";
 import useAddUserSignInRecord from "@/hooks/useAddUserSignInRecord";
 import { Sparkles, CheckCircle2, Heart } from "lucide-react";
-import CommentSection from "@/components/CommentSection";
 import { Button, message, Segmented, Space, Typography } from "antd";
 import { doQuestionFavourUsingPost } from "@/api/questionFavourController";
 import { addQuestionHistoryUsingPost } from "@/api/userQuestionHistoryController";
-import QuestionRecommendPanel from "@/components/QuestionRecommendPanel";
 
 const { Text } = Typography;
+
+const QuestionRecommendPanel = dynamic(() => import("@/components/QuestionRecommendPanel"), {
+  loading: () => (
+    <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
+      正在加载推荐内容...
+    </section>
+  ),
+});
+
+const CommentSection = dynamic(() => import("@/components/CommentSection"), {
+  loading: () => (
+    <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
+      正在加载评论区...
+    </section>
+  ),
+});
 
 interface Props {
   question: API.QuestionVO;

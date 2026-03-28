@@ -1,10 +1,10 @@
 "use client";
-import React, { Suspense, useEffect, useRef, useState } from "react";
-import { Avatar, Card, Col, Row, Tag, Button, Typography, Modal, message, Popover } from "antd";
-import { useSelector, useDispatch } from "react-redux";
+import React, { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { Avatar, Card, Col, Row, Tag, Button, Typography, Modal, message, Progress } from "antd";
+import { useSelector } from "react-redux";
 import { RootState } from "@/stores";
-import { useSearchParams, useRouter } from "next/navigation";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import {
   Edit,
@@ -19,20 +19,38 @@ import {
 } from "lucide-react";
 
 import { getMyQuestionStatsUsingGet } from "@/api/userQuestionHistoryController";
-import { getLoginUserUsingGet } from "@/api/userController";
-import { setLoginUser } from "@/stores/loginUser";
 import { USER_ROLE_ENUM, USER_ROLE_TEXT_MAP } from "@/constants/user";
-
-import CalendarChart from "@/app/user/center/components/CalendarChart";
-import UserInfoEditForm from "@/app/user/center/components/UserInfoEditForm";
-import AccountSecurityCenter from "@/app/user/center/components/AccountSecurityCenter";
-import LearningDataDashboard from "@/app/user/center/components/LearningDataDashboard";
-import MyFavourList from "@/app/user/center/components/MyFavourList";
-import LearningHistoryList from "@/app/user/center/components/LearningHistoryList";
-import ResumeRecommendPanel from "@/app/user/center/components/ResumeRecommendPanel";
 import "./index.css";
 
 const { Title, Paragraph, Text } = Typography;
+
+const UserInfoEditForm = dynamic(() => import("@/app/user/center/components/UserInfoEditForm"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载资料表单...</div>,
+});
+
+const AccountSecurityCenter = dynamic(() => import("@/app/user/center/components/AccountSecurityCenter"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载账号安全...</div>,
+});
+
+const LearningDataDashboard = dynamic(() => import("@/app/user/center/components/LearningDataDashboard"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载学习数据...</div>,
+});
+
+const MyFavourList = dynamic(() => import("@/app/user/center/components/MyFavourList"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载收藏列表...</div>,
+});
+
+const LearningHistoryList = dynamic(() => import("@/app/user/center/components/LearningHistoryList"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载刷题轨迹...</div>,
+});
+
+const ResumeRecommendPanel = dynamic(() => import("@/app/user/center/components/ResumeRecommendPanel"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载简历推荐...</div>,
+});
+
+const CalendarChart = dynamic(() => import("@/app/user/center/components/CalendarChart"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载热力图...</div>,
+});
 
 /**
  * 用户中心页面
@@ -44,7 +62,6 @@ function UserCenterContent() {
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [stats, setStats] = useState<any>({});
 
-  const searchParams = useSearchParams();
   const router = useRouter();
   const hasShownMessage = useRef(false);
 
@@ -58,12 +75,16 @@ function UserCenterContent() {
 
   useEffect(() => {
     fetchStats();
-  }, [user]);
+  }, [user.id]);
 
   // 处理来自三方跳转的提示消息
   useEffect(() => {
-    const error = searchParams.get("error");
-    const msg = searchParams.get("msg");
+    if (typeof window === "undefined") {
+      return;
+    }
+    const currentSearchParams = new URLSearchParams(window.location.search);
+    const error = currentSearchParams.get("error");
+    const msg = currentSearchParams.get("msg");
     if ((error || msg) && !hasShownMessage.current) {
       if (error) message.error(error);
       if (msg) message.success(msg);
@@ -71,7 +92,7 @@ function UserCenterContent() {
       setActiveTabKey("security");
       router.replace(window.location.pathname);
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   const onTabChange = (key: string) => {
     setActiveTabKey(key);
@@ -169,10 +190,90 @@ function UserCenterContent() {
           >
             {activeTabKey === "overview" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
-                <LearningDataDashboard />
+                <div className="space-y-8">
+                  <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/30">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                      <div className="space-y-3">
+                        <Title level={4} style={{ margin: 0 }}>
+                          {user.userName || "同学"}，欢迎来到你的个人概览
+                        </Title>
+                        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                          这里更适合快速查看当前学习状态和常用入口；更完整的目标、成就、热力图和刷题记录已经集中放到“成就看板”里了。
+                        </Paragraph>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button type="primary" onClick={() => setActiveTabKey("record")}>
+                          查看成就看板
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("favour")}>
+                          查看收藏题目
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("security")}>
+                          账号安全
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={12} xl={6}>
+                      <Card bordered={false} className="stats-card">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-blue-400">累计刷题</div>
+                        <div className="mt-2 text-3xl font-black text-slate-900">{stats.totalCount || 0}</div>
+                        <div className="mt-2 text-sm text-slate-500">到目前为止完成的题目总数</div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} xl={6}>
+                      <Card bordered={false} className="stats-card">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-emerald-500">已掌握</div>
+                        <div className="mt-2 text-3xl font-black text-slate-900">{stats.masteredCount || 0}</div>
+                        <div className="mt-2 text-sm text-slate-500">已经标记为掌握的题目数量</div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} xl={6}>
+                      <Card bordered={false} className="stats-card">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-orange-500">连续学习</div>
+                        <div className="mt-2 text-3xl font-black text-slate-900">{stats.currentStreak || 0}</div>
+                        <div className="mt-2 text-sm text-slate-500">当前保持连续学习的天数</div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={12} xl={6}>
+                      <Card bordered={false} className="stats-card">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-violet-500">今日进度</div>
+                        <div className="mt-2 text-3xl font-black text-slate-900">
+                          {stats.todayCount || 0} / {stats.dailyTarget || 3}
+                        </div>
+                        <div className="mt-3">
+                          <Progress
+                            percent={Math.min(
+                              100,
+                              Math.round(
+                                ((Number(stats.todayCount || 0) || 0) /
+                                  Math.max(Number(stats.dailyTarget || 3), 1)) * 100,
+                              ),
+                            )}
+                            showInfo={false}
+                            strokeColor={stats.goalCompletedToday ? "#52c41a" : "#1677ff"}
+                          />
+                        </div>
+                      </Card>
+                    </Col>
+                  </Row>
+
                 <div className="mb-8">
                   <ResumeRecommendPanel />
                 </div>
+                </div>
+              </div>
+            )}
+            {activeTabKey === "security" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <AccountSecurityCenter user={user} />
+              </div>
+            )}
+            {activeTabKey === "record" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <LearningDataDashboard />
                 <Title level={5} className="flex items-center gap-2 mb-6">
                   <Calendar size={18} className="text-primary" /> 刷题热力图
                 </Title>
@@ -185,12 +286,6 @@ function UserCenterContent() {
                 <LearningHistoryList limit={5} />
               </div>
             )}
-            {activeTabKey === "security" && (
-              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
-                <AccountSecurityCenter user={user} />
-              </div>
-            )}
-            {activeTabKey === "record" && <LearningDataDashboard />}
             {activeTabKey === "favour" && <MyFavourList />}
             {activeTabKey === "history" && <LearningHistoryList />}
           </Card>
@@ -226,9 +321,5 @@ function UserCenterContent() {
 }
 
 export default function UserCenterPage() {
-  return (
-    <Suspense fallback={<div className="max-width-content py-16 text-center text-slate-400">正在加载用户中心...</div>}>
-      <UserCenterContent />
-    </Suspense>
-  );
+  return <UserCenterContent />;
 }
