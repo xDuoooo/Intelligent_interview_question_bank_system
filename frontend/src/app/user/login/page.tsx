@@ -71,6 +71,35 @@ const UserLoginPage: React.FC = () => {
     refreshCaptcha();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const searchParams = new URLSearchParams(window.location.search);
+    const error = searchParams.get("error");
+    const msg = searchParams.get("msg");
+    const account = searchParams.get("account");
+    const nextLoginType = searchParams.get("loginType");
+
+    if (account) {
+      setPasswordData((prev) => ({
+        ...prev,
+        userAccount: account,
+      }));
+    }
+    if (nextLoginType === "password") {
+      setLoginType("password");
+    }
+    if (error) {
+      message.error(error);
+    } else if (msg) {
+      message.success(msg);
+    }
+    if (error || msg || account || nextLoginType) {
+      router.replace(window.location.pathname);
+    }
+  }, [router]);
+
   // 定时器处理
   useEffect(() => {
     let timer: any;
@@ -197,7 +226,7 @@ const UserLoginPage: React.FC = () => {
                     <input
                       type="text"
                       className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
-                      placeholder="用户名 / 手机号 / 邮箱"
+                      placeholder="账号 / 手机号 / 邮箱"
                       value={passwordData.userAccount}
                       onChange={(e) => setPasswordData({ ...passwordData, userAccount: e.target.value })}
                     />

@@ -80,8 +80,11 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
   const refreshLoginUser = async () => {
     const res = await getLoginUserUsingGet();
     if (res.data) {
-      dispatch(setLoginUser(res.data as API.LoginUserVO));
+      const latestUser = res.data as API.LoginUserVO;
+      dispatch(setLoginUser(latestUser));
+      return latestUser;
     }
+    return undefined;
   };
 
   const refreshCaptcha = async () => {
@@ -237,8 +240,19 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
           if (type === "github") await unbindGithubUsingPost();
           if (type === "gitee") await unbindGiteeUsingPost();
           if (type === "google") await unbindGoogleUsingPost();
-          await refreshLoginUser();
-          message.success("解绑成功");
+          const latestUser = await refreshLoginUser();
+          const onlyPasswordLoginLeft =
+            Number(latestUser?.passwordConfigured || 0) === 1 &&
+            !latestUser?.phone &&
+            !latestUser?.email &&
+            !latestUser?.githubId &&
+            !latestUser?.giteeId &&
+            !latestUser?.googleId;
+          if (onlyPasswordLoginLeft && latestUser?.userAccount) {
+            message.success(`解绑成功，后续请使用账号 ${latestUser.userAccount} 和密码登录`);
+          } else {
+            message.success("解绑成功");
+          }
         } catch (error: any) {
           message.error("解绑失败：" + (error?.message || "请稍后重试"));
         } finally {
@@ -249,6 +263,27 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
   };
 
   const securityItems = [
+    {
+      key: "account",
+      title: "登录账号",
+      description: user.userAccount
+        ? `当前密码登录账号：${user.userAccount}`
+        : "当前账号暂无可展示的登录账号",
+      status: user.userAccount ? <Tag color="processing">可用于密码登录</Tag> : <Tag>未生成</Tag>,
+      icon: <Key size={20} className="text-slate-500" />,
+      action: user.userAccount ? (
+        <Text
+          copyable={{ text: user.userAccount, tooltips: ["复制账号", "已复制"] }}
+          className="text-sm text-primary"
+        >
+          复制账号
+        </Text>
+      ) : (
+        <Text type="secondary" className="text-sm">
+          暂无
+        </Text>
+      ),
+    },
     {
       key: "password",
       title: "登录密码",

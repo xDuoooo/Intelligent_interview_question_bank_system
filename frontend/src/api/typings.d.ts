@@ -311,6 +311,7 @@ declare namespace API {
     passwordConfigured?: number;
     phone?: string;
     updateTime?: string;
+    userAccount?: string;
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
