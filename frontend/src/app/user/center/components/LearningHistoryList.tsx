@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { List, message } from "antd";
+import { Empty, List, message } from "antd";
 import Link from "next/link";
 import { listMyQuestionHistoryByPageUsingGet } from "@/api/userQuestionHistoryController";
 import TagList from "@/components/TagList";
@@ -43,6 +43,9 @@ const LearningHistoryList: React.FC<Props> = ({ limit }) => {
       loading={loading}
       itemLayout="horizontal"
       dataSource={dataList}
+      locale={{
+        emptyText: <Empty description="还没有刷题记录，去做几道题试试看" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+      }}
       pagination={limit ? false : {
         onChange: (page) => setParams({ ...params, current: page }),
         current: params.current,
