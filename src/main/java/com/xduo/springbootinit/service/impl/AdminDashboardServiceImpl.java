@@ -247,18 +247,18 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private List<Map<String, Object>> buildTopSearchKeywords(boolean onlyNoResult) {
         QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
         queryWrapper.select(
-                "searchText as keyword",
+                "LOWER(TRIM(searchText)) as keyword",
                 "count(*) as count",
                 "sum(case when hasNoResult = 1 then 1 else 0 end) as zeroResultCount",
                 "sum(resultCount) as resultCountTotal",
                 "max(createTime) as lastSearchTime"
         );
         queryWrapper.isNotNull("searchText");
-        queryWrapper.ne("searchText", "");
+        queryWrapper.apply("TRIM(searchText) <> ''");
         if (onlyNoResult) {
             queryWrapper.eq("hasNoResult", 1);
         }
-        queryWrapper.groupBy("searchText");
+        queryWrapper.groupBy("LOWER(TRIM(searchText))");
         queryWrapper.last("order by count(*) desc, max(createTime) desc limit " + (onlyNoResult ? 10 : 20));
 
         return questionSearchLogService.listMaps(queryWrapper).stream()
@@ -431,10 +431,10 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private int countDistinctSearchKeyword() {
         QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("distinct searchText");
+        queryWrapper.select("distinct LOWER(TRIM(searchText)) as keyword");
         queryWrapper.isNotNull("searchText");
-        queryWrapper.ne("searchText", "");
-        return questionSearchLogService.listObjs(queryWrapper).size();
+        queryWrapper.apply("TRIM(searchText) <> ''");
+        return questionSearchLogService.listMaps(queryWrapper).size();
     }
 
     private List<User> listUserCitySnapshot() {
