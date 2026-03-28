@@ -289,6 +289,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StringUtils.isBlank(userAccount)) {
             return;
         }
+        validateUserAccount(userAccount);
         long count = this.count(new QueryWrapper<User>().eq("userAccount", userAccount).ne(userId != null, "id", userId));
         if (count > 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号已存在");

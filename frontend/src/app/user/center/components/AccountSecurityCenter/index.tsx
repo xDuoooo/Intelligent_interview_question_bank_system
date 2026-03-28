@@ -20,6 +20,7 @@ import {
   unbindGiteeUsingPost, 
   unbindGoogleUsingPost,
   unbindPhoneUsingPost,
+  updateMyUserUsingPost,
 } from "@/api/userController";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
@@ -41,13 +42,16 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
   const dispatch = useDispatch<AppDispatch>();
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [bindModalVisible, setBindModalVisible] = useState(false);
+  const [accountModalVisible, setAccountModalVisible] = useState(false);
   const [bindType, setBindType] = useState<"phone" | "email" | null>(null);
   const [bindTarget, setBindTarget] = useState("");
   const [bindCode, setBindCode] = useState("");
+  const [accountValue, setAccountValue] = useState("");
   const [captchaInput, setCaptchaInput] = useState("");
   const [captchaData, setCaptchaData] = useState<{ image: string; uuid: string } | null>(null);
   const [sendCodeLoading, setSendCodeLoading] = useState(false);
   const [bindLoading, setBindLoading] = useState(false);
+  const [accountLoading, setAccountLoading] = useState(false);
   const [unbindLoadingType, setUnbindLoadingType] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
   const hasPasswordConfigured = Number(user.passwordConfigured || 0) === 1;
@@ -125,6 +129,11 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     setCaptchaInput("");
     setCountdown(0);
     setBindModalVisible(true);
+  };
+
+  const openAccountModal = () => {
+    setAccountValue(user.userAccount || "");
+    setAccountModalVisible(true);
   };
 
   const handleSendCode = async () => {
@@ -227,6 +236,33 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     });
   };
 
+  const handleUpdateAccount = async () => {
+    const nextAccount = accountValue.trim();
+    if (!nextAccount) {
+      message.warning("请输入登录账号");
+      return;
+    }
+    if (nextAccount.length < 4 || nextAccount.length > 20) {
+      message.warning("账号长度需在 4 到 20 个字符之间");
+      return;
+    }
+    if (!/^[A-Za-z0-9_]+$/.test(nextAccount)) {
+      message.warning("账号仅支持字母、数字和下划线");
+      return;
+    }
+    setAccountLoading(true);
+    try {
+      await updateMyUserUsingPost({ userAccount: nextAccount });
+      await refreshLoginUser();
+      setAccountModalVisible(false);
+      message.success("登录账号修改成功");
+    } catch (error: any) {
+      message.error(error?.message || "登录账号修改失败");
+    } finally {
+      setAccountLoading(false);
+    }
+  };
+
   // 解绑逻辑
   const handleUnbind = async (type: "github" | "gitee" | "google") => {
     const providerLabel = getSocialAuthProviderLabel(type);
@@ -274,16 +310,17 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
         : <Tag>未生成</Tag>,
       icon: <Key size={20} className="text-slate-500" />,
       action: user.userAccount ? (
-        <Text
-          copyable={{ text: user.userAccount, tooltips: ["复制账号", "已复制"] }}
-          className="text-sm text-primary"
-        >
-          复制账号
-        </Text>
+        <div className="flex items-center gap-2">
+          <Button type="link" onClick={openAccountModal}>修改账号</Button>
+          <Text
+            copyable={{ text: user.userAccount, tooltips: ["复制账号", "已复制"] }}
+            className="text-sm text-primary"
+          >
+            复制账号
+          </Text>
+        </div>
       ) : (
-        <Text type="secondary" className="text-sm">
-          暂无
-        </Text>
+        <Button type="link" onClick={openAccountModal}>设置账号</Button>
       ),
     },
     {
@@ -393,6 +430,30 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
           </List.Item>
         )}
       />
+
+      <Modal
+        title="修改登录账号"
+        open={accountModalVisible}
+        onCancel={() => setAccountModalVisible(false)}
+        onOk={handleUpdateAccount}
+        okText="保存账号"
+        cancelText="取消"
+        confirmLoading={accountLoading}
+        destroyOnClose
+        centered
+      >
+        <div className="space-y-4 pt-4">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            登录账号用于账号密码登录。建议改成你容易记住的名称，支持字母、数字和下划线。
+          </div>
+          <Input
+            value={accountValue}
+            placeholder="例如：xduo_java"
+            maxLength={20}
+            onChange={(e) => setAccountValue(e.target.value)}
+          />
+        </div>
+      </Modal>
 
       <Modal
         title={hasPasswordConfigured ? "修改登录密码" : "设置登录密码"}
