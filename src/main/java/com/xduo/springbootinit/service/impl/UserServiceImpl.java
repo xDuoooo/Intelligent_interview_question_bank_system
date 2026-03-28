@@ -75,12 +75,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword,
             HttpServletRequest request) {
+        userAccount = StringUtils.trim(userAccount);
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
-        if (userAccount.length() < 4) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
-        }
+        validateUserAccount(userAccount);
         if (userPassword.length() < 8 || !userPassword.equals(checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户密码过短或两次密码不一致");
         }
@@ -286,6 +285,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public void checkUserAccountUnique(String userAccount, Long userId) {
+        if (StringUtils.isBlank(userAccount)) {
+            return;
+        }
+        long count = this.count(new QueryWrapper<User>().eq("userAccount", userAccount).ne(userId != null, "id", userId));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号已存在");
+        }
+    }
+
+    @Override
     public LoginUserVO getLoginUserVO(User user) {
         if (user == null)
             return null;
@@ -406,9 +416,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的新密码不一致");
         }
         if (hasUsablePasswordLogin(loginUser)) {
-            String encryptOld = DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
-            if (!loginUser.getUserPassword().equals(encryptOld)) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+            boolean canResetWithoutOldPassword = hasOtherLoginMethod(loginUser);
+            if (StringUtils.isNotBlank(oldPassword)) {
+                String encryptOld = DigestUtils.md5DigestAsHex((SALT + oldPassword).getBytes());
+                if (!loginUser.getUserPassword().equals(encryptOld)) {
+                    throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+                }
+            } else if (!canResetWithoutOldPassword) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "请输入旧密码");
             }
         }
         User user = new User();
@@ -706,6 +721,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return Integer.valueOf(1).equals(user.getPasswordConfigured());
         }
         return !isGeneratedVirtualAccount(user.getUserAccount());
+    }
+
+    private boolean hasOtherLoginMethod(User user) {
+        if (user == null) {
+            return false;
+        }
+        return StringUtils.isNotBlank(user.getPhone())
+                || StringUtils.isNotBlank(user.getEmail())
+                || StringUtils.isNotBlank(user.getGithubId())
+                || StringUtils.isNotBlank(user.getGiteeId())
+                || StringUtils.isNotBlank(user.getGoogleId());
+    }
+
+    private void validateUserAccount(String userAccount) {
+        String trimmedUserAccount = StringUtils.trim(userAccount);
+        if (StringUtils.isBlank(trimmedUserAccount) || trimmedUserAccount.length() < 4) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
+        }
+        if (trimmedUserAccount.length() > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过长");
+        }
+        if (!trimmedUserAccount.matches("^[A-Za-z0-9_]+$")) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号仅支持字母、数字和下划线");
+        }
     }
 
     private boolean isGeneratedVirtualAccount(String userAccount) {

@@ -953,6 +953,7 @@ declare namespace API {
 
   type UserUpdateMyRequest = {
     city?: string;
+    userAccount?: string;
     userAvatar?: string;
     userName?: string;
     userProfile?: string;

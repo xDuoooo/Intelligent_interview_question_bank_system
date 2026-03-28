@@ -267,9 +267,11 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       key: "account",
       title: "登录账号",
       description: user.userAccount
-        ? `当前密码登录账号：${user.userAccount}`
+        ? `当前登录账号：${user.userAccount}`
         : "当前账号暂无可展示的登录账号",
-      status: user.userAccount ? <Tag color="processing">可用于密码登录</Tag> : <Tag>未生成</Tag>,
+      status: user.userAccount
+        ? <Tag color={hasPasswordConfigured ? "processing" : "default"}>{hasPasswordConfigured ? "可用于密码登录" : "已生成账号"}</Tag>
+        : <Tag>未生成</Tag>,
       icon: <Key size={20} className="text-slate-500" />,
       action: user.userAccount ? (
         <Text
