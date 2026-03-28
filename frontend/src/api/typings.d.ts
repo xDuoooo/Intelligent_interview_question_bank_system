@@ -308,6 +308,7 @@ declare namespace API {
     createTime?: string;
     email?: string;
     id?: number;
+    passwordConfigured?: number;
     phone?: string;
     updateTime?: string;
     userAvatar?: string;

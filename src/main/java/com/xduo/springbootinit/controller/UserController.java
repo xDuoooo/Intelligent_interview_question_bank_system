@@ -179,6 +179,7 @@ public class UserController {
         String defaultPassword = "12345678";
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + defaultPassword).getBytes());
         user.setUserPassword(encryptPassword);
+        user.setPasswordConfigured(1);
         boolean result = userService.save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(user.getId());
@@ -376,6 +377,26 @@ public class UserController {
         }
         User loginUser = userService.getLoginUser(request);
         userService.bindEmail(userBindRequest.getTarget(), userBindRequest.getCode(), loginUser);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 解绑手机号
+     */
+    @PostMapping("/unbind/phone")
+    public BaseResponse<Boolean> unbindPhone(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindPhone(loginUser.getId());
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 解绑邮箱
+     */
+    @PostMapping("/unbind/email")
+    public BaseResponse<Boolean> unbindEmail(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindEmail(loginUser.getId());
         return ResultUtils.success(true);
     }
 

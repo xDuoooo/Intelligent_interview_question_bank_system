@@ -306,6 +306,22 @@ export async function unbindGithubUsingPost(options?: { [key: string]: any }) {
   });
 }
 
+/** 解绑手机号 POST /api/user/unbind/phone */
+export async function unbindPhoneUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/unbind/phone', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** 解绑邮箱 POST /api/user/unbind/email */
+export async function unbindEmailUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseBoolean_>('/api/user/unbind/email', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
 /** 解绑 Gitee POST /api/user/unbind/gitee */
 export async function unbindGiteeUsingPost(options?: { [key: string]: any }) {
   return request<API.BaseResponseBoolean_>('/api/user/unbind/gitee', {
