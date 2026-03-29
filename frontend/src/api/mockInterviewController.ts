@@ -145,6 +145,27 @@ export async function streamMockInterviewEventUsingPost(
   }
 }
 
+export async function transcribeMockInterviewAudioUsingPost(
+  id: number,
+  audioFile: Blob,
+  fileName = 'mock-interview-answer.webm',
+) {
+  const formData = new FormData();
+  formData.append('id', String(id));
+  formData.append('file', audioFile, fileName);
+
+  const response = await fetch(buildApiUrl('/api/mockInterview/transcribe'), {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  const json = await response.json();
+  if (!response.ok || json?.code !== 0) {
+    throw new Error(json?.message || '语音转写失败');
+  }
+  return String(json?.data || '');
+}
+
 export async function downloadMockInterviewReviewUsingGet(id: number) {
   const response = await fetch(buildApiUrl(`/api/mockInterview/export?id=${id}`), {
     method: 'GET',

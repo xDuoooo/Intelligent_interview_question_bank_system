@@ -127,6 +127,8 @@ ai:
   host: https://api.deepseek.com/v1
   # 默认模型名称
   model: deepseek-chat
+  # 语音转写模型（需兼容 OpenAI audio/transcriptions 协议）
+  speech-model: whisper-1
 
 # 前端联调地址
 app:

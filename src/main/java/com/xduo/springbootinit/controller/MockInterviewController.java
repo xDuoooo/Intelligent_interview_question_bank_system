@@ -20,6 +20,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 
@@ -111,6 +112,18 @@ public class MockInterviewController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
                 .contentType(MediaType.parseMediaType("text/markdown;charset=UTF-8"))
                 .body(markdown.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @PostMapping(value = "/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public BaseResponse<String> transcribeMockInterviewAudio(@RequestParam("id") Long id,
+                                                             @RequestPart("file") MultipartFile audioFile,
+                                                             HttpServletRequest request) {
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(audioFile == null || audioFile.isEmpty(), ErrorCode.PARAMS_ERROR, "请先录制语音后再转写");
+        User loginUser = userService.getLoginUser(request);
+        MockInterview mockInterview = getOwnedMockInterview(id, loginUser, request);
+        String transcript = mockInterviewService.transcribeInterviewAudio(mockInterview, audioFile);
+        return ResultUtils.success(transcript);
     }
 
     @PostMapping("/list/page")

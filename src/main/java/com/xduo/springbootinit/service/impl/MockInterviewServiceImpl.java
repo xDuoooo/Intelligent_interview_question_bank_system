@@ -1,5 +1,6 @@
 package com.xduo.springbootinit.service.impl;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -42,6 +44,8 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
     private static final int MIN_ROUNDS = 3;
     private static final int MAX_ROUNDS = 8;
     private static final int SHORT_ANSWER_THRESHOLD = 35;
+    private static final long MAX_AUDIO_FILE_SIZE = 8L * 1024 * 1024;
+    private static final List<String> SUPPORTED_AUDIO_SUFFIX_LIST = List.of("webm", "wav", "mp3", "m4a", "mp4", "ogg", "oga");
 
     @Resource
     private AiManager aiManager;
@@ -361,6 +365,32 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
             }
         }
         return markdownBuilder.toString();
+    }
+
+    @Override
+    public String transcribeInterviewAudio(MockInterview mockInterview, MultipartFile audioFile) {
+        ThrowUtils.throwIf(mockInterview == null || mockInterview.getId() == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(audioFile == null || audioFile.isEmpty(), ErrorCode.PARAMS_ERROR, "请先录制语音后再转写");
+        ThrowUtils.throwIf(audioFile.getSize() > MAX_AUDIO_FILE_SIZE, ErrorCode.PARAMS_ERROR, "语音文件过大，请控制在 8MB 以内");
+        String suffix = StringUtils.lowerCase(FileUtil.getSuffix(audioFile.getOriginalFilename()));
+        ThrowUtils.throwIf(StringUtils.isBlank(suffix) || !SUPPORTED_AUDIO_SUFFIX_LIST.contains(suffix),
+                ErrorCode.PARAMS_ERROR, "仅支持 webm、wav、mp3、m4a、mp4、ogg 音频");
+        try {
+            String transcript = aiManager.transcribeAudio(
+                    audioFile.getOriginalFilename(),
+                    audioFile.getBytes(),
+                    audioFile.getContentType(),
+                    "zh",
+                    buildTranscriptionPrompt(mockInterview)
+            );
+            String cleanedTranscript = sanitizeTranscript(transcript);
+            ThrowUtils.throwIf(StringUtils.isBlank(cleanedTranscript), ErrorCode.SYSTEM_ERROR, "转写结果为空，请重试");
+            return cleanedTranscript;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "语音转写失败，请稍后重试");
+        }
     }
 
     private void fillInterviewReportFromSummary(InterviewReport interviewReport, SummaryResult summaryResult) {
@@ -1026,6 +1056,34 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
         }
         List<InterviewPlanItem> agenda = buildInterviewAgenda(mockInterview);
         return round <= agenda.size() ? agenda.get(round - 1) : null;
+    }
+
+    private String buildTranscriptionPrompt(MockInterview mockInterview) {
+        StringBuilder promptBuilder = new StringBuilder("请把这段中文模拟面试回答准确转写成简洁文本，保留技术名词、英文缩写、数字指标和中英文混排。");
+        if (mockInterview != null) {
+            if (StringUtils.isNotBlank(mockInterview.getJobPosition())) {
+                promptBuilder.append(" 当前岗位：").append(mockInterview.getJobPosition()).append("。");
+            }
+            if (StringUtils.isNotBlank(mockInterview.getInterviewType())) {
+                promptBuilder.append(" 面试类型：").append(mockInterview.getInterviewType()).append("。");
+            }
+            if (StringUtils.isNotBlank(mockInterview.getTechStack())) {
+                promptBuilder.append(" 技术方向：").append(mockInterview.getTechStack()).append("。");
+            }
+        }
+        promptBuilder.append(" 不要补充解释，不要总结，只返回转写结果。");
+        return promptBuilder.toString();
+    }
+
+    private String sanitizeTranscript(String transcript) {
+        if (StringUtils.isBlank(transcript)) {
+            return "";
+        }
+        return transcript
+                .replace('\r', ' ')
+                .replace('\n', ' ')
+                .replaceAll("\\s{2,}", " ")
+                .trim();
     }
 
     private String buildNextActionHint(InterviewPlanItem planItem) {

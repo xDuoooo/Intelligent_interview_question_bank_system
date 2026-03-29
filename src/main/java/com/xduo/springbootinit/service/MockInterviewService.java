@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.mockinterview.MockInterviewQueryRequest;
 import com.xduo.springbootinit.model.entity.MockInterview;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 模拟面试服务
@@ -35,4 +36,9 @@ public interface MockInterviewService extends IService<MockInterview> {
      * 导出逐题复盘 markdown
      */
     String exportInterviewReview(MockInterview mockInterview);
+
+    /**
+     * 转写面试语音回答
+     */
+    String transcribeInterviewAudio(MockInterview mockInterview, MultipartFile audioFile);
 }
