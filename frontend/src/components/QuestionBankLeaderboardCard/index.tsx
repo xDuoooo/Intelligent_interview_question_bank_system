@@ -37,7 +37,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
       <div className="absolute -left-10 top-8 h-36 w-36 rounded-full bg-primary/8 blur-3xl" />
       <div className="absolute -right-10 bottom-0 h-44 w-44 rounded-full bg-amber-300/12 blur-3xl" />
 
-      <div className="relative grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="relative grid gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
         <div className="overflow-hidden rounded-[2.2rem] border border-primary/10 bg-gradient-to-br from-primary/8 via-white to-blue-50 p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-3">
@@ -79,7 +79,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
 
           {champion ? (
             <div className="mt-6 rounded-[1.9rem] border border-white/80 bg-white/80 p-4 shadow-xl shadow-white/40 sm:p-5">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_140px] md:items-center">
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_140px] lg:items-center">
                 <UserProfileHoverCard user={champion} placement="topLeft">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.35rem] bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-xl shadow-amber-200/70">
@@ -125,7 +125,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_82px_110px] sm:items-center">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_82px_110px] lg:items-center">
                 <UserProfileHoverCard user={leaderboard.currentUserItem} placement="topLeft">
                   <div className="flex min-w-0 items-center gap-3">
                     <UserAvatar
@@ -171,7 +171,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 key={`bank-rank-${item.userId}`}
                 className="rounded-[1.7rem] border border-slate-100 bg-slate-50/80 px-4 py-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-slate-200/40"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <UserProfileHoverCard user={item} placement="topLeft">
                     <div className="min-w-0 flex items-center gap-3">
                       <div
@@ -191,7 +191,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                     </div>
                   </UserProfileHoverCard>
 
-                  <div className="flex items-center justify-between gap-3 sm:justify-end">
+                  <div className="flex items-center justify-between gap-3 lg:justify-end">
                     <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
                       {item.metricText || leaderboard.metricLabel || "完成题数"}
                     </div>
