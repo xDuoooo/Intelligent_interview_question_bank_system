@@ -148,6 +148,25 @@ public class PostController {
     }
 
     /**
+     * 获取热门帖子
+     */
+    @GetMapping("/hot/list")
+    public BaseResponse<List<PostVO>> listHotPost(HttpServletRequest request) {
+        return ResultUtils.success(postService.listHotPostVO(6, request));
+    }
+
+    /**
+     * 获取相关帖子
+     */
+    @GetMapping("/related/list")
+    public BaseResponse<List<PostVO>> listRelatedPost(long postId,
+                                                      Integer size,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(postId <= 0, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(postService.listRelatedPostVO(postId, size == null ? 4 : size, request));
+    }
+
+    /**
      * 分页获取列表（仅管理员）
      *
      * @param postQueryRequest

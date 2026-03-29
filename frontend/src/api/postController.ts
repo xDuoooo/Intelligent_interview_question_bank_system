@@ -59,6 +59,31 @@ export async function getPostVoByIdUsingGet(
   });
 }
 
+/** listHotPost GET /api/post/hot/list */
+export async function listHotPostUsingGet(options?: { [key: string]: any }) {
+  return request<API.BaseResponseListPostVO_>('/api/post/hot/list', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** listRelatedPost GET /api/post/related/list */
+export async function listRelatedPostUsingGet(
+  params: {
+    postId?: number;
+    size?: number;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseListPostVO_>('/api/post/related/list', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** listPostByPage POST /api/post/list/page */
 export async function listPostByPageUsingPost(
   body: API.PostQueryRequest,

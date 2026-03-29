@@ -18,7 +18,8 @@ import {
   FilePenLine,
   User as UserIcon,
   NotebookPen,
-  BriefcaseBusiness
+  BriefcaseBusiness,
+  MessageSquareText,
 } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
 
@@ -58,6 +59,10 @@ const MyQuestionSubmissionPanel = dynamic(() => import("@/app/user/center/compon
 
 const MyQuestionNoteList = dynamic(() => import("@/app/user/center/components/MyQuestionNoteList"), {
   loading: () => <div className="py-8 text-center text-slate-400">正在加载我的笔记...</div>,
+});
+
+const MyPostList = dynamic(() => import("@/app/user/center/components/MyPostList"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载我的帖子...</div>,
 });
 
 const CalendarChart = dynamic(() => import("@/app/user/center/components/CalendarChart"), {
@@ -235,6 +240,7 @@ function UserCenterContent() {
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
               { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的投稿</span> },
               { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
+              { key: "posts", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />我的帖子</span> },
               { key: "security", label: <span className="flex items-center gap-2"><ShieldCheck size={16} />账号安全</span> },
               { key: "favour", label: <span className="flex items-center gap-2"><Heart size={16} />收藏题目</span> },
               { key: "history", label: <span className="flex items-center gap-2"><History size={16} />刷题轨迹</span> },
@@ -264,6 +270,9 @@ function UserCenterContent() {
                         </Button>
                         <Button onClick={() => setActiveTabKey("notes")}>
                           我的笔记
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("posts")}>
+                          我的帖子
                         </Button>
                         <Button onClick={() => setActiveTabKey("favour")}>
                           查看收藏题目
@@ -385,6 +394,11 @@ function UserCenterContent() {
             {activeTabKey === "notes" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <MyQuestionNoteList />
+              </div>
+            )}
+            {activeTabKey === "posts" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <MyPostList />
               </div>
             )}
             {activeTabKey === "record" && (
