@@ -5,6 +5,7 @@ import { Tag } from "antd";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
 import { CalendarClock, ChevronRight, Heart, ThumbsUp } from "lucide-react";
+import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
 
 interface Props {
   postList: API.PostVO[];
@@ -22,6 +23,14 @@ export default function PostList({ postList = [] }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-2">
+                {Number(item.reviewStatus ?? 1) !== 1 ? (
+                  <Tag
+                    color={POST_REVIEW_STATUS_COLOR_MAP[Number(item.reviewStatus ?? 1)] || "default"}
+                    className="m-0 rounded-full px-3 py-1 font-bold"
+                  >
+                    {POST_REVIEW_STATUS_TEXT_MAP[Number(item.reviewStatus ?? 1)] || "待处理"}
+                  </Tag>
+                ) : null}
                 {Number(item.isTop || 0) > 0 ? (
                   <Tag color="gold" className="m-0 rounded-full px-3 py-1 font-bold">
                     置顶
@@ -39,6 +48,11 @@ export default function PostList({ postList = [] }: Props) {
               <div className="mt-3 line-clamp-3 text-sm leading-6 text-slate-500">
                 {item.content}
               </div>
+              {Number(item.reviewStatus ?? 1) !== 1 && item.reviewMessage ? (
+                <div className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700">
+                  {item.reviewMessage}
+                </div>
+              ) : null}
             </div>
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-50 transition-colors group-hover:bg-primary/10">
               <ChevronRight className="h-5 w-5 text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />

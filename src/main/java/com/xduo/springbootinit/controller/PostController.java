@@ -530,7 +530,7 @@ public class PostController {
         String combinedText = StringUtils.defaultString(post.getTitle()) + "\n" + StringUtils.defaultString(post.getContent());
         String lowerCaseText = combinedText.toLowerCase();
         if (containsAny(lowerCaseText, "赌博", "色情", "外挂", "vpn", "代考", "作弊器", "刷单", "telegram", "qq裙", "qq群", "vx:", "微信:", "联系方式")) {
-            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_REJECTED, "内容包含高风险词，已自动拦截，请修改后重试");
+            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_PENDING, "内容触发风险规则，已进入人工复核");
         }
         if (StringUtils.length(StringUtils.trimToEmpty(post.getContent())) < 80) {
             return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_PENDING, "内容较短，已进入人工复核");
@@ -538,10 +538,7 @@ public class PostController {
         try {
             String aiResult = aiManager.doChat(buildPostAutoReviewSystemPrompt(), buildPostAutoReviewUserPrompt(post));
             String normalized = aiResult.toLowerCase();
-            if (normalized.contains("reject")) {
-                return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_REJECTED, extractReviewMessage(aiResult, "AI 识别到内容存在风险，建议人工复核"));
-            }
-            if (normalized.contains("pending")) {
+            if (normalized.contains("reject") || normalized.contains("pending")) {
                 return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_PENDING, extractReviewMessage(aiResult, "AI 建议人工复核"));
             }
             return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_APPROVED, "系统自动审核通过");

@@ -48,6 +48,21 @@ public class QuestionComment {
     /** 状态：0正常 1待审核 2已隐藏 */
     private Integer status;
 
+    /**
+     * 审核意见
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核人 id
+     */
+    private Long reviewUserId;
+
+    /**
+     * 审核时间
+     */
+    private Date reviewTime;
+
     private Date editTime;
 
     private Date createTime;

@@ -10,6 +10,23 @@ interface CommentAddRequest {
   content: string;
 }
 
+interface CommentAdminQueryRequest {
+  questionId?: number;
+  userId?: number;
+  content?: string;
+  status?: number;
+  current?: number;
+  pageSize?: number;
+  sortField?: string;
+  sortOrder?: "ascend" | "descend";
+}
+
+interface CommentReviewRequest {
+  id: number;
+  status: number;
+  reviewMessage?: string;
+}
+
 interface CommentQueryRequest {
   questionId: number;
   current?: number;
@@ -41,12 +58,19 @@ export interface CommentVO {
   isPinned: number;
   isOfficial: number;
   status: number;
+  reviewMessage?: string;
   createTime: string;
   deleted: boolean;
   user: UserVO | null;
   replyToUser?: UserVO | null;
   hasLiked: boolean;
   replies: CommentVO[];
+}
+
+export interface CommentSubmitResult {
+  id: number;
+  status: number;
+  reviewMessage?: string;
 }
 
 interface Page<T> {
@@ -61,7 +85,7 @@ interface Page<T> {
  * 我们进一步提取出 BaseResponse 中的数据部分返回给组件
  */
 
-export async function addComment(data: CommentAddRequest): Promise<number> {
+export async function addComment(data: CommentAddRequest): Promise<CommentSubmitResult> {
   const res = (await request.post("/api/question/comment/add", data)) as any;
   return res.data;
 }
@@ -93,5 +117,15 @@ export async function pinComment(commentId: number, pinned: boolean): Promise<bo
 
 export async function setOfficialAnswer(commentId: number, official: boolean): Promise<boolean> {
   const res = (await request.post(`/api/question/comment/official?commentId=${commentId}&official=${official}`)) as any;
+  return res.data;
+}
+
+export async function listAdminCommentsByPage(data: CommentAdminQueryRequest): Promise<Page<CommentVO>> {
+  const res = (await request.post("/api/question/comment/admin/list/page/vo", data)) as any;
+  return res.data;
+}
+
+export async function reviewComment(data: CommentReviewRequest): Promise<boolean> {
+  const res = (await request.post("/api/question/comment/review", data)) as any;
   return res.data;
 }

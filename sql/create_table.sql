@@ -51,7 +51,7 @@ create table if not exists user_follow
     index idx_followUserId (followUserId),
     index idx_user_createTime (userId, createTime),
     index idx_follow_createTime (followUserId, createTime)
-) comment '用户关注关系';
+) comment '用户关注关系' collate = utf8mb4_unicode_ci;
 
 -- 题库表
 create table if not exists question_bank
@@ -119,7 +119,7 @@ create table if not exists question_favour
     index idx_questionId (questionId),
     index idx_userId (userId),
     index idx_user_createTime (userId, createTime)
-) comment '题目收藏';
+) comment '题目收藏' collate = utf8mb4_unicode_ci;
 
 -- 用户刷题轨迹
 create table if not exists user_question_history
@@ -136,7 +136,7 @@ create table if not exists user_question_history
     index idx_updateTime (updateTime),
     index idx_user_updateTime (userId, updateTime),
     index idx_user_status_updateTime (userId, status, updateTime)
-) comment '用户刷题轨迹';
+) comment '用户刷题轨迹' collate = utf8mb4_unicode_ci;
 
 -- 用户题目学习时长会话
 create table if not exists user_question_study_session
@@ -151,7 +151,7 @@ create table if not exists user_question_study_session
     index idx_questionId (questionId),
     index idx_createTime (createTime),
     index idx_user_createTime (userId, createTime)
-) comment '用户题目学习时长会话';
+) comment '用户题目学习时长会话' collate = utf8mb4_unicode_ci;
 
 -- 帖子
 create table if not exists post
@@ -180,7 +180,7 @@ create table if not exists post
     index idx_reviewStatus (reviewStatus),
     index idx_reportNum (reportNum),
     index idx_top_featured_createTime (isTop, isFeatured, createTime)
-) comment '帖子';
+) comment '帖子' collate = utf8mb4_unicode_ci;
 
 -- 帖子点赞
 create table if not exists post_thumb
@@ -193,7 +193,7 @@ create table if not exists post_thumb
     unique key uk_post_user (postId, userId),
     index idx_userId (userId),
     index idx_postId (postId)
-) comment '帖子点赞';
+) comment '帖子点赞' collate = utf8mb4_unicode_ci;
 
 -- 帖子收藏
 create table if not exists post_favour
@@ -207,7 +207,7 @@ create table if not exists post_favour
     index idx_userId (userId),
     index idx_postId (postId),
     index idx_user_createTime (userId, createTime)
-) comment '帖子收藏';
+) comment '帖子收藏' collate = utf8mb4_unicode_ci;
 
 -- 帖子举报
 create table if not exists post_report
@@ -221,7 +221,7 @@ create table if not exists post_report
     unique key uk_post_user (postId, userId),
     index idx_postId (postId),
     index idx_status_createTime (status, createTime)
-) comment '帖子举报';
+) comment '帖子举报' collate = utf8mb4_unicode_ci;
 
 -- 题目评论表
 create table if not exists question_comment
@@ -237,6 +237,9 @@ create table if not exists question_comment
     isPinned   tinyint  default 0                 not null comment '是否置顶：0否 1是',
     isOfficial tinyint  default 0                 not null comment '是否官方解答：0否 1是',
     status     tinyint  default 0                 not null comment '状态：0正常 1待审核 2已隐藏',
+    reviewMessage varchar(512)                    null comment '审核意见',
+    reviewUserId bigint                           null comment '审核人 id',
+    reviewTime   datetime                         null comment '审核时间',
     editTime   datetime default CURRENT_TIMESTAMP null comment '编辑时间',
     createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
@@ -296,7 +299,7 @@ create table if not exists mock_interview
     index idx_status (status),
     index idx_jobPosition (jobPosition),
     index idx_createTime (createTime)
-) comment 'AI 模拟面试';
+) comment 'AI 模拟面试' collate = utf8mb4_unicode_ci;
 
 -- 用户学习目标表
 create table if not exists user_learning_goal
@@ -310,7 +313,7 @@ create table if not exists user_learning_goal
     updateTime       datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     isDelete         tinyint  default 0                 not null comment '是否删除',
     unique key uk_userId (userId)
-) comment '用户学习目标';
+) comment '用户学习目标' collate = utf8mb4_unicode_ci;
 
 -- 用户题目私有笔记表
 create table if not exists user_question_note
@@ -326,7 +329,7 @@ create table if not exists user_question_note
     index idx_userId (userId),
     index idx_questionId (questionId),
     index idx_updateTime (updateTime)
-) comment '用户题目私有笔记';
+) comment '用户题目私有笔记' collate = utf8mb4_unicode_ci;
 
 -- 题目推荐日志表
 create table if not exists question_recommend_log
@@ -344,7 +347,7 @@ create table if not exists question_recommend_log
     index idx_action (action),
     index idx_createTime (createTime),
     index idx_source_action_createTime (source, action, createTime)
-) comment '题目推荐效果日志';
+) comment '题目推荐效果日志' collate = utf8mb4_unicode_ci;
 
 -- 系统配置表
 create table if not exists system_config
@@ -361,7 +364,7 @@ create table if not exists system_config
     enableLearningGoalReminder tinyint default 1       not null comment '是否开启学习目标提醒任务',
     createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
-) comment '系统配置';
+) comment '系统配置' collate = utf8mb4_unicode_ci;
 
 -- 通知表
 create table if not exists notification
@@ -395,7 +398,7 @@ create table if not exists admin_operation_log
     isDelete   tinyint  default 0                 not null comment '是否删除',
     index idx_userId (userId),
     index idx_createTime (createTime)
-) comment '管理员操作日志';
+) comment '管理员操作日志' collate = utf8mb4_unicode_ci;
 
 -- 题目搜索日志表
 create table if not exists question_search_log
@@ -413,7 +416,7 @@ create table if not exists question_search_log
     index idx_searchText (searchText),
     index idx_createTime (createTime),
     index idx_source (source)
-) comment '题目搜索日志';
+) comment '题目搜索日志' collate = utf8mb4_unicode_ci;
 
 -- 安全告警表
 create table if not exists security_alert
@@ -438,4 +441,4 @@ create table if not exists security_alert
     index idx_alertType (alertType),
     index idx_createTime (createTime),
     index idx_status_createTime (status, createTime)
-) comment '安全告警';
+) comment '安全告警' collate = utf8mb4_unicode_ci;
