@@ -22,6 +22,7 @@ import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.SecurityAlertService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.CityUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -574,14 +575,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     }
 
     private String normalizeCity(String city) {
-        if (city == null) {
-            return null;
-        }
-        String normalizedCity = city.trim();
-        if (normalizedCity.endsWith("市")) {
-            normalizedCity = normalizedCity.substring(0, normalizedCity.length() - 1);
-        }
-        return normalizedCity;
+        return CityUtils.normalizeCity(city);
     }
 
 }
