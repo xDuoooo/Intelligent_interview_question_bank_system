@@ -196,6 +196,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         UserVO userVO = userService.getUserVO(user);
         questionVO.setUser(userVO);
+        Map<Long, Integer> favourCountMap = getQuestionFavourCountMap(Collections.singleton(question.getId()));
+        questionVO.setFavourNum(favourCountMap.getOrDefault(question.getId(), 0));
         // 是否已收藏
         User loginUser = userService.getLoginUserPermitNull(request);
         if (loginUser != null) {
@@ -203,11 +205,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             favourQueryWrapper.eq("questionId", question.getId());
             favourQueryWrapper.eq("userId", loginUser.getId());
             questionVO.setHasFavour(questionFavourService.getOne(favourQueryWrapper) != null);
+        } else {
+            questionVO.setHasFavour(false);
         }
-        // 收藏数
-        QueryWrapper<QuestionFavour> favourCountWrapper = new QueryWrapper<>();
-        favourCountWrapper.eq("questionId", question.getId());
-        questionVO.setFavourNum((int) questionFavourService.count(favourCountWrapper));
         return questionVO;
     }
 
@@ -226,50 +226,62 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (CollUtil.isEmpty(questionList)) {
             return questionVOPage;
         }
-        // 对象列表 => 封装对象列表
-        List<QuestionVO> questionVOList = questionList.stream().map(question -> {
-            return QuestionVO.objToVo(question);
-        }).collect(Collectors.toList());
-        // 关联查询用户信息
-        Set<Long> userIdSet = questionList.stream().map(Question::getUserId).collect(Collectors.toSet());
-        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
-                .collect(Collectors.groupingBy(User::getId));
-        // 填充信息
+        questionVOPage.setRecords(buildQuestionVOList(questionList, request, Collections.emptyMap()));
+        return questionVOPage;
+    }
+
+    private List<QuestionVO> buildQuestionVOList(List<Question> questionList,
+                                                 HttpServletRequest request,
+                                                 Map<Long, String> recommendReasonMap) {
+        if (CollUtil.isEmpty(questionList)) {
+            return Collections.emptyList();
+        }
+        List<QuestionVO> questionVOList = questionList.stream()
+                .map(QuestionVO::objToVo)
+                .collect(Collectors.toList());
+        Set<Long> userIdSet = questionList.stream()
+                .map(Question::getUserId)
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userService.listByIds(userIdSet).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (existing, replacement) -> existing));
+        Set<Long> questionIdSet = questionList.stream()
+                .map(Question::getId)
+                .collect(Collectors.toSet());
+        Map<Long, Integer> questionIdFavourNumMap = getQuestionFavourCountMap(questionIdSet);
+        Map<Long, Boolean> questionIdHasFavourMap = new HashMap<>();
         User loginUser = userService.getLoginUserPermitNull(request);
-        // 查询收藏状态和收藏数
-        Map<Long, Boolean> questionIdHasFavourMap = new java.util.HashMap<>();
-        Map<Long, Integer> questionIdFavourNumMap = new java.util.HashMap<>();
-        if (loginUser != null) {
-            Set<Long> questionIdSet = questionList.stream().map(Question::getId).collect(Collectors.toSet());
+        if (loginUser != null && CollUtil.isNotEmpty(questionIdSet)) {
             QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
             favourQueryWrapper.in("questionId", questionIdSet);
             favourQueryWrapper.eq("userId", loginUser.getId());
-            List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
-            Set<Long> favourQuestionIdSet = favourList.stream().map(QuestionFavour::getQuestionId).collect(Collectors.toSet());
-            favourQuestionIdSet.forEach(id -> questionIdHasFavourMap.put(id, true));
+            questionFavourService.list(favourQueryWrapper).forEach(favour ->
+                    questionIdHasFavourMap.put(favour.getQuestionId(), true));
         }
-        // 批量查询收藏数 (推荐在实际项目中增加 favourNum 到 Question 表或使用 Redis 缓存计数)
-        // 这里为了简单先用循环查或分组查
-        Set<Long> allQuestionIdSet = questionList.stream().map(Question::getId).collect(Collectors.toSet());
-        // mybatis-plus 暂时没有直接分组计数的快捷 IService 方法，这里简单处理
-        allQuestionIdSet.forEach(qId -> {
-            QueryWrapper<QuestionFavour> qw = new QueryWrapper<>();
-            qw.eq("questionId", qId);
-            questionIdFavourNumMap.put(qId, (int) questionFavourService.count(qw));
-        });
-
         questionVOList.forEach(questionVO -> {
-            Long userId = questionVO.getUserId();
-            User user = null;
-            if (userIdUserListMap.containsKey(userId)) {
-                user = userIdUserListMap.get(userId).get(0);
-            }
-            questionVO.setUser(userService.getUserVO(user));
+            questionVO.setUser(userService.getUserVO(userMap.get(questionVO.getUserId())));
             questionVO.setHasFavour(questionIdHasFavourMap.getOrDefault(questionVO.getId(), false));
             questionVO.setFavourNum(questionIdFavourNumMap.getOrDefault(questionVO.getId(), 0));
+            if (recommendReasonMap != null && recommendReasonMap.containsKey(questionVO.getId())) {
+                questionVO.setRecommendReason(recommendReasonMap.get(questionVO.getId()));
+            }
         });
-        questionVOPage.setRecords(questionVOList);
-        return questionVOPage;
+        return questionVOList;
+    }
+
+    private Map<Long, Integer> getQuestionFavourCountMap(Set<Long> questionIdSet) {
+        if (CollUtil.isEmpty(questionIdSet)) {
+            return Collections.emptyMap();
+        }
+        QueryWrapper<QuestionFavour> favourCountQueryWrapper = new QueryWrapper<>();
+        favourCountQueryWrapper.in("questionId", questionIdSet);
+        favourCountQueryWrapper.select("questionId", "count(*) as totalCount");
+        favourCountQueryWrapper.groupBy("questionId");
+        return questionFavourService.listMaps(favourCountQueryWrapper).stream()
+                .collect(Collectors.toMap(
+                        item -> Long.valueOf(String.valueOf(item.get("questionId"))),
+                        item -> Integer.parseInt(String.valueOf(item.get("totalCount"))),
+                        (existing, replacement) -> existing));
     }
 
     @Override
@@ -481,18 +493,17 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(size)
                     .collect(Collectors.toList());
-            return fallbackList.stream().map(question -> {
-                QuestionVO questionVO = this.getQuestionVO(question, request);
-                questionVO.setRecommendReason("根据最新题目为你补充推荐");
-                return questionVO;
-            }).collect(Collectors.toList());
+            Map<Long, String> recommendReasonMap = fallbackList.stream()
+                    .collect(Collectors.toMap(Question::getId, question -> "根据最新题目为你补充推荐", (left, right) -> left));
+            return buildQuestionVOList(fallbackList, request, recommendReasonMap);
         }
 
-        return scoredList.stream().map(item -> {
-            QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
-            questionVO.setRecommendReason(item.getReason());
-            return questionVO;
-        }).collect(Collectors.toList());
+        List<Question> rankedQuestionList = scoredList.stream()
+                .map(QuestionRecommendationScore::getQuestion)
+                .collect(Collectors.toList());
+        Map<Long, String> recommendReasonMap = scoredList.stream()
+                .collect(Collectors.toMap(item -> item.getQuestion().getId(), QuestionRecommendationScore::getReason, (left, right) -> left));
+        return buildQuestionVOList(rankedQuestionList, request, recommendReasonMap);
     }
 
     @Override
@@ -528,23 +539,22 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .collect(Collectors.toList());
 
         if (CollUtil.isEmpty(scoredList)) {
-            return candidateQuestionList.stream()
+            List<Question> fallbackList = candidateQuestionList.stream()
                     .filter(question -> !question.getId().equals(questionId))
                     .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(size)
-                    .map(question -> {
-                        QuestionVO questionVO = this.getQuestionVO(question, request);
-                        questionVO.setRecommendReason("为你补充同主题下的最新题目");
-                        return questionVO;
-                    })
                     .collect(Collectors.toList());
+            Map<Long, String> recommendReasonMap = fallbackList.stream()
+                    .collect(Collectors.toMap(Question::getId, question -> "为你补充同主题下的最新题目", (left, right) -> left));
+            return buildQuestionVOList(fallbackList, request, recommendReasonMap);
         }
 
-        return scoredList.stream().map(item -> {
-            QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
-            questionVO.setRecommendReason(item.getReason());
-            return questionVO;
-        }).collect(Collectors.toList());
+        List<Question> rankedQuestionList = scoredList.stream()
+                .map(QuestionRecommendationScore::getQuestion)
+                .collect(Collectors.toList());
+        Map<Long, String> recommendReasonMap = scoredList.stream()
+                .collect(Collectors.toMap(item -> item.getQuestion().getId(), QuestionRecommendationScore::getReason, (left, right) -> left));
+        return buildQuestionVOList(rankedQuestionList, request, recommendReasonMap);
     }
 
     @Override
@@ -589,21 +599,20 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         List<QuestionVO> questionVOList;
         if (CollUtil.isEmpty(scoredList)) {
-            questionVOList = allQuestionList.stream()
+            List<Question> fallbackList = allQuestionList.stream()
                     .sorted(Comparator.comparing(Question::getUpdateTime, Comparator.nullsLast(Comparator.reverseOrder())))
                     .limit(size)
-                    .map(question -> {
-                        QuestionVO questionVO = this.getQuestionVO(question, request);
-                        questionVO.setRecommendReason("根据简历关键词为你补充推荐最新题目");
-                        return questionVO;
-                    })
                     .collect(Collectors.toList());
+            Map<Long, String> recommendReasonMap = fallbackList.stream()
+                    .collect(Collectors.toMap(Question::getId, question -> "根据简历关键词为你补充推荐最新题目", (left, right) -> left));
+            questionVOList = buildQuestionVOList(fallbackList, request, recommendReasonMap);
         } else {
-            questionVOList = scoredList.stream().map(item -> {
-                QuestionVO questionVO = this.getQuestionVO(item.getQuestion(), request);
-                questionVO.setRecommendReason(item.getReason());
-                return questionVO;
-            }).collect(Collectors.toList());
+            List<Question> rankedQuestionList = scoredList.stream()
+                    .map(QuestionRecommendationScore::getQuestion)
+                    .collect(Collectors.toList());
+            Map<Long, String> recommendReasonMap = scoredList.stream()
+                    .collect(Collectors.toMap(item -> item.getQuestion().getId(), QuestionRecommendationScore::getReason, (left, right) -> left));
+            questionVOList = buildQuestionVOList(rankedQuestionList, request, recommendReasonMap);
         }
 
         result.setJobDirection(profile.getJobDirection());
