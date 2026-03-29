@@ -32,6 +32,9 @@ public class AiManager {
     @Value("${ai.model:deepseek-chat}")
     private String model;
 
+    @Value("${ai.speech-model:whisper-1}")
+    private String speechModel;
+
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
@@ -90,6 +93,60 @@ public class AiManager {
         }
     }
 
+    /**
+     * 调用兼容 OpenAI 协议的音频转写接口
+     *
+     * @param fileName    文件名
+     * @param fileBytes   文件内容
+     * @param contentType 文件类型
+     * @param language    语言
+     * @param prompt      转写提示词
+     * @return 转写文本
+     */
+    public String transcribeAudio(String fileName, byte[] fileBytes, String contentType, String language, String prompt) {
+        if (!hasConfiguredApiKey()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置 AI API Key");
+        }
+        if (fileBytes == null || fileBytes.length == 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "音频内容不能为空");
+        }
+        String safeFileName = StringUtils.defaultIfBlank(fileName, "mock-interview-audio.webm");
+        MediaType mediaType = MediaType.parse(StringUtils.defaultIfBlank(contentType, "application/octet-stream"));
+        if (mediaType == null) {
+            mediaType = MediaType.parse("application/octet-stream");
+        }
+
+        MultipartBody.Builder formBuilder = new MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("model", StringUtils.defaultIfBlank(speechModel, "whisper-1"))
+                .addFormDataPart("file", safeFileName, RequestBody.create(fileBytes, mediaType));
+        if (StringUtils.isNotBlank(language)) {
+            formBuilder.addFormDataPart("language", language);
+        }
+        if (StringUtils.isNotBlank(prompt)) {
+            formBuilder.addFormDataPart("prompt", prompt);
+        }
+
+        Request request = new Request.Builder()
+                .url(host + "/audio/transcriptions")
+                .post(formBuilder.build())
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                String errorMsg = response.body() != null ? response.body().string() : "无响应";
+                log.error("AI 音频转写失败: {}", errorMsg);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 音频转写失败");
+            }
+            String responseBody = response.body() != null ? response.body().string() : "";
+            return extractTranscriptionText(responseBody);
+        } catch (IOException e) {
+            log.error("AI 音频转写通信异常", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 音频转写通信失败");
+        }
+    }
+
     private boolean hasConfiguredApiKey() {
         return StringUtils.isNotBlank(apiKey)
                 && !"empty".equalsIgnoreCase(apiKey)
@@ -124,5 +181,41 @@ public class AiManager {
             log.error("解析 AI 响应失败，responseBody={}", responseBody, e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 返回结果格式错误");
         }
+    }
+
+    private String extractTranscriptionText(String responseBody) {
+        try {
+            Map<?, ?> responseMap = JSONUtil.toBean(responseBody, Map.class);
+            String text = valueToText(responseMap.get("text"));
+            if (StringUtils.isNotBlank(text)) {
+                return text;
+            }
+            Object resultObj = responseMap.get("result");
+            text = valueToText(resultObj);
+            if (StringUtils.isNotBlank(text)) {
+                return text;
+            }
+            Object dataObj = responseMap.get("data");
+            if (dataObj instanceof Map<?, ?> dataMap) {
+                text = valueToText(dataMap.get("text"));
+                if (StringUtils.isNotBlank(text)) {
+                    return text;
+                }
+            }
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 转写内容为空");
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("解析 AI 转写结果失败，responseBody={}", responseBody, e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 转写结果格式错误");
+        }
+    }
+
+    private String valueToText(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String text = String.valueOf(value).trim();
+        return StringUtils.isBlank(text) ? null : text;
     }
 }

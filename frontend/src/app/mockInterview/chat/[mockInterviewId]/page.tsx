@@ -23,6 +23,7 @@ import {
   getMockInterviewByIdUsingGet,
   handleMockInterviewEventUsingPost,
   streamMockInterviewEventUsingPost,
+  transcribeMockInterviewAudioUsingPost,
 } from "@/api/mockInterviewController";
 import "./index.css";
 
@@ -197,6 +198,40 @@ function getSpeechRecognitionConstructor() {
   return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
 }
 
+function getPreferredAudioMimeType() {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
+    return "";
+  }
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function getAudioFileExtension(mimeType?: string) {
+  if (!mimeType) {
+    return "webm";
+  }
+  if (mimeType.includes("mp4")) {
+    return "m4a";
+  }
+  if (mimeType.includes("mpeg")) {
+    return "mp3";
+  }
+  if (mimeType.includes("ogg")) {
+    return "ogg";
+  }
+  if (mimeType.includes("wav")) {
+    return "wav";
+  }
+  return "webm";
+}
+
 export default function InterviewRoomPage({ params }: { params: { mockInterviewId: string } }) {
   const { mockInterviewId } = params;
   const interviewId = Number(mockInterviewId);
@@ -212,7 +247,10 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(true);
   const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(false);
   const [speechSynthesisSupported, setSpeechSynthesisSupported] = useState(false);
+  const [audioRecordingSupported, setAudioRecordingSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState("");
 
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -221,6 +259,10 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const voiceBaseInputRef = useRef("");
   const lastSpokenKeyRef = useRef("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordMimeTypeRef = useRef("audio/webm");
 
   const applyInterviewData = useCallback((rawData?: API.MockInterview) => {
     const nextInterview = hydrateInterviewDetail(rawData);
@@ -258,9 +300,23 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     }
     setSpeechRecognitionSupported(Boolean(getSpeechRecognitionConstructor()));
     setSpeechSynthesisSupported("speechSynthesis" in window);
+    setAudioRecordingSupported(Boolean(window.MediaRecorder) && Boolean(navigator.mediaDevices?.getUserMedia));
     return () => {
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
+      const recorder = mediaRecorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        recorder.onerror = null;
+        if (recorder.state !== "inactive") {
+          recorder.stop();
+        }
+      }
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      recordedChunksRef.current = [];
       streamAbortControllerRef.current?.abort();
       streamAbortControllerRef.current = null;
       if (refreshAfterAbortTimerRef.current) {
@@ -330,6 +386,19 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+  }, []);
+
+  const releaseAudioRecorderResources = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+      mediaRecorderRef.current = null;
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    recordedChunksRef.current = [];
   }, []);
 
   const speakText = useCallback((content?: string) => {
@@ -403,6 +472,52 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     setVoiceStatus("已停止语音输入");
   }, []);
 
+  const transcribeRecordedAudio = useCallback(
+    async (audioBlob: Blob, mimeType?: string) => {
+      if (!interview?.id) {
+        return;
+      }
+      setIsTranscribing(true);
+      setVoiceStatus("正在上传录音并转写...");
+      try {
+        const extension = getAudioFileExtension(mimeType);
+        const transcript = await transcribeMockInterviewAudioUsingPost(
+          interview.id,
+          audioBlob,
+          `mock-interview-answer.${extension}`,
+        );
+        const cleanTranscript = transcript.trim();
+        if (!cleanTranscript) {
+          throw new Error("没有识别到有效语音内容");
+        }
+        stopSpeaking();
+        setInputMessage((prev) => (prev.trim() ? `${prev.trim()}\n${cleanTranscript}` : cleanTranscript));
+        setVoiceStatus("录音转写完成，已回填到输入框");
+        message.success("录音转写完成");
+      } catch (error: any) {
+        const errorText = error?.message || "录音转写失败";
+        setVoiceStatus(errorText);
+        message.error(errorText);
+      } finally {
+        setIsTranscribing(false);
+      }
+    },
+    [interview?.id, stopSpeaking],
+  );
+
+  const stopAudioRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      setIsRecording(false);
+      return;
+    }
+    if (recorder.state !== "inactive") {
+      setVoiceStatus("录音已结束，正在转写...");
+      recorder.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
   const startVoiceInput = useCallback(() => {
     const SpeechRecognition = getSpeechRecognitionConstructor();
     if (!SpeechRecognition) {
@@ -459,6 +574,58 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     setIsListening(true);
     setVoiceStatus("正在听你说话...");
   }, [cancelStreaming, inputMessage, stopSpeaking, submitting]);
+
+  const startAudioRecording = useCallback(async () => {
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      message.warning("当前浏览器不支持录音转写");
+      return;
+    }
+    stopSpeaking();
+    if (isListening) {
+      stopVoiceInput();
+    }
+    if (submitting && streamAbortControllerRef.current) {
+      cancelStreaming("检测到你开始录音作答，已停止面试官实时输出。");
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getPreferredAudioMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recordMimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+      recordedChunksRef.current = [];
+      mediaStreamRef.current = stream;
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        releaseAudioRecorderResources();
+        setIsRecording(false);
+        setVoiceStatus("录音失败，请检查麦克风权限后重试");
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(recordedChunksRef.current, {
+          type: recordMimeTypeRef.current || "audio/webm",
+        });
+        releaseAudioRecorderResources();
+        if (!audioBlob.size) {
+          setVoiceStatus("没有录到有效音频内容");
+          return;
+        }
+        void transcribeRecordedAudio(audioBlob, audioBlob.type);
+      };
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setVoiceStatus("正在录音，结束后会自动转写");
+    } catch (error: any) {
+      releaseAudioRecorderResources();
+      const errorText = error?.name === "NotAllowedError" ? "麦克风权限被拒绝" : "无法开始录音";
+      setVoiceStatus(errorText);
+      message.error(errorText);
+    }
+  }, [cancelStreaming, isListening, releaseAudioRecorderResources, stopSpeaking, stopVoiceInput, submitting, transcribeRecordedAudio]);
 
   const handleEvent = useCallback(
     async (eventType: "start" | "chat" | "pause" | "resume" | "end", msg?: string) => {
@@ -581,6 +748,10 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     }
     if (isListening) {
       stopVoiceInput();
+    }
+    if (isRecording) {
+      stopAudioRecording();
+      return;
     }
     const success = await handleEvent("chat", inputMessage.trim());
     if (success) {
@@ -859,14 +1030,14 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                 <div className="tool-group">
                   <Button
                     onClick={isListening ? stopVoiceInput : startVoiceInput}
-                    disabled={!speechRecognitionSupported || !canAnswer}
+                    disabled={!speechRecognitionSupported || !canAnswer || isRecording || isTranscribing}
                     className="tool-button"
                   >
                     {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                     {isListening ? "停止收音" : "语音输入"}
                   </Button>
                   <Button
-                    disabled={!speechRecognitionSupported || !canAnswer}
+                    disabled={!speechRecognitionSupported || !canAnswer || isRecording || isTranscribing}
                     className={`tool-button ${isListening ? "active" : ""}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
@@ -893,6 +1064,14 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   >
                     <Mic size={16} />
                     按住说话
+                  </Button>
+                  <Button
+                    onClick={isRecording ? stopAudioRecording : () => void startAudioRecording()}
+                    disabled={!audioRecordingSupported || !canAnswer || isListening || isTranscribing}
+                    className={`tool-button ${isRecording ? "active" : ""}`}
+                  >
+                    {isRecording ? <Square size={16} /> : <Mic size={16} />}
+                    {isTranscribing ? "转写中" : isRecording ? "停止录音" : "录音转写"}
                   </Button>
                   <Button
                     onClick={() => {
@@ -929,7 +1108,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   type="primary"
                   onClick={() => void sendMessage()}
                   loading={submitting}
-                  disabled={!canAnswer}
+                  disabled={!canAnswer || isRecording || isTranscribing}
                   className="send-button"
                 >
                   发送回答
