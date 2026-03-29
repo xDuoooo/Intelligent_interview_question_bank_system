@@ -67,6 +67,14 @@ export async function listHotPostUsingGet(options?: { [key: string]: any }) {
   });
 }
 
+/** listFeaturedPost GET /api/post/featured/list */
+export async function listFeaturedPostUsingGet(options?: { [key: string]: any }) {
+  return request<API.BaseResponseListPostVO_>('/api/post/featured/list', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
 /** listRelatedPost GET /api/post/related/list */
 export async function listRelatedPostUsingGet(
   params: {
@@ -165,6 +173,21 @@ export async function reviewPostUsingPost(
   options?: { [key: string]: any },
 ) {
   return request<API.BaseResponseBoolean_>('/api/post/review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** reportPost POST /api/post/report */
+export async function reportPostUsingPost(
+  body: API.PostReportRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/post/report', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

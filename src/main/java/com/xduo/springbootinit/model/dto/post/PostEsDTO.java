@@ -58,6 +58,11 @@ public class PostEsDTO implements Serializable {
     private Integer favourNum;
 
     /**
+     * 举报数
+     */
+    private Integer reportNum;
+
+    /**
      * 创建用户 id
      */
     private Long userId;

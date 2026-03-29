@@ -366,6 +366,29 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     }
 
     @Override
+    public List<PostVO> listFeaturedPostVO(int size, HttpServletRequest request) {
+        int safeSize = Math.max(1, Math.min(size, 8));
+        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+        queryWrapper.and(qw -> qw.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+        queryWrapper.eq("isFeatured", 1);
+        queryWrapper.orderByDesc("isTop", "thumbNum", "favourNum", "createTime");
+        queryWrapper.last("limit " + Math.max(safeSize * 2, 8));
+        List<Post> candidateList = this.list(queryWrapper);
+        if (CollUtil.isEmpty(candidateList)) {
+            return new ArrayList<>();
+        }
+        candidateList.sort((left, right) -> {
+            double leftScore = buildPostHotScore(left) + (left.getIsTop() != null && left.getIsTop() == 1 ? 20 : 0);
+            double rightScore = buildPostHotScore(right) + (right.getIsTop() != null && right.getIsTop() == 1 ? 20 : 0);
+            return Double.compare(rightScore, leftScore);
+        });
+        List<Post> topList = candidateList.stream().limit(safeSize).collect(Collectors.toList());
+        Page<Post> page = new Page<>(1, safeSize, topList.size());
+        page.setRecords(topList);
+        return getPostVOPage(page, request).getRecords();
+    }
+
+    @Override
     public List<PostVO> listRelatedPostVO(long postId, int size, HttpServletRequest request) {
         if (postId <= 0) {
             return new ArrayList<>();
