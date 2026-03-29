@@ -240,7 +240,7 @@ export default function AdminDashboardPage() {
       value: overview.mockInterviewTotal || 0,
       icon: <BrainCircuit className="h-6 w-6 text-violet-500" />,
       desc: "AI 面试发起次数",
-      href: "/mockInterview",
+      href: "/admin/mockInterview",
     },
     {
       title: "封禁用户数",
@@ -428,6 +428,12 @@ export default function AdminDashboardPage() {
               <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 风控面板
+              </Button>
+            </Link>
+            <Link href="/admin/mockInterview">
+              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                <BrainCircuit className="h-4 w-4" />
+                面试管理
               </Button>
             </Link>
             <Link href="/admin/question/ai">
