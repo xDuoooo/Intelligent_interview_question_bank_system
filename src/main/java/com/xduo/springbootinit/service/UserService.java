@@ -219,7 +219,7 @@ public interface UserService extends IService<User> {
      * @param userAvatar GitHub 头像
      * @return 用户信息
      */
-    User githubLogin(String githubId, String userName, String userAvatar);
+    User githubLogin(String githubId, String userName, String userAvatar, HttpServletRequest request);
 
     /**
      * Gitee 登录/注册
@@ -229,7 +229,7 @@ public interface UserService extends IService<User> {
      * @param userAvatar Gitee 头像
      * @return 用户信息
      */
-    User giteeLogin(String giteeId, String userName, String userAvatar);
+    User giteeLogin(String giteeId, String userName, String userAvatar, HttpServletRequest request);
 
     /**
      * Google 登录/注册
@@ -239,7 +239,7 @@ public interface UserService extends IService<User> {
      * @param userAvatar Google 头像
      * @return 用户信息
      */
-    User googleLogin(String googleId, String userName, String userAvatar);
+    User googleLogin(String googleId, String userName, String userAvatar, HttpServletRequest request);
 
     /**
      * 绑定 GitHub

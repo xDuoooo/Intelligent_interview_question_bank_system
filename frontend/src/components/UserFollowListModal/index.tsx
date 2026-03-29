@@ -32,6 +32,16 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
   const [records, setRecords] = useState<API.UserVO[]>([]);
   const viewingOwnFollowingList = Boolean(type === "following" && userId && loginUser?.id === userId);
 
+  const handleFollowChange = (targetUserId: number | undefined, followed: boolean) => {
+    if (!targetUserId || followed) {
+      return;
+    }
+    if (viewingOwnFollowingList) {
+      setRecords((prev) => prev.filter((item) => item.id !== targetUserId));
+      setTotal((prev) => Math.max(0, prev - 1));
+    }
+  };
+
   useEffect(() => {
     if (open) {
       setCurrent(1);
@@ -71,6 +81,12 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
     };
     void loadData();
   }, [current, open, pageSize, type, userId]);
+
+  useEffect(() => {
+    if (current > 1 && !loading && records.length === 0 && total > 0) {
+      setCurrent((prev) => Math.max(1, prev - 1));
+    }
+  }, [current, loading, records.length, total]);
 
   return (
     <Modal
@@ -113,6 +129,7 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
                   <UserFollowButton
                     userId={item.id}
                     initialFollowed={viewingOwnFollowingList}
+                    onChange={(followed) => handleFollowChange(item.id, followed)}
                     size="small"
                     className="shrink-0 rounded-xl"
                   />

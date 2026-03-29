@@ -3,6 +3,17 @@ import { ProColumns, ProTable } from "@ant-design/pro-components";
 import { message, Modal } from "antd";
 import React from "react";
 
+const parseTagList = (tags?: string) => {
+  if (!tags) {
+    return [];
+  }
+  try {
+    return JSON.parse(tags) || [];
+  } catch {
+    return [];
+  }
+};
+
 interface Props {
   oldData?: API.Question;
   visible: boolean;
@@ -45,7 +56,7 @@ const UpdateModal: React.FC<Props> = (props) => {
   // 表单初始化值格式转换
   const initValues = { ...oldData };
   if (oldData.tags) {
-    initValues.tags = JSON.parse(oldData.tags) || [];
+    initValues.tags = parseTagList(oldData.tags);
   }
 
   return (

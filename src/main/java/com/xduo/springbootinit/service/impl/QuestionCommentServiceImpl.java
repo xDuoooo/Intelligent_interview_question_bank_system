@@ -25,6 +25,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -253,12 +254,17 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
             QuestionCommentLike like = new QuestionCommentLike();
             like.setCommentId(commentId);
             like.setUserId(userId);
-            commentLikeMapper.insert(like);
-            liked = true;
-            delta = 1;
+            try {
+                commentLikeMapper.insert(like);
+                liked = true;
+                delta = 1;
+            } catch (DuplicateKeyException duplicateKeyException) {
+                liked = true;
+                delta = 0;
+            }
 
             // 发送点赞通知（异步）
-            if (!comment.getUserId().equals(loginUser.getId())) {
+            if (delta > 0 && !comment.getUserId().equals(loginUser.getId())) {
                 notificationService.sendNotification(
                     comment.getUserId(),
                     "有人给你点赞了",
@@ -275,7 +281,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                      .setSql("likeNum = GREATEST(0, likeNum + " + delta + ")");
         update(updateWrapper);
 
-        int newLikeNum = Math.max(0, comment.getLikeNum() + delta);
+        QuestionComment latestComment = getById(commentId);
+        int newLikeNum = latestComment == null || latestComment.getLikeNum() == null ? 0 : Math.max(0, latestComment.getLikeNum());
         Map<String, Object> result = new HashMap<>();
         result.put("liked", liked);
         result.put("likeNum", newLikeNum);
@@ -308,7 +315,11 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         report.setUserId(loginUser.getId());
         report.setReason(request.getReason());
         report.setStatus(0);
-        commentReportMapper.insert(report);
+        try {
+            commentReportMapper.insert(report);
+        } catch (DuplicateKeyException duplicateKeyException) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "您已举报过该评论");
+        }
 
         // 更新举报数并检查阈值
         LambdaUpdateWrapper<QuestionComment> updateWrapper = new LambdaUpdateWrapper<>();

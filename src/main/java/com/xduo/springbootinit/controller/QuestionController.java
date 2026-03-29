@@ -648,8 +648,9 @@ public class QuestionController {
      */
     public BaseResponse<Page<QuestionVO>> handleFallback(QuestionQueryRequest questionQueryRequest,
                                                          HttpServletRequest request, Throwable ex) {
-        // 可以返回本地数据或空数据
-        return ResultUtils.success(new Page<>());
+        log.warn("listQuestionVOByPage 触发降级，已自动回退到数据库查询", ex);
+        Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
+        return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
     }
 
     private int getQuestionReviewStatus(Question question) {
