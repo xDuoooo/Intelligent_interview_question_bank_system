@@ -159,7 +159,7 @@ export default async function PostsPage({
           <div className="flex items-end justify-between">
             <div>
               <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">My Community</div>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">我的待处理投稿</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">我的待处理帖子</h2>
               <p className="mt-2 text-sm leading-7 text-slate-500">
                 这里会展示你最近发布但尚未公开的帖子，方便你快速查看审核状态并回到个人中心继续修改。
               </p>

@@ -49,7 +49,7 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({ open, question, onCan
   const handleSubmit = async () => {
     const values = await form.validateFields();
     setSubmitting(true);
-    const hide = message.loading(isEdit ? "正在保存修改" : "正在提交投稿");
+    const hide = message.loading(isEdit ? "正在保存题目修改" : "正在提交题目");
     try {
       if (isEdit && question?.id) {
         await editQuestionUsingPost({
@@ -60,11 +60,11 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({ open, question, onCan
         await addQuestionUsingPost(values);
       }
       hide();
-      message.success(isEdit ? "修改已提交，题目会重新进入审核" : "投稿成功，等待管理员审核");
+      message.success(isEdit ? "修改已提交，题目会重新进入审核" : "题目提交成功，等待管理员审核");
       onSuccess();
     } catch (error: any) {
       hide();
-      message.error((isEdit ? "保存失败，" : "投稿失败，") + (error?.message || "请稍后重试"));
+      message.error((isEdit ? "保存失败，" : "提交失败，") + (error?.message || "请稍后重试"));
     } finally {
       setSubmitting(false);
     }
@@ -72,7 +72,7 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({ open, question, onCan
 
   return (
     <Modal
-      title={isEdit ? "修改投稿题目" : "投稿题目与题解"}
+      title={isEdit ? "修改题目" : "新增题目与题解"}
       open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
@@ -128,7 +128,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
       setCurrent(nextCurrent);
       setPageSize(nextPageSize);
     } catch (error: any) {
-      message.error("加载投稿记录失败，" + (error?.message || "请稍后重试"));
+      message.error("加载题目记录失败，" + (error?.message || "请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -141,18 +141,18 @@ const MyQuestionSubmissionPanel: React.FC = () => {
 
   const reviewSummary = useMemo(() => {
     const pendingCount = questionList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.PENDING).length;
-    return pendingCount > 0 ? `当前页还有 ${pendingCount} 道题目正在等待管理员审核。` : "投稿后题目默认进入待审核，审核通过后才会在公开题库里展示。";
+    return pendingCount > 0 ? `当前页还有 ${pendingCount} 道题目正在等待管理员审核。` : "新增题目后默认进入待审核，审核通过后才会在公开题库里展示。";
   }, [questionList]);
 
   const handleDelete = async (questionId?: number) => {
     if (!questionId) {
       return;
     }
-    const hide = message.loading("正在删除投稿");
+    const hide = message.loading("正在删除题目");
     try {
       await deleteQuestionUsingPost({ id: questionId });
       hide();
-      message.success("投稿已删除");
+      message.success("题目已删除");
       const nextCurrent = questionList.length === 1 && current > 1 ? current - 1 : current;
       await loadData(nextCurrent, pageSize);
     } catch (error: any) {
@@ -167,10 +167,10 @@ const MyQuestionSubmissionPanel: React.FC = () => {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <Title level={4} style={{ margin: 0 }}>
-              我的投稿题目
+              我的题目
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              可以自己提交题目和题解，管理员审核通过后才会出现在公开题库与题目列表里。
+              可以自己新增题目和题解，管理员审核通过后才会出现在公开题库与题目列表里。
             </Paragraph>
           </div>
           <Button
@@ -180,7 +180,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
               setModalVisible(true);
             }}
           >
-            投稿新题目
+            新增题目
           </Button>
         </div>
       </Card>
@@ -195,7 +195,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
 
       <Card className="rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40">
         {questionList.length === 0 && !loading ? (
-          <Empty description="你还没有投稿题目，试着提交第一道题吧" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+          <Empty description="你还没有自己的题目，试着新增第一道题吧" image={Empty.PRESENTED_IMAGE_SIMPLE}>
             <Button
               type="primary"
               onClick={() => {
@@ -203,7 +203,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
                 setModalVisible(true);
               }}
             >
-              立即投稿
+              立即新增
             </Button>
           </Empty>
         ) : (
@@ -249,7 +249,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
                             danger
                             onClick={() =>
                               Modal.confirm({
-                                title: "确认删除这条投稿吗？",
+                                title: "确认删除这道题目吗？",
                                 content: "删除后将无法恢复，对应题目会从列表中移除。",
                                 okText: "确认删除",
                                 cancelText: "取消",
