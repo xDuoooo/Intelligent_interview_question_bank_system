@@ -53,6 +53,11 @@ public interface RedisConstant {
     String USER_PASSWORD_LOGIN_BLOCK_KEY_PREFIX = "user:password:login:block:";
 
     /**
+     * 系统配置缓存 Redis Key
+     */
+    String SYSTEM_CONFIG_CACHE_KEY = "system:config:current";
+
+    /**
      * 获取用户登录验证码 Redis Key
      */
     static String getUserLoginCodeRedisKey(String target) {
@@ -99,5 +104,12 @@ public interface RedisConstant {
      */
     static String getUserPasswordLoginBlockRedisKey(String identifier) {
         return USER_PASSWORD_LOGIN_BLOCK_KEY_PREFIX + identifier;
+    }
+
+    /**
+     * 获取系统配置缓存 Redis Key
+     */
+    static String getSystemConfigCacheKey() {
+        return SYSTEM_CONFIG_CACHE_KEY;
     }
 }
