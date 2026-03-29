@@ -35,7 +35,7 @@ public class QuestionRecommendLog implements Serializable {
     private String source;
 
     /**
-     * 行为类型：exposure / click
+     * 行为类型：exposure / click / practice / favour / mastered
      */
     private String action;
 

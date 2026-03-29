@@ -1,5 +1,6 @@
 package com.xduo.springbootinit.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.mapper.QuestionRecommendLogMapper;
 import com.xduo.springbootinit.model.entity.QuestionRecommendLog;
@@ -37,6 +38,24 @@ public class QuestionRecommendLogServiceImpl extends ServiceImpl<QuestionRecomme
             return;
         }
         this.save(buildLog(userId, source, questionId, "click"));
+    }
+
+    @Override
+    public void logActionByRecentSource(Long userId, Long questionId, String action) {
+        if (userId == null || userId <= 0 || questionId == null || questionId <= 0 || StringUtils.isBlank(action)) {
+            return;
+        }
+        QueryWrapper<QuestionRecommendLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", userId)
+                .eq("questionId", questionId)
+                .in("action", "click", "exposure")
+                .orderByDesc("createTime")
+                .last("limit 1");
+        QuestionRecommendLog latestSourceLog = this.getOne(queryWrapper);
+        if (latestSourceLog == null || StringUtils.isBlank(latestSourceLog.getSource())) {
+            return;
+        }
+        this.save(buildLog(userId, latestSourceLog.getSource(), questionId, action));
     }
 
     private QuestionRecommendLog buildLog(Long userId, String source, Long questionId, String action) {

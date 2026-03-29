@@ -9,6 +9,7 @@ import com.xduo.springbootinit.mapper.QuestionFavourMapper;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionFavour;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.service.QuestionRecommendLogService;
 import com.xduo.springbootinit.service.QuestionFavourService;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,9 @@ public class QuestionFavourServiceImpl extends ServiceImpl<QuestionFavourMapper,
 
     @Resource
     private QuestionMapper questionMapper;
+
+    @Resource
+    private QuestionRecommendLogService questionRecommendLogService;
 
     /**
      * 题目收藏
@@ -79,6 +83,7 @@ public class QuestionFavourServiceImpl extends ServiceImpl<QuestionFavourMapper,
             // 未题目收藏
             result = this.save(questionFavour);
             if (result) {
+                questionRecommendLogService.logActionByRecentSource(userId, questionId, "favour");
                 // 题目收藏数 +1
                 return 1;
             } else {

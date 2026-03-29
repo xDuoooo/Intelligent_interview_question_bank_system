@@ -11,7 +11,6 @@ import { setLoginUser } from "@/stores/loginUser";
 import { User, FileText, ArrowRight, Camera, Loader2, MapPin } from "lucide-react";
 import { validateImageSrc } from "@/lib/utils";
 import { buildApiUrl } from "@/libs/request";
-import { CITY_GROUP_OPTIONS } from "@/config/cityOptions";
 
 const { Text } = Typography;
 const CAREER_DIRECTION_OPTIONS = [
@@ -216,29 +215,17 @@ const UserInfoEditForm = (props: Props) => {
             />
           </Form.Item>
 
-          <Form.Item
-            label={
-              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                <MapPin size={16} className="text-primary"/> 所在城市
-              </span>
-            }
-            name="city"
-            extra={
-              user.city
-                ? "城市信息已用于地理热度统计，当前仅支持展示，不支持用户自行修改。"
-                : "城市改为固定选项，首次选择后会锁定，用于后台地理热度统计。"
-            }
-          >
-            <Select
-              placeholder="请选择所在城市"
-              disabled={Boolean(user.city)}
-              options={CITY_GROUP_OPTIONS}
-              showSearch
-              size="large"
-              optionFilterProp="label"
-              popupMatchSelectWidth={false}
-            />
-          </Form.Item>
+          <div className="rounded-[1.75rem] border border-emerald-100 bg-emerald-50/70 px-5 py-4">
+            <div className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+              <MapPin size={16} className="text-emerald-600"/> 最近登录城市
+            </div>
+            <div className="mt-2 text-sm text-slate-600">
+              {user.city || "暂未识别到城市信息"}
+            </div>
+            <div className="mt-2 text-xs text-slate-400 leading-6">
+              城市由系统根据最近登录 IP 自动识别，用于地理热度统计与公开资料展示，普通用户不支持手动修改。
+            </div>
+          </div>
 
           <Form.Item
             label={

@@ -95,3 +95,9 @@ sa-token:
   token-style: uuid
   # 是否输出操作日志
   is-log: true
+
+# 应用级通用配置
+app:
+  ip-location:
+    # 本地或内网开发时，可在 local 环境配置一个模拟城市用于测试自动识别
+    dev-city: ${APP_IP_LOCATION_DEV_CITY:}

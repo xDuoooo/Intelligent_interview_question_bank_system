@@ -382,15 +382,13 @@ public class UserController {
             ThrowUtils.throwIf(userName.length() > 20, ErrorCode.PARAMS_ERROR, "昵称最多 20 个字符");
             userUpdateMyRequest.setUserName(userName);
         }
-        if (StringUtils.isNotBlank(loginUser.getCity())) {
-            if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())
-                    && !StringUtils.equals(loginUser.getCity(), CityUtils.normalizeCity(userUpdateMyRequest.getCity()))) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "城市信息已锁定，如需修改请联系管理员");
-            }
-            userUpdateMyRequest.setCity(loginUser.getCity());
-        } else if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())) {
-            userUpdateMyRequest.setCity(normalizeOptionalSupportedCity(userUpdateMyRequest.getCity(), true));
+        if (userUpdateMyRequest.getCity() != null) {
+            String requestCity = CityUtils.normalizeCity(userUpdateMyRequest.getCity());
+            ThrowUtils.throwIf(!StringUtils.equals(requestCity, loginUser.getCity()),
+                    ErrorCode.PARAMS_ERROR,
+                    "城市由系统根据最近登录 IP 自动识别，不支持手动修改");
         }
+        userUpdateMyRequest.setCity(loginUser.getCity());
         if (userUpdateMyRequest.getUserProfile() != null) {
             String userProfile = StringUtils.trimToEmpty(userUpdateMyRequest.getUserProfile());
             ThrowUtils.throwIf(userProfile.length() > 200, ErrorCode.PARAMS_ERROR, "个人简介最多 200 个字符");
@@ -418,10 +416,7 @@ public class UserController {
     private String normalizeOptionalSupportedCity(String city, boolean allowEmpty) {
         String normalizedCity = CityUtils.normalizeCity(city);
         if (normalizedCity == null) {
-            if (allowEmpty) {
-                return null;
-            }
-            return null;
+            return allowEmpty ? null : null;
         }
         ThrowUtils.throwIf(!CityUtils.isSupportedCity(normalizedCity), ErrorCode.PARAMS_ERROR, "请选择系统支持的城市");
         return normalizedCity;

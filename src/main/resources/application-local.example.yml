@@ -131,3 +131,6 @@ ai:
 # 前端联调地址
 app:
   frontend-url: http://localhost:3000
+  ip-location:
+    # 本地调试“按 IP 自动识别城市”时，可临时指定一个模拟城市（需是系统支持的城市）
+    dev-city: 杭州

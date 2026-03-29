@@ -19,4 +19,9 @@ public interface QuestionRecommendLogService extends IService<QuestionRecommendL
      * 记录推荐点击
      */
     void logClick(Long userId, String source, Long questionId);
+
+    /**
+     * 记录推荐后的转化行为
+     */
+    void logActionByRecentSource(Long userId, Long questionId, String action);
 }
