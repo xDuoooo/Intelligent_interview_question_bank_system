@@ -17,6 +17,21 @@ export async function addQuestionHistoryUsingPost(
   });
 }
 
+/** reportStudySession POST /api/user_question_history/session/report */
+export async function reportStudySessionUsingPost(
+  body: API.UserQuestionStudySessionReportRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/user_question_history/session/report', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** listMyFavourQuestionByPage GET /api/user_question_history/my/favour/list */
 export async function listMyFavourQuestionByPageUsingGet(
   params: {

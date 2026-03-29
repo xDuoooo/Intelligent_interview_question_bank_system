@@ -138,6 +138,21 @@ create table if not exists user_question_history
     index idx_user_status_updateTime (userId, status, updateTime)
 ) comment '用户刷题轨迹';
 
+-- 用户题目学习时长会话
+create table if not exists user_question_study_session
+(
+    id              bigint auto_increment comment 'id' primary key,
+    userId          bigint                             not null comment '用户 id',
+    questionId      bigint                             not null comment '题目 id',
+    durationSeconds int      default 0                 not null comment '本次学习时长（秒）',
+    createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    index idx_userId (userId),
+    index idx_questionId (questionId),
+    index idx_createTime (createTime),
+    index idx_user_createTime (userId, createTime)
+) comment '用户题目学习时长会话';
+
 -- 题目评论表
 create table if not exists question_comment
 (

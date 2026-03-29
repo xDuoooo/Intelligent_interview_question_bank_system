@@ -21,6 +21,7 @@ import com.xduo.springbootinit.model.vo.UserQuestionHistoryVO;
 import com.xduo.springbootinit.service.QuestionFavourService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.UserLearningGoalService;
+import com.xduo.springbootinit.service.UserQuestionStudySessionService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -49,6 +50,9 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
 
     @Resource
     private UserLearningGoalService userLearningGoalService;
+
+    @Resource
+    private UserQuestionStudySessionService userQuestionStudySessionService;
 
     @Override
     public boolean addQuestionHistory(long userId, long questionId, int status) {
@@ -196,6 +200,15 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         stats.put("todayProgress", Math.min(todayCount, dailyTarget));
         stats.put("recommendedDifficulty", inferRecommendedDifficulty(userId));
 
+        long totalStudyDurationSeconds = userQuestionStudySessionService.getTotalStudyDurationSeconds(userId);
+        long todayStudyDurationSeconds = userQuestionStudySessionService.getTodayStudyDurationSeconds(userId);
+        long studySessionCount = userQuestionStudySessionService.countStudySessions(userId);
+        long averageStudyDurationSeconds = studySessionCount > 0 ? Math.round((double) totalStudyDurationSeconds / studySessionCount) : 0;
+        stats.put("totalStudyDurationSeconds", totalStudyDurationSeconds);
+        stats.put("todayStudyDurationSeconds", todayStudyDurationSeconds);
+        stats.put("studySessionCount", studySessionCount);
+        stats.put("averageStudyDurationSeconds", averageStudyDurationSeconds);
+
         // 成就列表
         stats.put("achievementList", buildAchievementList(totalCount, masteredCount, favourCount, activeDays, currentStreak));
         return stats;
@@ -209,6 +222,18 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         todayWrapper.ge("updateTime", toDate(today, true));
         todayWrapper.lt("updateTime", toDate(today.plusDays(1), true));
         return this.count(todayWrapper);
+    }
+
+    @Override
+    public boolean reportStudySession(long userId, long questionId, int durationSeconds) {
+        if (userId <= 0 || questionId <= 0 || durationSeconds <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "学习时长参数不合法");
+        }
+        Question question = questionService.getById(questionId);
+        if (question == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        }
+        return userQuestionStudySessionService.recordStudySession(userId, questionId, durationSeconds);
     }
 
     private List<LocalDate> getActiveDateList(long userId) {

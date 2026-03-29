@@ -204,6 +204,19 @@ function UserCenterContent() {
                   </div>
                   <div className="text-xl font-black text-violet-700">{stats.recommendedDifficulty || "中等"}</div>
                 </div>
+                <div className="col-span-2 p-3 rounded-2xl bg-emerald-50/60 border border-emerald-100/40">
+                  <div className="text-[10px] uppercase font-black text-emerald-400 flex items-center gap-1.5 mb-1">
+                    <Calendar size={12} /> 累计学习时长
+                  </div>
+                  <div className="text-xl font-black text-emerald-700">
+                    {(() => {
+                      const totalSeconds = Number(stats.totalStudyDurationSeconds || 0);
+                      const hours = Math.floor(totalSeconds / 3600);
+                      const minutes = Math.floor((totalSeconds % 3600) / 60);
+                      return hours > 0 ? `${hours}小时${minutes}分` : `${minutes}分钟`;
+                    })()}
+                  </div>
+                </div>
               </div>
 
               <Paragraph type="secondary" className="text-[11px] mt-6 text-center opacity-40">

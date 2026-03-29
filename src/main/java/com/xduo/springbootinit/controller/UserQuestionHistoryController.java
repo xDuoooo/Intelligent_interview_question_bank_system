@@ -7,6 +7,7 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.model.dto.userquestionhistory.UserQuestionHistoryAddRequest;
 import com.xduo.springbootinit.model.dto.userquestionhistory.UserLearningGoalUpdateRequest;
+import com.xduo.springbootinit.model.dto.userquestionhistory.UserQuestionStudySessionReportRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.entity.UserQuestionHistory;
@@ -74,6 +75,28 @@ public class UserQuestionHistoryController {
                 questionRecommendLogService.logActionByRecentSource(loginUser.getId(), historyAddRequest.getQuestionId(), "mastered");
             }
         }
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 上报一次题目学习时长
+     */
+    @PostMapping("/session/report")
+    public BaseResponse<Boolean> reportStudySession(@RequestBody UserQuestionStudySessionReportRequest reportRequest,
+                                                    HttpServletRequest request) {
+        if (reportRequest == null || reportRequest.getQuestionId() == null || reportRequest.getQuestionId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "题目不存在");
+        }
+        Integer durationSeconds = reportRequest.getDurationSeconds();
+        if (durationSeconds == null || durationSeconds < 10 || durationSeconds > 7200) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "学习时长需在 10 秒到 2 小时之间");
+        }
+        final User loginUser = userService.getLoginUser(request);
+        boolean result = userQuestionHistoryService.reportStudySession(
+                loginUser.getId(),
+                reportRequest.getQuestionId(),
+                durationSeconds
+        );
         return ResultUtils.success(result);
     }
 
