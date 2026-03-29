@@ -82,7 +82,9 @@ export default function MyPostList() {
       <Spin spinning={loading}>
         {postList.length ? (
           <div className="space-y-4">
-            {postList.map((item) => (
+            {postList.map((item) => {
+              const isPublicPost = Number(item.reviewStatus ?? 1) === 1;
+              return (
               <div
                 key={item.id}
                 className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/20"
@@ -105,12 +107,16 @@ export default function MyPostList() {
                         </Tag>
                       ))}
                     </div>
-                    <Link
-                      href={`/post/${item.id}`}
-                      className="block text-2xl font-black tracking-tight text-slate-900 transition-colors hover:text-primary"
-                    >
-                      {item.title}
-                    </Link>
+                    {isPublicPost ? (
+                      <Link
+                        href={`/post/${item.id}`}
+                        className="block text-2xl font-black tracking-tight text-slate-900 transition-colors hover:text-primary"
+                      >
+                        {item.title}
+                      </Link>
+                    ) : (
+                      <div className="text-2xl font-black tracking-tight text-slate-900">{item.title}</div>
+                    )}
                     <p className="line-clamp-3 max-w-4xl text-sm leading-7 text-slate-500">
                       {item.content}
                     </p>
@@ -130,9 +136,18 @@ export default function MyPostList() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">
-                    <Link href={`/post/${item.id}`}>
-                      <Button className="h-10 rounded-2xl font-bold">查看</Button>
-                    </Link>
+                    {isPublicPost ? (
+                      <Link href={`/post/${item.id}`}>
+                        <Button className="h-10 rounded-2xl font-bold">查看</Button>
+                      </Link>
+                    ) : (
+                      <Button
+                        className="h-10 rounded-2xl font-bold"
+                        onClick={() => setEditingPost(item)}
+                      >
+                        查看并修改
+                      </Button>
+                    )}
                     <Button
                       icon={<Edit3 size={16} />}
                       className="h-10 rounded-2xl font-bold"
@@ -155,7 +170,8 @@ export default function MyPostList() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <div className="flex justify-end pt-2">
               <Pagination
