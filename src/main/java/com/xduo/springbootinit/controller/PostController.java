@@ -156,8 +156,10 @@ public class PostController {
     @PostMapping("/list/page")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Post>> listPostByPage(@RequestBody PostQueryRequest postQueryRequest) {
+        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 100, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Post> postPage = postService.page(new Page<>(current, size),
                 postService.getQueryWrapper(postQueryRequest));
         return ResultUtils.success(postPage);
@@ -173,10 +175,11 @@ public class PostController {
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<PostVO>> listPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
+        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Post> postPage = postService.page(new Page<>(current, size),
                 postService.getQueryWrapper(postQueryRequest));
         return ResultUtils.success(postService.getPostVOPage(postPage, request));
@@ -200,7 +203,7 @@ public class PostController {
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Post> postPage = postService.page(new Page<>(current, size),
                 postService.getQueryWrapper(postQueryRequest));
         return ResultUtils.success(postService.getPostVOPage(postPage, request));
@@ -218,10 +221,18 @@ public class PostController {
     @PostMapping("/search/page/vo")
     public BaseResponse<Page<PostVO>> searchPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
+        ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
-        Page<Post> postPage = postService.searchFromEs(postQueryRequest);
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        Page<Post> postPage;
+        try {
+            postPage = postService.searchFromEs(postQueryRequest);
+        } catch (Exception e) {
+            log.warn("post search fallback to database, reason={}", e.getMessage());
+            postPage = postService.page(new Page<>(current, size), postService.getQueryWrapper(postQueryRequest));
+        }
         return ResultUtils.success(postService.getPostVOPage(postPage, request));
     }
 

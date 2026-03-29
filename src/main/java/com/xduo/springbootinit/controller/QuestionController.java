@@ -272,8 +272,10 @@ public class QuestionController {
     @PostMapping("/list/page")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Question>> listQuestionByPage(@RequestBody QuestionQueryRequest questionQueryRequest) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 100, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         // 查询数据库
         Page<Question> questionPage = questionService.page(new Page<>(current, size),
                 questionService.getQueryWrapper(questionQueryRequest));
@@ -300,7 +302,7 @@ public class QuestionController {
             // 被保护的业务逻辑
 
             // 限制爬虫
-            ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+            ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
             if (!userService.isAdmin(request)) {
                 questionQueryRequest.setReviewStatus(QuestionConstant.REVIEW_STATUS_APPROVED);
             }
@@ -344,7 +346,7 @@ public class QuestionController {
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         // 查询数据库
         Page<Question> questionPage = questionService.page(new Page<>(current, size),
                 questionService.getQueryWrapper(questionQueryRequest));

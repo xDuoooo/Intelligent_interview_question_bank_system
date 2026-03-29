@@ -139,7 +139,7 @@ export default async function PublicUserProfilePage({
             />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="truncate text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+                <h1 className="text-3xl font-black tracking-tight text-slate-900 whitespace-normal break-words sm:text-4xl">
                   {profile.user.userName || "匿名用户"}
                 </h1>
                 {profile.user.userRole === "admin" ? (
@@ -219,7 +219,7 @@ export default async function PublicUserProfilePage({
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div className="min-w-0">
-                    <div className="truncate text-lg font-black text-slate-900">
+                    <div className="text-lg font-black text-slate-900 whitespace-normal break-words">
                       {question.title}
                     </div>
                     <div className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
