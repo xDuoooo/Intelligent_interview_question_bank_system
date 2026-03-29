@@ -233,6 +233,9 @@ create table if not exists system_config
     allowRegister   tinyint  default 1                 not null comment '是否开放注册',
     requireCaptcha  tinyint  default 1                 not null comment '是否强制图形验证码',
     maintenanceMode tinyint  default 0                 not null comment '是否开启维护模式',
+    enableSiteNotification tinyint default 1           not null comment '是否开启站内通知',
+    enableEmailNotification tinyint default 1          not null comment '是否开启邮件提醒',
+    enableLearningGoalReminder tinyint default 1       not null comment '是否开启学习目标提醒任务',
     createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
 ) comment '系统配置';

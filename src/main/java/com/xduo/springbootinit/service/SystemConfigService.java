@@ -44,4 +44,19 @@ public interface SystemConfigService extends IService<SystemConfig> {
      * 是否开启维护模式。
      */
     boolean isMaintenanceMode();
+
+    /**
+     * 是否开启站内通知。
+     */
+    boolean isEnableSiteNotification();
+
+    /**
+     * 是否开启邮件提醒。
+     */
+    boolean isEnableEmailNotification();
+
+    /**
+     * 是否开启学习目标提醒任务。
+     */
+    boolean isEnableLearningGoalReminder();
 }

@@ -3,6 +3,7 @@ package com.xduo.springbootinit.job.cycle;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.entity.UserLearningGoal;
 import com.xduo.springbootinit.service.NotificationService;
+import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserLearningGoalService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
@@ -43,6 +44,9 @@ public class LearningGoalReminderJob {
     @Resource
     private JavaMailSender javaMailSender;
 
+    @Resource
+    private SystemConfigService systemConfigService;
+
     @Value("${spring.mail.username:}")
     private String fromEmail;
 
@@ -51,6 +55,9 @@ public class LearningGoalReminderJob {
      */
     @Scheduled(cron = "0 0 20 * * ?", zone = "Asia/Shanghai")
     public void remindUsersToReachDailyGoal() {
+        if (!systemConfigService.isEnableLearningGoalReminder()) {
+            return;
+        }
         List<UserLearningGoal> goalList = userLearningGoalService.listReminderEnabledGoals();
         if (goalList.isEmpty()) {
             return;
@@ -94,6 +101,9 @@ public class LearningGoalReminderJob {
     }
 
     private void sendReminderEmail(User user, String title, String content) {
+        if (!systemConfigService.isEnableEmailNotification()) {
+            return;
+        }
         if (user == null || org.apache.commons.lang3.StringUtils.isBlank(user.getEmail())
                 || org.apache.commons.lang3.StringUtils.isBlank(fromEmail)) {
             return;

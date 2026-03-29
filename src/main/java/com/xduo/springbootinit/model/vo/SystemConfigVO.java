@@ -25,6 +25,12 @@ public class SystemConfigVO implements Serializable {
 
     private Boolean maintenanceMode;
 
+    private Boolean enableSiteNotification;
+
+    private Boolean enableEmailNotification;
+
+    private Boolean enableLearningGoalReminder;
+
     private Date createTime;
 
     private Date updateTime;

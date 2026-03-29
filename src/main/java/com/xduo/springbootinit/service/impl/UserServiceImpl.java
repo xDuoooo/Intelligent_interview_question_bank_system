@@ -143,6 +143,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             HttpServletRequest request) {
         User user = this.getOne(new QueryWrapper<User>().eq("unionId", socialId));
         if (user == null) {
+            ensureRegisterAllowed();
             user = new User();
             user.setUnionId(socialId);
             user.setUserAccount("u_" + RandomUtil.randomString(8));
@@ -154,6 +155,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             this.save(user);
         }
         ensureUserAvailable(user);
+        ensureMaintenanceLoginAllowed(user);
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);

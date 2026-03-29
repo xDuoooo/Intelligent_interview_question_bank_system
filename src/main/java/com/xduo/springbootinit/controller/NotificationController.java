@@ -113,9 +113,13 @@ public class NotificationController {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        User loginUser = userService.getLoginUser(request);
         Notification notification = notificationService.getById(id);
         if (notification == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        if (!notification.getUserId().equals(loginUser.getId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         return ResultUtils.success(notificationService.getNotificationVO(notification, request));
     }
@@ -129,8 +133,10 @@ public class NotificationController {
     @PostMapping("/list/page")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<Notification>> listNotificationByPage(@RequestBody NotificationQueryRequest notificationQueryRequest) {
+        ThrowUtils.throwIf(notificationQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = notificationQueryRequest.getCurrent();
         long size = notificationQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 50, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Notification> notificationPage = notificationService.page(new Page<>(current, size),
                 notificationService.getQueryWrapper(notificationQueryRequest));
         return ResultUtils.success(notificationPage);
@@ -153,8 +159,7 @@ public class NotificationController {
         notificationQueryRequest.setUserId(loginUser.getId());
         long current = notificationQueryRequest.getCurrent();
         long size = notificationQueryRequest.getPageSize();
-        // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Notification> notificationPage = notificationService.page(new Page<>(current, size),
                 notificationService.getQueryWrapper(notificationQueryRequest));
         return ResultUtils.success(notificationService.getNotificationVOPage(notificationPage, request));

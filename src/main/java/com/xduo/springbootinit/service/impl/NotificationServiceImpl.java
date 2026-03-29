@@ -9,6 +9,7 @@ import com.xduo.springbootinit.model.dto.notification.NotificationQueryRequest;
 import com.xduo.springbootinit.model.entity.Notification;
 import com.xduo.springbootinit.model.vo.NotificationVO;
 import com.xduo.springbootinit.service.NotificationService;
+import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
@@ -25,6 +26,9 @@ import java.util.stream.Collectors;
 @Service
 public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Notification>
         implements NotificationService {
+
+    @jakarta.annotation.Resource
+    private SystemConfigService systemConfigService;
 
     @Override
     public NotificationVO getNotificationVO(Notification notification, HttpServletRequest request) {
@@ -83,6 +87,9 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
     @Async
     public void sendNotification(Long userId, String title, String content, String type, Long targetId) {
         if (userId == null || userId <= 0) {
+            return;
+        }
+        if (!systemConfigService.isEnableSiteNotification()) {
             return;
         }
         Notification notification = new Notification();
