@@ -77,6 +77,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponsePagePostReportVO_ = {
+    code?: number;
+    data?: PagePostReportVO_;
+    message?: string;
+  };
+
   type BaseResponsePageQuestion_ = {
     code?: number;
     data?: PageQuestion_;
@@ -507,6 +513,19 @@ declare namespace API {
     total?: number;
   };
 
+  type PagePostReportVO_ = {
+    countId?: string;
+    current?: number;
+    maxLimit?: number;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: number;
+    records?: PostReportVO[];
+    searchCount?: boolean;
+    size?: number;
+    total?: number;
+  };
+
   type PageQuestion_ = {
     countId?: string;
     current?: number;
@@ -719,6 +738,20 @@ declare namespace API {
     reason?: string;
   };
 
+  type PostReportQueryRequest = {
+    current?: number;
+    pageSize?: number;
+    postId?: number;
+    sortField?: string;
+    sortOrder?: string;
+    status?: number;
+  };
+
+  type PostReportProcessRequest = {
+    id?: number;
+    status?: number;
+  };
+
   type PostThumbAddRequest = {
     postId?: number;
   };
@@ -748,6 +781,16 @@ declare namespace API {
     title?: string;
     updateTime?: string;
     user?: UserVO;
+    userId?: number;
+  };
+
+  type PostReportVO = {
+    createTime?: string;
+    id?: number;
+    postId?: number;
+    reason?: string;
+    reporter?: UserVO;
+    status?: number;
     userId?: number;
   };
 
