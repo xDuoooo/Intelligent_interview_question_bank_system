@@ -1,9 +1,39 @@
-import { listQuestionVoByPageUsingPost } from "@/api/questionController";
+import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
 import QuestionTable from "@/components/QuestionTable";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
+
+function getSingleParam(value?: string | string[]) {
+  if (Array.isArray(value)) {
+    return value[0] || "";
+  }
+  return value || "";
+}
+
+function parseTagParam(value?: string | string[]) {
+  const rawValue = getSingleParam(value);
+  if (!rawValue) {
+    return undefined;
+  }
+  const tagList = rawValue
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return tagList.length ? tagList : undefined;
+}
+
+function normalizeSortField(value?: string | string[]) {
+  const sortField = getSingleParam(value);
+  const allowedSortFieldSet = new Set(["createTime", "updateTime", "title"]);
+  return allowedSortFieldSet.has(sortField) ? sortField : "createTime";
+}
+
+function normalizeSortOrder(value?: string | string[]) {
+  const sortOrder = getSingleParam(value);
+  return sortOrder === "ascend" ? "ascend" : "descend";
+}
 
 /**
  * 题目列表页面
@@ -12,21 +42,34 @@ export const dynamic = "force-dynamic";
 export default async function QuestionsPage({
   searchParams,
 }: {
-  searchParams: { q: string };
+  searchParams: {
+    q?: string | string[];
+    title?: string | string[];
+    content?: string | string[];
+    answer?: string | string[];
+    tags?: string | string[];
+    sortField?: string | string[];
+    sortOrder?: string | string[];
+    page?: string | string[];
+  };
 }) {
-  // 获取 url 的查询参数
-  const searchText = searchParams.q || "";
+  const defaultSearchParams: API.QuestionQueryRequest = {
+    searchText: getSingleParam(searchParams.q),
+    title: getSingleParam(searchParams.title),
+    content: getSingleParam(searchParams.content),
+    answer: getSingleParam(searchParams.answer),
+    tags: parseTagParam(searchParams.tags),
+    sortField: normalizeSortField(searchParams.sortField),
+    sortOrder: normalizeSortOrder(searchParams.sortOrder),
+    current: Number(getSingleParam(searchParams.page)) || 1,
+    pageSize: 12,
+  };
   // 题目列表和总数
   let questionList: API.QuestionVO[] = [];
   let total = 0;
 
   try {
-    const res = (await listQuestionVoByPageUsingPost({
-      searchText,
-      pageSize: 12,
-      sortField: "createTime",
-      sortOrder: "descend",
-    }, {
+    const res = (await searchQuestionVoByPageUsingPost(defaultSearchParams, {
       headers: {
         cookie: headers().get("cookie") || "",
       }
@@ -61,9 +104,7 @@ export default async function QuestionsPage({
         <QuestionTable
           defaultQuestionList={questionList}
           defaultTotal={total}
-          defaultSearchParams={{
-            searchText: searchText,
-          }}
+          defaultSearchParams={defaultSearchParams}
         />
       </section>
     </div>
