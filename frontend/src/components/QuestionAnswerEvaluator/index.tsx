@@ -1,17 +1,48 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { Button, Card, Empty, Input, Space, Tag, Typography, message } from "antd";
-import { Lightbulb, MessageSquare, Sparkles, Target } from "lucide-react";
+import { Lightbulb, MessageSquare, Mic, Sparkles, Square, Target } from "lucide-react";
 import { RootState } from "@/stores";
-import { evaluateQuestionAnswerUsingPost } from "@/api/questionController";
+import { evaluateQuestionAnswerByAudioUsingPost, evaluateQuestionAnswerUsingPost } from "@/api/questionController";
 
 const { Paragraph, Text, Title } = Typography;
 
 interface Props {
   questionId: number;
   questionTitle?: string;
+}
+
+function getPreferredAudioMimeType() {
+  if (typeof window === "undefined" || typeof MediaRecorder === "undefined") {
+    return "";
+  }
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+  ];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function getAudioFileExtension(mimeType?: string) {
+  if (!mimeType) {
+    return "webm";
+  }
+  if (mimeType.includes("mp4")) {
+    return "m4a";
+  }
+  if (mimeType.includes("mpeg")) {
+    return "mp3";
+  }
+  if (mimeType.includes("ogg")) {
+    return "ogg";
+  }
+  return "webm";
 }
 
 function renderLevelTagColor(level?: string) {
@@ -69,9 +100,44 @@ export default function QuestionAnswerEvaluator({ questionId, questionTitle }: P
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const [answerContent, setAnswerContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioRecordingSupported, setAudioRecordingSupported] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
   const [result, setResult] = useState<API.QuestionAnswerEvaluateVO>();
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordMimeTypeRef = useRef("audio/webm");
 
   const isLogin = useMemo(() => Boolean(loginUser?.id), [loginUser?.id]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    setAudioRecordingSupported(Boolean(window.MediaRecorder) && Boolean(navigator.mediaDevices?.getUserMedia));
+    return () => {
+      mediaRecorderRef.current?.stop?.();
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaRecorderRef.current = null;
+      mediaStreamRef.current = null;
+      recordedChunksRef.current = [];
+    };
+  }, []);
+
+  const releaseAudioRecorderResources = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onstop = null;
+      recorder.onerror = null;
+      mediaRecorderRef.current = null;
+    }
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    recordedChunksRef.current = [];
+  }, []);
 
   const handleEvaluate = async () => {
     const trimmedAnswer = answerContent.trim();
@@ -93,6 +159,89 @@ export default function QuestionAnswerEvaluator({ questionId, questionTitle }: P
       setLoading(false);
     }
   };
+
+  const handleAudioEvaluate = useCallback(async (audioBlob: Blob, mimeType?: string) => {
+    setAudioLoading(true);
+    setVoiceStatus("正在转写并判题...");
+    try {
+      const extension = getAudioFileExtension(mimeType);
+      const res = await evaluateQuestionAnswerByAudioUsingPost(
+        questionId,
+        audioBlob,
+        `question-answer.${extension}`,
+      );
+      setResult(res.data);
+      if (res.data?.transcript) {
+        setAnswerContent(res.data.transcript);
+      }
+      setVoiceStatus("语音答题判题完成");
+      message.success("语音答题判题完成");
+    } catch (error: any) {
+      const errorText = error?.message || "语音判题失败";
+      setVoiceStatus(errorText);
+      message.error(errorText);
+    } finally {
+      setAudioLoading(false);
+    }
+  }, [questionId]);
+
+  const stopAudioRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) {
+      setIsRecording(false);
+      return;
+    }
+    if (recorder.state !== "inactive") {
+      setVoiceStatus("录音已结束，正在判题...");
+      recorder.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
+  const startAudioRecording = useCallback(async () => {
+    if (typeof window === "undefined" || typeof MediaRecorder === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      message.warning("当前浏览器不支持录音答题");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = getPreferredAudioMimeType();
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      recordMimeTypeRef.current = recorder.mimeType || mimeType || "audio/webm";
+      recordedChunksRef.current = [];
+      mediaStreamRef.current = stream;
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => {
+        releaseAudioRecorderResources();
+        setIsRecording(false);
+        setVoiceStatus("录音失败，请检查麦克风权限后重试");
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(recordedChunksRef.current, {
+          type: recordMimeTypeRef.current || "audio/webm",
+        });
+        releaseAudioRecorderResources();
+        if (!audioBlob.size) {
+          setVoiceStatus("没有录到有效音频内容");
+          return;
+        }
+        void handleAudioEvaluate(audioBlob, audioBlob.type);
+      };
+      recorder.start(250);
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+      setVoiceStatus("正在录音，停止后会自动判题");
+    } catch (error: any) {
+      releaseAudioRecorderResources();
+      const errorText = error?.name === "NotAllowedError" ? "麦克风权限被拒绝" : "无法开始录音";
+      setVoiceStatus(errorText);
+      message.error(errorText);
+    }
+  }, [handleAudioEvaluate, releaseAudioRecorderResources]);
 
   return (
     <Card
@@ -160,12 +309,28 @@ export default function QuestionAnswerEvaluator({ questionId, questionTitle }: P
                   type="primary"
                   onClick={handleEvaluate}
                   loading={loading}
+                  disabled={audioLoading || isRecording}
                   className="rounded-2xl"
                 >
                   开始判题
                 </Button>
+                <Button
+                  onClick={isRecording ? stopAudioRecording : () => void startAudioRecording()}
+                  loading={audioLoading}
+                  disabled={!audioRecordingSupported || loading}
+                  className="rounded-2xl"
+                >
+                  {isRecording ? <Square className="mr-1 h-4 w-4" /> : <Mic className="mr-1 h-4 w-4" />}
+                  {isRecording ? "停止录音并判题" : "录音答题"}
+                </Button>
               </Space>
             </div>
+
+            {voiceStatus ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 text-sm text-slate-500">
+                {voiceStatus}
+              </div>
+            ) : null}
 
             {result ? (
               <div className="space-y-5 rounded-[2rem] border border-primary/10 bg-primary/[0.03] p-5">
@@ -224,6 +389,12 @@ export default function QuestionAnswerEvaluator({ questionId, questionTitle }: P
                   <div className="rounded-[1.75rem] border border-dashed border-primary/20 bg-white/70 px-5 py-4 text-sm leading-6 text-slate-600">
                     <span className="font-black text-slate-800">复盘建议：</span>
                     {result.referenceSuggestion}
+                  </div>
+                ) : null}
+                {result.transcript ? (
+                  <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white/80 px-5 py-4 text-sm leading-6 text-slate-600">
+                    <span className="font-black text-slate-800">语音转写：</span>
+                    {result.transcript}
                   </div>
                 ) : null}
               </div>

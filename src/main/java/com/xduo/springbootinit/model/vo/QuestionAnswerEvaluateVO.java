@@ -12,6 +12,11 @@ import java.util.List;
 public class QuestionAnswerEvaluateVO implements Serializable {
 
     /**
+     * 语音答题转写文本
+     */
+    private String transcript;
+
+    /**
      * 总分（0 - 100）
      */
     private Integer score;

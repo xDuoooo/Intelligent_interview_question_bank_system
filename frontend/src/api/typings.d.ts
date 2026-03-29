@@ -753,6 +753,7 @@ declare namespace API {
     score?: number;
     strengthList?: string[];
     summary?: string;
+    transcript?: string;
   };
 
   type QuestionAIGenerateRequest = {
