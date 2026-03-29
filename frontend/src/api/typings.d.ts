@@ -167,6 +167,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseSystemConfigVO_ = {
+    code?: number;
+    data?: SystemConfigVO;
+    message?: string;
+  };
+
   type BaseResponseUser_ = {
     code?: number;
     data?: User;
@@ -183,6 +189,27 @@ declare namespace API {
     code?: number;
     data?: UserProfileVO;
     message?: string;
+  };
+
+  type SystemConfigUpdateRequest = {
+    allowRegister?: boolean;
+    announcement?: string;
+    maintenanceMode?: boolean;
+    requireCaptcha?: boolean;
+    seoKeywords?: string;
+    siteName?: string;
+  };
+
+  type SystemConfigVO = {
+    allowRegister?: boolean;
+    announcement?: string;
+    createTime?: string;
+    id?: number;
+    maintenanceMode?: boolean;
+    requireCaptcha?: boolean;
+    seoKeywords?: string;
+    siteName?: string;
+    updateTime?: string;
   };
 
   type BaseResponsePageUserQuestionHistoryVO_ = {

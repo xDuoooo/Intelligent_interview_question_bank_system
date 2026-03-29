@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import { Lock, Mail, Phone, User, ShieldCheck } from "lucide-react";
-import { message } from "antd";
+import { Alert, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/stores";
@@ -11,6 +11,7 @@ import { setLoginUser } from "@/stores/loginUser";
 import request from "@/libs/request";
 import { APP_CONFIG } from "@/config/appConfig";
 import { getSocialAuthUrl, SOCIAL_AUTH_PROVIDERS } from "@/config/auth";
+import { getPublicSystemConfigUsingGet } from "@/api/systemConfigController";
 import {
   getLoginUserUsingGet,
   sendVerificationCodeUsingPost,
@@ -54,6 +55,7 @@ const UserLoginPage: React.FC = () => {
   const [count, setCount] = useState(0);
   const [captchaData, setCaptchaData] = useState<{ image: string; uuid: string } | null>(null);
   const [captchaInput, setCaptchaInput] = useState("");
+  const [systemConfig, setSystemConfig] = useState<API.SystemConfigVO | null>(null);
   const hasHandledQueryFeedback = useRef(false);
 
   // 获取图形验证码
@@ -69,8 +71,32 @@ const UserLoginPage: React.FC = () => {
   };
 
   useEffect(() => {
-    refreshCaptcha();
+    const loadPublicSystemConfig = async () => {
+      try {
+        const res = await getPublicSystemConfigUsingGet();
+        setSystemConfig(res.data ?? null);
+      } catch (e) {
+        console.error("获取公开系统配置失败", e);
+      }
+    };
+    loadPublicSystemConfig();
   }, []);
+
+  const requireCaptcha = systemConfig?.requireCaptcha ?? true;
+  const siteName = systemConfig?.siteName || APP_CONFIG.brand.displayName;
+  const announcement = systemConfig?.announcement?.trim();
+  const firstLoginHint = systemConfig?.allowRegister === false
+    ? "当前未开放新账号注册，仅支持已绑定邮箱或手机号的账号使用验证码登录"
+    : APP_CONFIG.auth.firstLoginHint;
+
+  useEffect(() => {
+    if (requireCaptcha) {
+      refreshCaptcha();
+    } else {
+      setCaptchaData(null);
+      setCaptchaInput("");
+    }
+  }, [requireCaptcha]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -128,7 +154,7 @@ const UserLoginPage: React.FC = () => {
       message.warning("请输入有效的邮箱地址或 11 位手机号");
       return;
     }
-    if (!captchaInput) {
+    if (requireCaptcha && !captchaInput) {
       message.warning("请先输入图形验证码");
       return;
     }
@@ -136,18 +162,22 @@ const UserLoginPage: React.FC = () => {
       const res = await sendVerificationCodeUsingPost({
         target,
         type: inputType,
-        captcha: captchaInput,
-        captchaUuid: captchaData?.uuid,
+        captcha: requireCaptcha ? captchaInput : undefined,
+        captchaUuid: requireCaptcha ? captchaData?.uuid : undefined,
       });
       if (res.data) {
         message.success("验证码已发送");
         setCount(60);
-        refreshCaptcha();
+        if (requireCaptcha) {
+          refreshCaptcha();
+        }
         setCaptchaInput("");
       }
     } catch (e: any) {
       message.error(e.message || "验证码发送失败，请稍后重试");
-      refreshCaptcha();
+      if (requireCaptcha) {
+        refreshCaptcha();
+      }
       setCaptchaInput("");
     }
   };
@@ -201,8 +231,31 @@ const UserLoginPage: React.FC = () => {
                 <Image src="/assets/logo.png" height={64} width={64} alt="Logo" className="object-contain" />
               </div>
             </div>
-            <h1 className="text-2xl font-black text-foreground">{APP_CONFIG.brand.displayName}</h1>
+            <h1 className="text-2xl font-black text-foreground">{siteName}</h1>
           </div>
+
+          {(systemConfig?.maintenanceMode || announcement) && (
+            <div className="mb-6 space-y-3">
+              {systemConfig?.maintenanceMode && (
+                <Alert
+                  showIcon
+                  type="warning"
+                  className="rounded-2xl"
+                  message="系统维护中"
+                  description="当前仅管理员账号可以登录，普通用户请稍后再试。"
+                />
+              )}
+              {announcement && (
+                <Alert
+                  showIcon
+                  type="info"
+                  className="rounded-2xl"
+                  message="系统公告"
+                  description={announcement}
+                />
+              )}
+            </div>
+          )}
 
           <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8">
             <button
@@ -275,39 +328,41 @@ const UserLoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
-                      <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                      <input
-                        type="text"
-                        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
-                        placeholder="请输入右侧验证码"
-                        value={captchaInput}
-                        onChange={(e) => setCaptchaInput(e.target.value)}
-                      />
-                    </div>
-                    <div 
-                      className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
-                      onClick={refreshCaptcha}
-                      title="点击刷新"
-                    >
-                      {captchaData ? (
-                        <Image
-                          src={captchaData.image}
-                          alt="captcha"
-                          width={112}
-                          height={48}
-                          unoptimized
-                          className="h-full w-full object-cover rounded-xl"
+                {requireCaptcha && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <input
+                          type="text"
+                          className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                          placeholder="请输入右侧验证码"
+                          value={captchaInput}
+                          onChange={(e) => setCaptchaInput(e.target.value)}
                         />
-                      ) : (
-                        <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
-                      )}
+                      </div>
+                      <div
+                        className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
+                        onClick={refreshCaptcha}
+                        title="点击刷新"
+                      >
+                        {captchaData ? (
+                          <Image
+                            src={captchaData.image}
+                            alt="captcha"
+                            width={112}
+                            height={48}
+                            unoptimized
+                            className="h-full w-full object-cover rounded-xl"
+                          />
+                        ) : (
+                          <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">验证码</label>
@@ -345,7 +400,7 @@ const UserLoginPage: React.FC = () => {
           </form>
 
           <div className="mt-8 text-center text-slate-400 text-xs font-medium">
-            {APP_CONFIG.auth.firstLoginHint}
+            {firstLoginHint}
           </div>
 
           <div className="relative my-6">
