@@ -44,7 +44,7 @@ export default function MyPostList() {
     void fetchPostList(1);
   }, [fetchPostList]);
 
-  const handleDelete = async (id?: number) => {
+  const handleDelete = async (id?: string | number) => {
     if (!id) {
       return;
     }

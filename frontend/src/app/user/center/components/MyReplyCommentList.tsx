@@ -1,0 +1,140 @@
+import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { CalendarClock, MessageCircle, ThumbsUp } from "lucide-react";
+import { Empty, Pagination, Spin, Tag, message } from "antd";
+import { listMyReplyCommentsByPage, type UserCommentActivityVO } from "@/api/commentController";
+
+function buildCommentLink(item: UserCommentActivityVO) {
+  return `/question/${item.questionId}#comment-${item.id}`;
+}
+
+export default function MyReplyCommentList() {
+  const [commentList, setCommentList] = useState<UserCommentActivityVO[]>([]);
+  const [current, setCurrent] = useState(1);
+  const [pageSize] = useState(8);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+  const fetchCommentList = useCallback(async (page = current) => {
+    setLoading(true);
+    try {
+      const res = await listMyReplyCommentsByPage({
+        current: page,
+        pageSize,
+      });
+      setCommentList(res.records || []);
+      setTotal(Number(res.total || 0));
+      setCurrent(page);
+    } catch (error: any) {
+      message.error(error?.message || "获取回复评论失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [current, pageSize]);
+
+  useEffect(() => {
+    void fetchCommentList(1);
+  }, [fetchCommentList]);
+
+  return (
+    <Spin spinning={loading}>
+      {commentList.length ? (
+        <div className="space-y-5">
+          {commentList.map((item) => (
+            <div
+              key={String(item.id)}
+              className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm shadow-slate-100"
+            >
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">所属题目</div>
+                    <Link
+                      href={buildCommentLink(item)}
+                      className="mt-2 block text-lg font-black leading-7 text-slate-900 transition-colors hover:text-primary"
+                    >
+                      {item.questionTitle || "题目已不可见"}
+                    </Link>
+                  </div>
+                  <Tag className="m-0 rounded-full border-blue-100 bg-blue-50 px-4 py-1.5 text-sm font-bold text-blue-600">
+                    我回复过
+                  </Tag>
+                </div>
+
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-4 text-sm leading-7 text-slate-700">
+                  {item.replyToUser ? (
+                    <span className="mr-2 font-bold text-primary">回复 @{item.replyToUser.userName}：</span>
+                  ) : null}
+                  {item.deleted ? "该评论已删除" : item.content}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarClock size={14} />
+                    {item.actionTime ? new Date(item.actionTime).toLocaleString("zh-CN") : "刚刚"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <ThumbsUp size={14} />
+                    点赞 {item.likeNum || 0}
+                  </span>
+                  {typeof item.status === "number" && item.status !== 0 ? (
+                    <Tag
+                      className={`m-0 rounded-full px-3 py-1 text-xs font-bold ${
+                        item.status === 1
+                          ? "border-amber-100 bg-amber-50 text-amber-600"
+                          : "border-red-100 bg-red-50 text-red-600"
+                      }`}
+                    >
+                      {item.status === 1 ? "待审核" : "已驳回"}
+                    </Tag>
+                  ) : null}
+                  {item.hasLiked ? (
+                    <Tag className="m-0 rounded-full border-rose-100 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">
+                      我已点赞
+                    </Tag>
+                  ) : null}
+                </div>
+
+                {item.reviewMessage && item.status && item.status !== 0 ? (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-xs leading-6 text-amber-700">
+                    审核说明：{item.reviewMessage}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          ))}
+
+          <div className="flex justify-end pt-2">
+            <Pagination
+              current={current}
+              pageSize={pageSize}
+              total={total}
+              showSizeChanger={false}
+              onChange={(page) => {
+                void fetchCommentList(page);
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-[2rem] border border-dashed border-slate-200 bg-slate-50/60 px-8 py-14 text-center">
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description={
+              <div className="space-y-2">
+                <div className="text-base font-bold text-slate-700">还没有回复过评论</div>
+                <div className="text-sm text-slate-400">你在题目下的互动和交流，会统一沉淀到这里。</div>
+              </div>
+            }
+          />
+          <Link
+            href="/questions"
+            className="mt-4 inline-flex items-center justify-center rounded-2xl bg-primary px-6 py-3 font-black text-white transition hover:opacity-90"
+          >
+            去题库互动
+          </Link>
+        </div>
+      )}
+    </Spin>
+  );
+}

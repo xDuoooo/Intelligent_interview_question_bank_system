@@ -61,8 +61,12 @@ const MyQuestionNoteList = dynamic(() => import("@/app/user/center/components/My
   loading: () => <div className="py-8 text-center text-slate-400">正在加载我的笔记...</div>,
 });
 
-const MyPostList = dynamic(() => import("@/app/user/center/components/MyPostList"), {
-  loading: () => <div className="py-8 text-center text-slate-400">正在加载我的帖子...</div>,
+const MyCommentActivityPanel = dynamic(() => import("@/app/user/center/components/MyCommentActivityPanel"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载评论足迹...</div>,
+});
+
+const MyCommunityPostPanel = dynamic(() => import("@/app/user/center/components/MyCommunityPostPanel"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载社区足迹...</div>,
 });
 
 const CalendarChart = dynamic(() => import("@/app/user/center/components/CalendarChart"), {
@@ -90,6 +94,7 @@ function UserCenterContent() {
       "submissions",
       "security",
       "notes",
+      "comments",
       "posts",
       "history",
       "achievement",
@@ -265,7 +270,8 @@ function UserCenterContent() {
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
               { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的投稿</span> },
               { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
-              { key: "posts", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />我的帖子</span> },
+              { key: "comments", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />评论足迹</span> },
+              { key: "posts", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />社区足迹</span> },
               { key: "security", label: <span className="flex items-center gap-2"><ShieldCheck size={16} />账号安全</span> },
               { key: "favour", label: <span className="flex items-center gap-2"><Heart size={16} />收藏题目</span> },
               { key: "history", label: <span className="flex items-center gap-2"><History size={16} />刷题轨迹</span> },
@@ -296,8 +302,11 @@ function UserCenterContent() {
                         <Button onClick={() => setActiveTabKey("notes")}>
                           我的笔记
                         </Button>
+                        <Button onClick={() => setActiveTabKey("comments")}>
+                          评论足迹
+                        </Button>
                         <Button onClick={() => setActiveTabKey("posts")}>
-                          我的帖子
+                          社区足迹
                         </Button>
                         <Button onClick={() => setActiveTabKey("favour")}>
                           查看收藏题目
@@ -421,9 +430,14 @@ function UserCenterContent() {
                 <MyQuestionNoteList />
               </div>
             )}
+            {activeTabKey === "comments" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <MyCommentActivityPanel />
+              </div>
+            )}
             {activeTabKey === "posts" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
-                <MyPostList />
+                <MyCommunityPostPanel />
               </div>
             )}
             {activeTabKey === "record" && (

@@ -40,6 +40,11 @@ interface CommentReportRequest {
   reason: string;
 }
 
+interface CommentActivityQueryRequest {
+  current?: number;
+  pageSize?: number;
+}
+
 interface UserVO {
   id: number;
   userName: string;
@@ -65,6 +70,24 @@ export interface CommentVO {
   replyToUser?: UserVO | null;
   hasLiked: boolean;
   replies: CommentVO[];
+}
+
+export interface UserCommentActivityVO {
+  id: number | string;
+  questionId: number | string;
+  questionTitle?: string;
+  parentId?: number | string | null;
+  replyToId?: number | string | null;
+  content?: string;
+  likeNum?: number;
+  status?: number;
+  reviewMessage?: string;
+  createTime?: string;
+  actionTime?: string;
+  deleted?: boolean;
+  hasLiked?: boolean;
+  user?: UserVO | null;
+  replyToUser?: UserVO | null;
 }
 
 export interface CommentSubmitResult {
@@ -127,5 +150,19 @@ export async function listAdminCommentsByPage(data: CommentAdminQueryRequest): P
 
 export async function reviewComment(data: CommentReviewRequest): Promise<boolean> {
   const res = (await request.post("/api/question/comment/review", data)) as any;
+  return res.data;
+}
+
+export async function listMyLikedCommentsByPage(
+  data: CommentActivityQueryRequest,
+): Promise<Page<UserCommentActivityVO>> {
+  const res = (await request.post("/api/question/comment/my/liked/page/vo", data)) as any;
+  return res.data;
+}
+
+export async function listMyReplyCommentsByPage(
+  data: CommentActivityQueryRequest,
+): Promise<Page<UserCommentActivityVO>> {
+  const res = (await request.post("/api/question/comment/my/replied/page/vo", data)) as any;
   return res.data;
 }

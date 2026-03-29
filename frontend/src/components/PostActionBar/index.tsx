@@ -10,7 +10,7 @@ import { doPostFavourUsingPost } from "@/api/postFavourController";
 import { reportPostUsingPost } from "@/api/postController";
 
 interface Props {
-  postId: number;
+  postId: string | number;
   initialThumbNum?: number;
   initialFavourNum?: number;
   initialHasThumb?: boolean;

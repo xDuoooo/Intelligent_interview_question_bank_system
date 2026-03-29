@@ -1,6 +1,9 @@
 package com.xduo.springbootinit.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
@@ -50,6 +53,14 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
         }
     }
 
+    @Override
+    public Page<Post> listThumbPostByPage(IPage<Post> page, Wrapper<Post> queryWrapper, long thumbUserId) {
+        if (thumbUserId <= 0) {
+            return new Page<>();
+        }
+        return baseMapper.listThumbPostByPage(page, queryWrapper, thumbUserId);
+    }
+
     /**
      * 封装了事务的方法
      *
@@ -97,7 +108,6 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
     }
 
 }
-
 
 
 

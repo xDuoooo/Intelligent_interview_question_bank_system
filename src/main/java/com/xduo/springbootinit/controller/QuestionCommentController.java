@@ -11,12 +11,14 @@ import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.comment.CommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
+import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReviewRequest;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.CommentVO;
 import com.xduo.springbootinit.model.vo.CommentSubmitResultVO;
+import com.xduo.springbootinit.model.vo.UserCommentActivityVO;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.UserService;
 import jakarta.annotation.Resource;
@@ -89,6 +91,32 @@ public class QuestionCommentController {
         User loginUser = userService.getLoginUser(httpRequest);
         Map<String, Object> result = questionCommentService.likeComment(commentId, loginUser);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 获取我点赞过的评论
+     */
+    @PostMapping("/my/liked/page/vo")
+    public BaseResponse<Page<UserCommentActivityVO>> listMyLikedCommentVOByPage(
+            @RequestBody CommentActivityQueryRequest request,
+            HttpServletRequest httpRequest) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getPageSize() > 20, ErrorCode.PARAMS_ERROR, "每页最多 20 条");
+        User loginUser = userService.getLoginUser(httpRequest);
+        return ResultUtils.success(questionCommentService.listMyLikedCommentVOByPage(request, loginUser));
+    }
+
+    /**
+     * 获取我回复过的评论
+     */
+    @PostMapping("/my/replied/page/vo")
+    public BaseResponse<Page<UserCommentActivityVO>> listMyReplyCommentVOByPage(
+            @RequestBody CommentActivityQueryRequest request,
+            HttpServletRequest httpRequest) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getPageSize() > 20, ErrorCode.PARAMS_ERROR, "每页最多 20 条");
+        User loginUser = userService.getLoginUser(httpRequest);
+        return ResultUtils.success(questionCommentService.listMyReplyCommentVOByPage(request, loginUser));
     }
 
     /**

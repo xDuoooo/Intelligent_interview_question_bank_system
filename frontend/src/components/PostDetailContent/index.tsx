@@ -79,7 +79,7 @@ export default function PostDetailContent({ post, relatedPostList = [] }: Props)
           </div>
 
           <PostActionBar
-            postId={Number(post.id)}
+            postId={post.id ?? ""}
             initialThumbNum={post.thumbNum || 0}
             initialFavourNum={post.favourNum || 0}
             initialHasThumb={!!post.hasThumb}
