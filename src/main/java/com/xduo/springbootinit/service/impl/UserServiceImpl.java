@@ -108,6 +108,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
         String loginIdentifier = userAccount.trim();
+        ensurePasswordLoginNotBlocked(loginIdentifier);
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
         QueryWrapper<User> queryWrapper = new QueryWrapper<User>()
                 .eq("userPassword", encryptPassword)
@@ -118,12 +119,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         .eq("email", loginIdentifier));
         User user = this.getOne(queryWrapper);
         if (user == null) {
+            recordPasswordLoginFailure(loginIdentifier);
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }
         ensureUserAvailable(user);
         if (!hasUsablePasswordLogin(user)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未设置可用密码，请使用验证码或第三方方式登录");
         }
+        clearPasswordLoginFailure(loginIdentifier);
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
@@ -311,8 +314,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public UserVO getUserVO(User user) {
-        if (user == null)
-            return null;
+        if (user == null) {
+            UserVO deletedUserVO = new UserVO();
+            deletedUserVO.setUserName("已注销用户");
+            deletedUserVO.setUserProfile("该用户已注销，公开内容仍会保留。");
+            deletedUserVO.setUserRole("deleted");
+            return deletedUserVO;
+        }
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         return userVO;
@@ -790,6 +798,42 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return true;
         }
         return userAccount.matches("^(u|gh|gt|gl)_[A-Za-z0-9]{8}$");
+    }
+
+    private void ensurePasswordLoginNotBlocked(String loginIdentifier) {
+        String normalizedIdentifier = normalizeLoginIdentifier(loginIdentifier);
+        String blockKey = RedisConstant.getUserPasswordLoginBlockRedisKey(normalizedIdentifier);
+        if (Boolean.TRUE.equals(stringRedisTemplate.hasKey(blockKey))) {
+            Long ttl = stringRedisTemplate.getExpire(blockKey);
+            long waitMinutes = ttl == null || ttl <= 0 ? 5 : Math.max(1L, (ttl + 59) / 60);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "密码登录失败次数过多，请约 " + waitMinutes + " 分钟后再试");
+        }
+    }
+
+    private void recordPasswordLoginFailure(String loginIdentifier) {
+        String normalizedIdentifier = normalizeLoginIdentifier(loginIdentifier);
+        String failKey = RedisConstant.getUserPasswordLoginFailRedisKey(normalizedIdentifier);
+        Long failCount = stringRedisTemplate.opsForValue().increment(failKey);
+        if (failCount == null) {
+            return;
+        }
+        if (failCount == 1L) {
+            stringRedisTemplate.expire(failKey, java.time.Duration.ofMinutes(10));
+        }
+        if (failCount >= 6) {
+            String blockKey = RedisConstant.getUserPasswordLoginBlockRedisKey(normalizedIdentifier);
+            stringRedisTemplate.opsForValue().set(blockKey, "1", 5, java.util.concurrent.TimeUnit.MINUTES);
+        }
+    }
+
+    private void clearPasswordLoginFailure(String loginIdentifier) {
+        String normalizedIdentifier = normalizeLoginIdentifier(loginIdentifier);
+        stringRedisTemplate.delete(RedisConstant.getUserPasswordLoginFailRedisKey(normalizedIdentifier));
+        stringRedisTemplate.delete(RedisConstant.getUserPasswordLoginBlockRedisKey(normalizedIdentifier));
+    }
+
+    private String normalizeLoginIdentifier(String loginIdentifier) {
+        return StringUtils.lowerCase(StringUtils.trimToEmpty(loginIdentifier));
     }
 
     private void refreshLoginSession(long userId) {

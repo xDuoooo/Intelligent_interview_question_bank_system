@@ -377,8 +377,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         LambdaQueryWrapper<QuestionComment> childWrapper = new LambdaQueryWrapper<>();
         childWrapper.in(QuestionComment::getParentId, parentIds)
                     .eq(QuestionComment::getStatus, 0)
-                    .orderByAsc(QuestionComment::getCreateTime)
-                    .last("LIMIT 500");
+                    .orderByAsc(QuestionComment::getCreateTime);
         List<QuestionComment> childComments = list(childWrapper);
 
         // 以 parentId 分组
@@ -403,12 +402,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         }
 
         List<User> users = userService.listByIds(userIds);
-        Map<Long, UserVO> userMap = users.stream()
-                .collect(Collectors.toMap(User::getId, u -> {
-                    UserVO vo = new UserVO();
-                    BeanUtils.copyProperties(u, vo);
-                    return vo;
-                }, (v1, v2) -> v1));
+        Map<Long, User> userMap = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u, (left, right) -> left));
 
         // 若已登录，批量查询该用户对这些评论的点赞情况
         Set<Long> likedIds = new HashSet<>();
@@ -435,7 +430,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         return topComments.stream().map(c -> toVO(c, userMap, commentToUserMap, childrenMap, likedIds)).collect(Collectors.toList());
     }
 
-    private CommentVO toVO(QuestionComment comment, Map<Long, UserVO> userMap,
+    private CommentVO toVO(QuestionComment comment, Map<Long, User> userMap,
                            Map<Long, Long> commentToUserMap,
                            Map<Long, List<QuestionComment>> childrenMap, Set<Long> likedIds) {
         CommentVO vo = new CommentVO();
@@ -450,14 +445,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         vo.setStatus(comment.getStatus());
         vo.setCreateTime(comment.getCreateTime());
         vo.setDeleted(false);
-        vo.setUser(userMap.getOrDefault(comment.getUserId(), null));
+        vo.setUser(userService.getUserVO(userMap.get(comment.getUserId())));
         vo.setHasLiked(likedIds.contains(comment.getId()));
 
         // 设置被回复人信息
         if (comment.getReplyToId() != null) {
             Long replyToUserId = commentToUserMap.get(comment.getReplyToId());
             if (replyToUserId != null) {
-                vo.setReplyToUser(userMap.get(replyToUserId));
+                vo.setReplyToUser(userService.getUserVO(userMap.get(replyToUserId)));
             }
         }
 
@@ -477,14 +472,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     childVO.setStatus(child.getStatus());
                     childVO.setCreateTime(child.getCreateTime());
                     childVO.setDeleted(false);
-                    childVO.setUser(userMap.getOrDefault(child.getUserId(), null));
+                    childVO.setUser(userService.getUserVO(userMap.get(child.getUserId())));
                     childVO.setHasLiked(likedIds.contains(child.getId()));
 
                     // 设置被回复人信息
                     if (child.getReplyToId() != null) {
                         Long ruid = commentToUserMap.get(child.getReplyToId());
                         if (ruid != null) {
-                            childVO.setReplyToUser(userMap.get(ruid));
+                            childVO.setReplyToUser(userService.getUserVO(userMap.get(ruid)));
                         }
                     }
 

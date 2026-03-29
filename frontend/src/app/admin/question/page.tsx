@@ -26,6 +26,17 @@ const BatchAddQuestionsToBankModal = dynamic(() => import("./components/BatchAdd
 const BatchRemoveQuestionsFromBankModal = dynamic(() => import("./components/BatchRemoveQuestionsFromBankModal"));
 const ReviewModal = dynamic(() => import("./components/ReviewModal"));
 
+const parseTagList = (tags?: string) => {
+  if (!tags) {
+    return [];
+  }
+  try {
+    return JSON.parse(tags);
+  } catch {
+    return [];
+  }
+};
+
 /**
  * 题目管理页面
  * @constructor
@@ -97,7 +108,7 @@ const QuestionAdminPage: React.FC = () => {
       valueType: "select",
       fieldProps: { mode: "tags" },
       render: (_, record) => {
-        const tagList = JSON.parse(record.tags || "[]");
+        const tagList = parseTagList(record.tags);
         return <TagList tagList={tagList} />;
       },
     },
@@ -190,13 +201,21 @@ const QuestionAdminPage: React.FC = () => {
           >
             审核
           </button>
-          <button
-            onClick={() => handleDelete(record)}
-            className="flex items-center gap-1.5 text-red-500 hover:text-red-600 font-bold transition-colors"
+          <Popconfirm
+            title="确认删除题目"
+            description="删除后题目、题库关联和搜索索引都会一起移除，请谨慎操作。"
+            okText="确认删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true }}
+            onConfirm={() => handleDelete(record)}
           >
-            <Trash2 className="h-4 w-4" />
-            删除
-          </button>
+            <button
+              className="flex items-center gap-1.5 text-red-500 hover:text-red-600 font-bold transition-colors"
+            >
+              <Trash2 className="h-4 w-4" />
+              删除
+            </button>
+          </Popconfirm>
         </Space>
       ),
     },
@@ -238,6 +257,7 @@ const QuestionAdminPage: React.FC = () => {
         <ProTable<API.Question>
           headerTitle={null}
           actionRef={actionRef}
+          rowKey="id"
           rowSelection={{
             selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
           }}

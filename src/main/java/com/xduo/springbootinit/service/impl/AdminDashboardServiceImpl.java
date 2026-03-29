@@ -145,13 +145,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         List<Long> commentTrend = new ArrayList<>();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
         LocalDate startDate = today.minusDays(6);
+        Map<LocalDate, Long> registerTrendMap = listDateCountMapForUser(startDate, today);
         Map<LocalDate, Long> practiceTrendMap = listDateCountMapForHistory(startDate, today);
         Map<LocalDate, Long> commentTrendMap = listDateCountMapForComment(startDate, today);
 
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
             dateList.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
-            registerTrend.add(countUsersBetween(date, date));
+            registerTrend.add(registerTrendMap.getOrDefault(date, 0L));
             practiceTrend.add(practiceTrendMap.getOrDefault(date, 0L));
             commentTrend.add(commentTrendMap.getOrDefault(date, 0L));
         }
@@ -423,18 +424,18 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private int countActiveUsersBetween(LocalDate startDate, LocalDate endDate) {
         QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("distinct userId");
+        queryWrapper.select("count(distinct userId) as totalCount");
         queryWrapper.isNotNull("userId");
         queryWrapper.between("updateTime", toDate(startDate, true), toDate(endDate, false));
-        return userQuestionHistoryService.listObjs(queryWrapper).size();
+        return Math.toIntExact(extractSingleCount(userQuestionHistoryService.listMaps(queryWrapper)));
     }
 
     private int countDistinctSearchKeyword() {
         QueryWrapper<QuestionSearchLog> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("distinct LOWER(TRIM(searchText)) as keyword");
+        queryWrapper.select("count(distinct LOWER(TRIM(searchText))) as totalCount");
         queryWrapper.isNotNull("searchText");
         queryWrapper.apply("TRIM(searchText) <> ''");
-        return questionSearchLogService.listMaps(queryWrapper).size();
+        return Math.toIntExact(extractSingleCount(questionSearchLogService.listMaps(queryWrapper)));
     }
 
     private List<User> listUserCitySnapshot() {
@@ -493,6 +494,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return dateCountMapFrom(userQuestionHistoryService.listMaps(queryWrapper));
     }
 
+    private Map<LocalDate, Long> listDateCountMapForUser(LocalDate startDate, LocalDate endDate) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(createTime) as statDate", "count(*) as totalCount");
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        queryWrapper.groupBy("DATE(createTime)");
+        return dateCountMapFrom(userService.listMaps(queryWrapper));
+    }
+
     private Map<LocalDate, Long> listDateCountMapForComment(LocalDate startDate, LocalDate endDate) {
         QueryWrapper<QuestionComment> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("DATE(createTime) as statDate", "count(*) as totalCount");
@@ -522,6 +531,21 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             result.put(LocalDate.parse(String.valueOf(dateValue)), getLongValue(item.get("totalCount")));
         }
         return result;
+    }
+
+    private long extractSingleCount(List<Map<String, Object>> mapList) {
+        if (mapList == null || mapList.isEmpty()) {
+            return 0L;
+        }
+        Map<String, Object> firstRow = mapList.get(0);
+        if (firstRow == null || firstRow.isEmpty()) {
+            return 0L;
+        }
+        Object value = firstRow.get("totalCount");
+        if (value == null) {
+            value = firstRow.values().iterator().next();
+        }
+        return getLongValue(value);
     }
 
     private long getLongValue(Object value) {

@@ -4,12 +4,14 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Empty, List, Modal, Pagination, Skeleton } from "antd";
 import { ChevronRight } from "lucide-react";
+import { useSelector } from "react-redux";
 import {
   listFollowerUserVoByPageUsingPost,
   listFollowingUserVoByPageUsingPost,
 } from "@/api/userFollowController";
 import UserAvatar from "@/components/UserAvatar";
 import UserFollowButton from "@/components/UserFollowButton";
+import { RootState } from "@/stores";
 
 interface Props {
   open: boolean;
@@ -22,11 +24,19 @@ interface Props {
  * 粉丝 / 关注列表弹窗
  */
 export default function UserFollowListModal({ open, onCancel, userId, type }: Props) {
+  const loginUser = useSelector((state: RootState) => state.loginUser);
   const [loading, setLoading] = useState(false);
   const [current, setCurrent] = useState(1);
   const [pageSize] = useState(8);
   const [total, setTotal] = useState(0);
   const [records, setRecords] = useState<API.UserVO[]>([]);
+  const viewingOwnFollowingList = Boolean(type === "following" && userId && loginUser?.id === userId);
+
+  useEffect(() => {
+    if (open) {
+      setCurrent(1);
+    }
+  }, [open, type, userId]);
 
   useEffect(() => {
     if (!open) {
@@ -102,6 +112,7 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
                   </Link>
                   <UserFollowButton
                     userId={item.id}
+                    initialFollowed={viewingOwnFollowingList}
                     size="small"
                     className="shrink-0 rounded-xl"
                   />

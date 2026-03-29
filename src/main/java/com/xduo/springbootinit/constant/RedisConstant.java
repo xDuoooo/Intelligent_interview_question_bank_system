@@ -43,6 +43,16 @@ public interface RedisConstant {
     String USER_PHONE_LIMIT_KEY_PREFIX = "user:phone:limit:";
 
     /**
+     * 密码登录失败次数 Redis Key 前缀
+     */
+    String USER_PASSWORD_LOGIN_FAIL_KEY_PREFIX = "user:password:login:fail:";
+
+    /**
+     * 密码登录临时封禁 Redis Key 前缀
+     */
+    String USER_PASSWORD_LOGIN_BLOCK_KEY_PREFIX = "user:password:login:block:";
+
+    /**
      * 获取用户登录验证码 Redis Key
      */
     static String getUserLoginCodeRedisKey(String target) {
@@ -75,5 +85,19 @@ public interface RedisConstant {
      */
     static String getUserPhoneLimitRedisKey(String phone) {
         return USER_PHONE_LIMIT_KEY_PREFIX + phone;
+    }
+
+    /**
+     * 获取密码登录失败次数 Redis Key
+     */
+    static String getUserPasswordLoginFailRedisKey(String identifier) {
+        return USER_PASSWORD_LOGIN_FAIL_KEY_PREFIX + identifier;
+    }
+
+    /**
+     * 获取密码登录临时封禁 Redis Key
+     */
+    static String getUserPasswordLoginBlockRedisKey(String identifier) {
+        return USER_PASSWORD_LOGIN_BLOCK_KEY_PREFIX + identifier;
     }
 }

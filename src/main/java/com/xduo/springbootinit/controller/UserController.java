@@ -214,6 +214,15 @@ public class UserController {
         if (deleteRequest == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        User loginUser = userService.getLoginUser(request);
+        ThrowUtils.throwIf(loginUser.getId().equals(deleteRequest.getId()), ErrorCode.OPERATION_ERROR, "不支持删除当前登录账号");
+        User targetUser = userService.getById(deleteRequest.getId());
+        ThrowUtils.throwIf(targetUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        if (UserConstant.ADMIN_ROLE.equals(targetUser.getUserRole())) {
+            QueryWrapper<User> adminQueryWrapper = new QueryWrapper<>();
+            adminQueryWrapper.eq("userRole", UserConstant.ADMIN_ROLE);
+            ThrowUtils.throwIf(userService.count(adminQueryWrapper) <= 1, ErrorCode.OPERATION_ERROR, "至少保留一个管理员账号");
+        }
         boolean b = userService.removeById(deleteRequest.getId());
         return ResultUtils.success(b);
     }
@@ -347,6 +356,12 @@ public class UserController {
             userService.checkUserAccountUnique(userAccount, loginUser.getId());
             userUpdateMyRequest.setUserAccount(userAccount);
         }
+        if (userUpdateMyRequest.getUserName() != null) {
+            String userName = StringUtils.trimToNull(userUpdateMyRequest.getUserName());
+            ThrowUtils.throwIf(userName == null, ErrorCode.PARAMS_ERROR, "昵称不能为空");
+            ThrowUtils.throwIf(userName.length() > 20, ErrorCode.PARAMS_ERROR, "昵称最多 20 个字符");
+            userUpdateMyRequest.setUserName(userName);
+        }
         if (StringUtils.isNotBlank(loginUser.getCity())) {
             if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())
                     && !StringUtils.equals(loginUser.getCity(), userUpdateMyRequest.getCity().trim())) {
@@ -354,7 +369,14 @@ public class UserController {
             }
             userUpdateMyRequest.setCity(loginUser.getCity());
         } else if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())) {
-            userUpdateMyRequest.setCity(userUpdateMyRequest.getCity().trim());
+            String city = userUpdateMyRequest.getCity().trim();
+            ThrowUtils.throwIf(city.length() > 20, ErrorCode.PARAMS_ERROR, "城市最多 20 个字符");
+            userUpdateMyRequest.setCity(city);
+        }
+        if (userUpdateMyRequest.getUserProfile() != null) {
+            String userProfile = StringUtils.trimToEmpty(userUpdateMyRequest.getUserProfile());
+            ThrowUtils.throwIf(userProfile.length() > 200, ErrorCode.PARAMS_ERROR, "个人简介最多 200 个字符");
+            userUpdateMyRequest.setUserProfile(userProfile);
         }
         // 校验昵称唯一性
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
