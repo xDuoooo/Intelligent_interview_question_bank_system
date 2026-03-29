@@ -1,12 +1,12 @@
 package com.xduo.springbootinit.controller;
 
 import com.xduo.springbootinit.common.BaseResponse;
+import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.model.vo.LoginUserVO;
-import com.xduo.springbootinit.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +20,6 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "SocialLoginController")
 public class SocialLoginController {
 
-    @Resource
-    private UserService userService;
-
     /**
      * 社交登录回调（Mock）
      *
@@ -35,18 +32,7 @@ public class SocialLoginController {
             @RequestParam String platform,
             @RequestParam String code,
             HttpServletRequest request) {
-        
-        log.info("Social login callback: platform={}, code={}", platform, code);
-        
-        // 1. 模拟根据 code 获取社交用户信息
-        // 在实际开发中，这里需要根据 platform 调用对应的 Open API
-        String socialId = platform + "_mock_id_" + code.hashCode();
-        String nickname = platform + "用户_" + code.substring(0, Math.min(code.length(), 4));
-        String avatar = "https://gw.alipayobjects.com/zos/rmsportal/KDpgvguMpGfqaHPjicRK.svg";
-
-        // 2. 调用服务层进行登录或注册
-        LoginUserVO loginUserVO = userService.userLoginBySocial(platform, socialId, nickname, avatar, request);
-        
-        return ResultUtils.success(loginUserVO);
+        log.warn("Deprecated mock social login endpoint invoked: platform={}, code={}", platform, code);
+        throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "Mock 社交登录入口已下线，请使用正式第三方登录流程");
     }
 }

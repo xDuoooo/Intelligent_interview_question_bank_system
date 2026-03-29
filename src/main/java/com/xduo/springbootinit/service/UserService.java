@@ -270,4 +270,11 @@ public interface UserService extends IService<User> {
      * 解绑 Google
      */
     void unbindGoogle(long userId);
+
+    /**
+     * 注销当前账号
+     *
+     * @param userId 当前用户 id
+     */
+    void deleteMyAccount(long userId);
 }

@@ -13,6 +13,9 @@ const checkAccess = (
 ) => {
   // 获取当前登录用户具有的权限（如果没有登录，则默认没有权限）
   const loginUserAccess = loginUser?.userRole ?? ACCESS_ENUM.NOT_LOGIN;
+  if (loginUserAccess === "ban") {
+    return false;
+  }
   // 如果当前不需要任何权限
   if (needAccess === ACCESS_ENUM.NOT_LOGIN) {
     return true;

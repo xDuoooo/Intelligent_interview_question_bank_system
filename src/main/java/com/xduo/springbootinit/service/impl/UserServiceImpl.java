@@ -120,6 +120,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }
+        ensureUserAvailable(user);
         if (!hasUsablePasswordLogin(user)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未设置可用密码，请使用验证码或第三方方式登录");
         }
@@ -143,6 +144,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setUserRole(UserRoleEnum.USER.getValue());
             this.save(user);
         }
+        ensureUserAvailable(user);
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
@@ -254,6 +256,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 user.setUserRole(UserRoleEnum.USER.getValue());
                 this.save(user);
             }
+            ensureUserAvailable(user);
             StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
             StpUtil.getSession().set(USER_LOGIN_STATE, user);
             return this.getLoginUserVO(user);
@@ -353,6 +356,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
+        ensureUserAvailable(user);
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
@@ -363,6 +367,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return null;
         }
         User user = this.getById((Serializable) StpUtil.getLoginIdAsLong());
+        if (user != null && UserRoleEnum.BAN.getValue().equals(user.getUserRole())) {
+            StpUtil.logout();
+            return null;
+        }
         if (user != null) {
             StpUtil.getSession().set(USER_LOGIN_STATE, user);
         }
@@ -391,18 +399,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public boolean addUserSignIn(long userId) {
-        // 签到逻辑 (简单示例：在 Redis 中记录今日是否已签到)
-        String key = RedisConstant.getUserSignInRedisKey(LocalDate.now().getYear(), userId);
-        int dayOfYear = LocalDate.now().getDayOfYear();
-        // 简化实现：略过复杂的签到逻辑，直接返回 true
-        log.info("用户签到: userId={}, day={}, key={}", userId, dayOfYear, key);
+        LocalDate today = LocalDate.now();
+        String key = RedisConstant.getUserSignInRedisKey(today.getYear(), userId);
+        long offset = today.getDayOfYear() - 1L;
+        Boolean signed = stringRedisTemplate.opsForValue().getBit(key, offset);
+        if (Boolean.TRUE.equals(signed)) {
+            return false;
+        }
+        stringRedisTemplate.opsForValue().setBit(key, offset, true);
+        log.info("用户签到成功: userId={}, dayOfYear={}, key={}", userId, today.getDayOfYear(), key);
         return true;
     }
 
     @Override
     public List<Integer> getUserSignInRecord(long userId, Integer year) {
-        // 简化实现
-        return new ArrayList<>();
+        int targetYear = year == null ? LocalDate.now().getYear() : year;
+        ThrowUtils.throwIf(targetYear < 1970 || targetYear > 2999, ErrorCode.PARAMS_ERROR, "年份不合法");
+        int daysInYear = LocalDate.of(targetYear, 1, 1).lengthOfYear();
+        String key = RedisConstant.getUserSignInRedisKey(targetYear, userId);
+        List<Integer> recordList = new ArrayList<>(daysInYear);
+        for (int dayOffset = 0; dayOffset < daysInYear; dayOffset++) {
+            Boolean signed = stringRedisTemplate.opsForValue().getBit(key, dayOffset);
+            recordList.add(Boolean.TRUE.equals(signed) ? 1 : 0);
+        }
+        return recordList;
     }
 
     @Override
@@ -516,6 +536,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 }
             }
         }
+        ensureUserAvailable(user);
         // 3. 建立登录态
         StpUtil.login(user.getId());
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -549,6 +570,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 }
             }
         }
+        ensureUserAvailable(user);
         // 3. 建立登录态
         StpUtil.login(user.getId());
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -582,6 +604,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 }
             }
         }
+        ensureUserAvailable(user);
         // 3. 建立登录态
         StpUtil.login(user.getId());
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -697,6 +720,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         refreshLoginSession(userId);
     }
 
+    @Override
+    public void deleteMyAccount(long userId) {
+        User user = this.getById(userId);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "当前账号不存在");
+        if (UserRoleEnum.ADMIN.getValue().equals(user.getUserRole())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "管理员账号请在后台处理，不支持在个人中心直接注销");
+        }
+        boolean removed = this.removeById(userId);
+        ThrowUtils.throwIf(!removed, ErrorCode.OPERATION_ERROR, "注销账号失败");
+        if (StpUtil.isLogin() && Objects.equals(StpUtil.getLoginIdAsLong(), userId)) {
+            StpUtil.logout();
+        }
+    }
+
     /**
      * 校验是否为唯一的登录方式
      */
@@ -761,6 +798,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             if (latestUser != null) {
                 StpUtil.getSession().set(USER_LOGIN_STATE, latestUser);
             }
+        }
+    }
+
+    private void ensureUserAvailable(User user) {
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+        if (UserRoleEnum.BAN.getValue().equals(user.getUserRole())) {
+            if (StpUtil.isLogin() && Objects.equals(StpUtil.getLoginIdAsLong(), user.getId())) {
+                StpUtil.logout();
+            }
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "当前账号已被封禁");
         }
     }
 }
