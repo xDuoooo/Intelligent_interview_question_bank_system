@@ -10,10 +10,14 @@ import {
   ChevronRight, 
   ArrowLeft,
   ShieldCheck,
+  ShieldAlert,
   LayoutDashboard,
   Wand2,
   Activity,
-  Settings
+  Settings,
+  MessageSquareText,
+  MessagesSquare,
+  BrainCircuit,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -29,7 +33,7 @@ interface Props {
  */
 export default function AdminLayout({ children }: Props) {
   const loginUser = useSelector((state: RootState) => state.loginUser);
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
 
   // 权限校验
   if (loginUser.userRole !== "admin") {
@@ -54,6 +58,10 @@ export default function AdminLayout({ children }: Props) {
     { label: "用户管理", icon: Users, href: "/admin/user" },
     { label: "题库管理", icon: BookOpen, href: "/admin/bank" },
     { label: "题目管理", icon: Database, href: "/admin/question" },
+    { label: "社区管理", icon: MessageSquareText, href: "/admin/post" },
+    { label: "评论审核", icon: MessagesSquare, href: "/admin/comment" },
+    { label: "风控面板", icon: ShieldAlert, href: "/admin/security" },
+    { label: "面试管理", icon: BrainCircuit, href: "/admin/mockInterview" },
     { label: "AI 智能增题", icon: Wand2, href: "/admin/question/ai" },
     { label: "审计日志", icon: Activity, href: "/admin/logs" },
     { label: "全局设置", icon: Settings, href: "/admin/settings" },
@@ -87,7 +95,7 @@ export default function AdminLayout({ children }: Props) {
 
             <nav className="mt-6 space-y-2">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <Link
                     key={item.href}
