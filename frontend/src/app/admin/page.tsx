@@ -258,6 +258,29 @@ export default function AdminDashboardPage() {
     },
   ];
 
+  const heroHighlights = [
+    {
+      label: "今日活跃",
+      value: todayStats.todayActiveUserCount || 0,
+      hint: "活跃用户",
+    },
+    {
+      label: "待处理告警",
+      value: overview.pendingRiskAlertTotal || 0,
+      hint: "风险事件",
+    },
+    {
+      label: "推荐点击率",
+      value: `${recommendationAnalytics.clickThroughRate || 0}%`,
+      hint: "综合效果",
+    },
+    {
+      label: "搜索次数",
+      value: searchAnalytics.todaySearchCount || 0,
+      hint: "今日检索",
+    },
+  ];
+
   const trendOption = {
     grid: { top: 20, right: 20, bottom: 40, left: 40 },
     tooltip: { trigger: "axis" },
@@ -399,49 +422,99 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <section className="bg-white/80 backdrop-blur-xl rounded-[3rem] p-10 sm:p-14 text-slate-900 relative overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-200/60">
+      <section className="bg-white/80 backdrop-blur-xl rounded-[3rem] p-8 sm:p-12 text-slate-900 relative overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-200/60">
         <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12">
           <Sparkles className="h-32 w-32 text-primary" />
         </div>
-        <div className="relative z-10 space-y-6 max-w-3xl">
-          <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs">
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            Intelligence Administrative
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-end">
+          <div className="space-y-6 max-w-3xl">
+            <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs">
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              Platform Overview
+            </div>
+            <div className="space-y-4">
+              <Title level={1} className="!text-slate-900 !font-black !m-0 !text-4xl sm:!text-5xl tracking-tight">
+                后台数据驾驶舱
+              </Title>
+              <Paragraph className="!mb-0 text-slate-500 text-base sm:text-lg font-medium leading-8">
+                直接查看增长、活跃、推荐、面试和风控信号，把今天最值得处理的重点先拎出来。
+              </Paragraph>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {heroHighlights.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-[1.75rem] border border-slate-200/70 bg-white/80 px-4 py-4 shadow-sm shadow-slate-200/40"
+                >
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{item.label}</div>
+                  <div className="mt-3 text-2xl font-black tracking-tight text-slate-900">{item.value}</div>
+                  <div className="mt-1 text-xs font-semibold text-slate-400">{item.hint}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-2">
+              <Button type="primary" size="large" shape="round" onClick={fetchDashboard} className="h-12 px-8 font-bold">
+                刷新驾驶舱
+              </Button>
+              <Link href="/admin/post">
+                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                  <MessageSquareText className="h-4 w-4" />
+                  社区管理
+                </Button>
+              </Link>
+              <Link href="/admin/security">
+                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  风控面板
+                </Button>
+              </Link>
+              <Link href="/admin/mockInterview">
+                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                  <BrainCircuit className="h-4 w-4" />
+                  面试管理
+                </Button>
+              </Link>
+              <Link href="/admin/question/ai">
+                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                  <Wand2 className="h-4 w-4" />
+                  AI 智能增题
+                </Button>
+              </Link>
+            </div>
           </div>
-          <Title level={1} className="!text-slate-900 !font-black !m-0 !text-4xl sm:!text-5xl tracking-tight">
-            后台数据驾驶舱
-          </Title>
-          <Paragraph className="!mb-0 text-slate-500 text-lg font-medium">
-            这次页面不再使用演示假数据，而是直接汇总平台真实的用户、题库、刷题、评论、AI 面试和管理员操作数据。
-          </Paragraph>
-          <div className="flex flex-wrap gap-4 pt-2">
-            <Button type="primary" size="large" shape="round" onClick={fetchDashboard} className="h-12 px-8 font-bold">
-              刷新驾驶舱
-            </Button>
-            <Link href="/admin/post">
-              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                <MessageSquareText className="h-4 w-4" />
-                社区管理
-              </Button>
-            </Link>
-            <Link href="/admin/security">
-              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
-                风控面板
-              </Button>
-            </Link>
-            <Link href="/admin/mockInterview">
-              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                <BrainCircuit className="h-4 w-4" />
-                面试管理
-              </Button>
-            </Link>
-            <Link href="/admin/question/ai">
-              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                <Wand2 className="h-4 w-4" />
-                AI 智能增题
-              </Button>
-            </Link>
+
+          <div className="rounded-[2.25rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-2xl shadow-slate-300/40">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/55">
+              <BarChart3 className="h-4 w-4" />
+              今日速览
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4">
+                <div className="text-sm font-bold text-white/70">新增注册与活跃</div>
+                <div className="mt-2 flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-3xl font-black tracking-tight">{todayStats.todayRegisterCount || 0}</div>
+                    <div className="text-xs text-white/45">今日新增用户</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-black">{todayStats.todayActiveUserCount || 0}</div>
+                    <div className="text-xs text-white/45">今日活跃用户</div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">推荐掌握转化</div>
+                  <div className="mt-2 text-2xl font-black">{recommendationAnalytics.masteredConversionRate || 0}%</div>
+                </div>
+                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">今日搜索量</div>
+                  <div className="mt-2 text-2xl font-black">{searchAnalytics.todaySearchCount || 0}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
