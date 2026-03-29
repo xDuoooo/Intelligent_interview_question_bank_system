@@ -23,6 +23,7 @@ import com.xduo.springbootinit.model.vo.LoginUserVO;
 import com.xduo.springbootinit.model.vo.UserProfileVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.UserFollowService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
 
@@ -59,6 +60,9 @@ public class UserController {
 
     @Resource
     private QuestionService questionService;
+
+    @Resource
+    private UserFollowService userFollowService;
 
     // region 登录相关
 
@@ -273,9 +277,10 @@ public class UserController {
      * @return 公开资料与学习摘要
      */
     @GetMapping("/profile/vo")
-    public BaseResponse<UserProfileVO> getUserProfileVOById(long id) {
+    public BaseResponse<UserProfileVO> getUserProfileVOById(long id, HttpServletRequest request) {
         User user = getPublicUserById(id);
-        return ResultUtils.success(buildUserProfileVO(user));
+        User loginUser = userService.getLoginUserPermitNull(request);
+        return ResultUtils.success(buildUserProfileVO(user, loginUser));
     }
 
     /**
@@ -522,7 +527,7 @@ public class UserController {
     /**
      * 组装公开主页摘要
      */
-    private UserProfileVO buildUserProfileVO(User user) {
+    private UserProfileVO buildUserProfileVO(User user, User loginUser) {
         UserProfileVO userProfileVO = new UserProfileVO();
         userProfileVO.setUser(userService.getUserVO(user));
 
@@ -536,6 +541,9 @@ public class UserController {
         questionQueryWrapper.eq("userId", user.getId());
         questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
         userProfileVO.setApprovedQuestionCount(questionService.count(questionQueryWrapper));
+        userProfileVO.setFollowerCount(userFollowService.getFollowerCount(user.getId()));
+        userProfileVO.setFollowingCount(userFollowService.getFollowingCount(user.getId()));
+        userProfileVO.setHasFollowed(userFollowService.hasFollowed(loginUser == null ? null : loginUser.getId(), user.getId()));
         return userProfileVO;
     }
 

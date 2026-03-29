@@ -36,6 +36,21 @@ create table if not exists user
     index idx_googleId (googleId)
 ) comment '用户' collate = utf8mb4_unicode_ci;
 
+-- 用户关注关系表
+create table if not exists user_follow
+(
+    id           bigint auto_increment comment 'id' primary key,
+    userId       bigint                             not null comment '关注者 id',
+    followUserId bigint                             not null comment '被关注用户 id',
+    createTime   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_user_follow (userId, followUserId),
+    index idx_userId (userId),
+    index idx_followUserId (followUserId),
+    index idx_user_createTime (userId, createTime),
+    index idx_follow_createTime (followUserId, createTime)
+) comment '用户关注关系';
+
 -- 题库表
 create table if not exists question_bank
 (

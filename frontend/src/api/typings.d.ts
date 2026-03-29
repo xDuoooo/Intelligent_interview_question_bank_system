@@ -1025,9 +1025,23 @@ declare namespace API {
     activeDays?: number;
     approvedQuestionCount?: number;
     currentStreak?: number;
+    followerCount?: number;
+    followingCount?: number;
+    hasFollowed?: boolean;
     masteredQuestionCount?: number;
     totalQuestionCount?: number;
     user?: UserVO;
+  };
+  type UserFollowRequest = {
+    followUserId?: number;
+  };
+
+  type UserFollowQueryRequest = {
+    current?: number;
+    pageSize?: number;
+    sortField?: string;
+    sortOrder?: string;
+    userId?: number;
   };
   type UserQuestionHistoryVO = {
     createTime?: string;
