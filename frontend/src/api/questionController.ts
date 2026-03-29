@@ -1,6 +1,7 @@
 // @ts-ignore
 /* eslint-disable */
 import request from '@/libs/request';
+import { buildApiUrl } from '@/libs/request';
 
 /** addQuestion POST /api/question/add */
 export async function addQuestionUsingPost(
@@ -45,6 +46,27 @@ export async function evaluateQuestionAnswerUsingPost(
     data: body,
     ...(options || {}),
   });
+}
+
+export async function evaluateQuestionAnswerByAudioUsingPost(
+  questionId: number,
+  audioFile: Blob,
+  fileName = 'question-answer.webm',
+) {
+  const formData = new FormData();
+  formData.append('questionId', String(questionId));
+  formData.append('file', audioFile, fileName);
+
+  const response = await fetch(buildApiUrl('/api/question/ai/evaluate/audio'), {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+  const json = await response.json();
+  if (!response.ok || json?.code !== 0) {
+    throw new Error(json?.message || '语音判题失败');
+  }
+  return json as API.BaseResponseQuestionAnswerEvaluateVO_;
 }
 
 /** deleteQuestion POST /api/question/delete */

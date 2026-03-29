@@ -74,8 +74,10 @@ import com.xduo.springbootinit.manager.AiManager;
 public class QuestionController {
 
     private static final long MAX_RESUME_FILE_SIZE = 2 * 1024 * 1024L;
+    private static final long MAX_AUDIO_FILE_SIZE = 8 * 1024 * 1024L;
     private static final int MAX_ANSWER_EVALUATE_LENGTH = 5000;
     private static final Set<String> SUPPORTED_RESUME_FILE_SUFFIX_SET = Set.of("txt", "md", "markdown", "docx", "pdf");
+    private static final Set<String> SUPPORTED_AUDIO_FILE_SUFFIX_SET = Set.of("webm", "wav", "mp3", "m4a", "mp4", "ogg", "oga");
 
     @Resource
     private AiManager aiManager;
@@ -302,6 +304,26 @@ public class QuestionController {
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
         ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
         return ResultUtils.success(buildQuestionAnswerEvaluateVO(question, answerContent));
+    }
+
+    /**
+     * 语音答题后直接 AI 判题
+     */
+    @PostMapping(value = "/ai/evaluate/audio", consumes = "multipart/form-data")
+    public BaseResponse<QuestionAnswerEvaluateVO> evaluateQuestionAnswerByAudio(@RequestParam("questionId") Long questionId,
+                                                                                @RequestPart("file") MultipartFile audioFile,
+                                                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR, "题目不存在");
+        ThrowUtils.throwIf(audioFile == null || audioFile.isEmpty(), ErrorCode.PARAMS_ERROR, "请先录制语音后再判题");
+        User loginUser = userService.getLoginUser(request);
+        Question question = questionService.getById(questionId);
+        ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
+        String transcript = extractAudioAnswerText(audioFile, question);
+        ThrowUtils.throwIf(transcript.length() < 5, ErrorCode.PARAMS_ERROR, "语音内容过短，请重新录制");
+        QuestionAnswerEvaluateVO evaluateVO = buildQuestionAnswerEvaluateVO(question, transcript);
+        evaluateVO.setTranscript(transcript);
+        return ResultUtils.success(evaluateVO);
     }
 
     @PostMapping("/recommend/click")
@@ -806,6 +828,43 @@ public class QuestionController {
             evaluateVO.setFollowUpQuestionList(List.of("如果面试官继续追问，请你补充为什么这样设计以及有哪些替代方案。"));
         }
         return evaluateVO;
+    }
+
+    private String extractAudioAnswerText(MultipartFile audioFile, Question question) {
+        ThrowUtils.throwIf(audioFile.getSize() > MAX_AUDIO_FILE_SIZE, ErrorCode.PARAMS_ERROR, "音频文件过大，请控制在 8MB 以内");
+        String fileSuffix = StringUtils.lowerCase(FileUtil.getSuffix(audioFile.getOriginalFilename()));
+        ThrowUtils.throwIf(StringUtils.isBlank(fileSuffix) || !SUPPORTED_AUDIO_FILE_SUFFIX_SET.contains(fileSuffix),
+                ErrorCode.PARAMS_ERROR, "仅支持 webm、wav、mp3、m4a、mp4、ogg 音频");
+        try {
+            String transcript = aiManager.transcribeAudio(
+                    audioFile.getOriginalFilename(),
+                    audioFile.getBytes(),
+                    audioFile.getContentType(),
+                    "zh",
+                    buildAudioEvaluatePrompt(question)
+            );
+            return sanitizeTranscript(transcript);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("题目语音判题转写失败，questionId={}", question.getId(), e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "语音转写失败，请稍后重试");
+        }
+    }
+
+    private String buildAudioEvaluatePrompt(Question question) {
+        return "请把这段中文技术答题语音准确转写成简洁文本，保留技术名词、英文缩写、数字指标。"
+                + "题目标题：" + StringUtils.defaultIfBlank(question.getTitle(), "未命名题目")
+                + "。题目难度：" + StringUtils.defaultIfBlank(question.getDifficulty(), "未设置")
+                + "。不要补充解释，不要总结，只返回转写结果。";
+    }
+
+    private String sanitizeTranscript(String transcript) {
+        return StringUtils.trimToEmpty(transcript)
+                .replace('\r', ' ')
+                .replace('\n', ' ')
+                .replaceAll("\\s{2,}", " ")
+                .trim();
     }
 
     private List<String> readStringList(JSONObject jsonObject, String... keyCandidates) {
