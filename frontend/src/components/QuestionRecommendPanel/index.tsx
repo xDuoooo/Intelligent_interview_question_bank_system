@@ -100,10 +100,10 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
             猜你喜欢
           </div>
         }
-        extra={<Tag color="blue">行为驱动推荐</Tag>}
+        extra={<Tag color="blue">混合推荐</Tag>}
       >
         <Paragraph className="text-slate-500">
-          结合你的刷题记录、收藏偏好和当前题目标签，推荐下一步更值得继续攻克的题目。
+          结合你的刷题记录、收藏偏好、题目标签和协同过滤结果，推荐下一步更值得继续攻克的题目。
         </Paragraph>
         {renderQuestionList(personalList, "暂时还没有可推荐的题目")}
       </Card>
@@ -116,10 +116,10 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
             相关题目
           </div>
         }
-        extra={<Tag color="green">标签关联推荐</Tag>}
+        extra={<Tag color="green">标签 + 协同过滤</Tag>}
       >
         <Text className="text-slate-500">
-          根据当前题目的核心标签，筛出语义最接近、适合延伸练习的关联题目。
+          根据当前题目的核心标签和相似练习人群行为，筛出更适合延伸练习的关联题目。
         </Text>
         <div className="mt-4">
           {renderQuestionList(relatedList, "当前题目暂未找到更多关联题目")}

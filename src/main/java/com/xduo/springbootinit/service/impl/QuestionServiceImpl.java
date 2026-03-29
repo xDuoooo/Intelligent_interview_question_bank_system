@@ -72,6 +72,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
 
+    private static final int USER_INTERACTION_LIMIT = 120;
+    private static final double MAX_COLLABORATIVE_SCORE = 3D;
+    private static final int COLLABORATIVE_SCORE_SCALE = 12;
+    private static final double MIN_COLLABORATIVE_SIMILARITY = 0.01D;
+
     @Resource
     private UserService userService;
 
@@ -434,10 +439,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     public List<QuestionVO> listRecommendQuestionVOByUser(long userId, Long currentQuestionId, int size, HttpServletRequest request) {
         size = Math.max(1, Math.min(size, 12));
         Map<String, Integer> tagWeightMap = new HashMap<>();
-        Set<Long> interactedQuestionIdSet = new HashSet<>();
+        Map<Long, Integer> interactedQuestionWeightMap = buildUserInteractionWeightMap(userId);
+        Set<Long> interactedQuestionIdSet = new HashSet<>(interactedQuestionWeightMap.keySet());
 
         QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
         historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.orderByDesc("updateTime");
+        historyQueryWrapper.last("limit " + USER_INTERACTION_LIMIT);
         List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
         if (CollUtil.isNotEmpty(historyList)) {
             Set<Long> historyQuestionIdSet = historyList.stream()
@@ -456,6 +464,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
         favourQueryWrapper.eq("userId", userId);
+        favourQueryWrapper.orderByDesc("createTime");
+        favourQueryWrapper.last("limit " + USER_INTERACTION_LIMIT);
         List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
         if (CollUtil.isNotEmpty(favourList)) {
             Set<Long> favourQuestionIdSet = favourList.stream()
@@ -478,10 +488,25 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return Collections.emptyList();
         }
 
+        Map<Long, CollaborativeRecommendationDetail> collaborativeScoreMap = buildCollaborativeScoreMap(
+                interactedQuestionWeightMap,
+                candidateQuestionList,
+                loadQuestionTitleMap(interactedQuestionWeightMap.keySet())
+        );
+
         List<QuestionRecommendationScore> scoredList = candidateQuestionList.stream()
                 .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
                 .filter(question -> !interactedQuestionIdSet.contains(question.getId()))
-                .map(question -> buildRecommendationScore(question, tagWeightMap, "偏好标签"))
+                .map(question -> {
+                    QuestionRecommendationScore contentScore = buildRecommendationScore(question, tagWeightMap, "偏好标签");
+                    CollaborativeRecommendationDetail collaborativeDetail = collaborativeScoreMap.get(question.getId());
+                    int finalScore = contentScore.getScore() + (collaborativeDetail == null ? 0 : collaborativeDetail.getScore());
+                    String finalReason = mergeRecommendationReason(
+                            contentScore.getReason(),
+                            collaborativeDetail == null ? "" : collaborativeDetail.getReason()
+                    );
+                    return new QuestionRecommendationScore(question, finalScore, finalReason);
+                })
                 .filter(item -> item.getScore() > 0)
                 .sorted(Comparator
                         .comparingInt(QuestionRecommendationScore::getScore).reversed()
@@ -521,6 +546,14 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return Collections.emptyList();
         }
 
+        Map<Long, Integer> currentQuestionWeightMap = new HashMap<>();
+        currentQuestionWeightMap.put(questionId, 1);
+        Map<Long, CollaborativeRecommendationDetail> collaborativeScoreMap = buildCollaborativeScoreMap(
+                currentQuestionWeightMap,
+                candidateQuestionList,
+                Collections.singletonMap(questionId, currentQuestion.getTitle())
+        );
+
         List<QuestionRecommendationScore> scoredList = candidateQuestionList.stream()
                 .filter(question -> !question.getId().equals(questionId))
                 .map(question -> {
@@ -530,7 +563,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                             .distinct()
                             .collect(Collectors.toList());
                     int score = overlapTags.size() * 100;
-                    String reason = overlapTags.isEmpty() ? "" : "关联标签：" + String.join(" / ", overlapTags);
+                    CollaborativeRecommendationDetail collaborativeDetail = collaborativeScoreMap.get(question.getId());
+                    score += collaborativeDetail == null ? 0 : collaborativeDetail.getScore();
+                    String reason = mergeRecommendationReason(
+                            overlapTags.isEmpty() ? "" : "关联标签：" + String.join(" / ", overlapTags),
+                            collaborativeDetail == null ? "" : collaborativeDetail.getReason()
+                    );
                     return new QuestionRecommendationScore(question, score, reason);
                 })
                 .filter(item -> item.getScore() > 0)
@@ -763,26 +801,242 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     }
 
     private Set<Long> getInteractedQuestionIdSet(long userId) {
-        Set<Long> interactedQuestionIdSet = new HashSet<>();
+        return new HashSet<>(buildUserInteractionWeightMap(userId).keySet());
+    }
+
+    private Map<Long, Integer> buildUserInteractionWeightMap(long userId) {
+        Map<Long, Integer> interactionWeightMap = new LinkedHashMap<>();
+
         QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
         historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.orderByDesc("updateTime");
+        historyQueryWrapper.last("limit " + USER_INTERACTION_LIMIT);
         List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
         if (CollUtil.isNotEmpty(historyList)) {
-            interactedQuestionIdSet.addAll(historyList.stream()
-                    .map(UserQuestionHistory::getQuestionId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(Collectors.toSet()));
+            historyList.forEach(item -> mergeInteractionWeight(
+                    interactionWeightMap,
+                    item.getQuestionId(),
+                    convertHistoryStatusToCollaborativeWeight(item.getStatus())
+            ));
         }
+
         QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
         favourQueryWrapper.eq("userId", userId);
+        favourQueryWrapper.orderByDesc("createTime");
+        favourQueryWrapper.last("limit " + USER_INTERACTION_LIMIT);
         List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
         if (CollUtil.isNotEmpty(favourList)) {
-            interactedQuestionIdSet.addAll(favourList.stream()
-                    .map(QuestionFavour::getQuestionId)
-                    .filter(java.util.Objects::nonNull)
-                    .collect(Collectors.toSet()));
+            favourList.forEach(item -> mergeInteractionWeight(interactionWeightMap, item.getQuestionId(), 4));
         }
-        return interactedQuestionIdSet;
+        return interactionWeightMap;
+    }
+
+    private int convertHistoryStatusToCollaborativeWeight(Integer status) {
+        if (status == null) {
+            return 1;
+        }
+        switch (status) {
+            case 1:
+                return 3;
+            case 2:
+                return 2;
+            default:
+                return 1;
+        }
+    }
+
+    private void mergeInteractionWeight(Map<Long, Integer> interactionWeightMap, Long questionId, int weight) {
+        if (questionId == null || questionId <= 0 || weight <= 0) {
+            return;
+        }
+        interactionWeightMap.merge(questionId, weight, Math::max);
+    }
+
+    private Map<Long, String> loadQuestionTitleMap(Set<Long> questionIdSet) {
+        if (CollUtil.isEmpty(questionIdSet)) {
+            return Collections.emptyMap();
+        }
+        return this.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(
+                        Question::getId,
+                        question -> StringUtils.defaultIfBlank(question.getTitle(), "未命名题目"),
+                        (left, right) -> left
+                ));
+    }
+
+    private Map<Long, CollaborativeRecommendationDetail> buildCollaborativeScoreMap(Map<Long, Integer> sourceQuestionWeightMap,
+                                                                                    List<Question> candidateQuestionList,
+                                                                                    Map<Long, String> sourceQuestionTitleMap) {
+        if (sourceQuestionWeightMap == null || sourceQuestionWeightMap.isEmpty() || CollUtil.isEmpty(candidateQuestionList)) {
+            return Collections.emptyMap();
+        }
+        Set<Long> relevantQuestionIdSet = new LinkedHashSet<>(sourceQuestionWeightMap.keySet());
+        candidateQuestionList.stream()
+                .map(Question::getId)
+                .filter(ObjectUtils::isNotEmpty)
+                .forEach(relevantQuestionIdSet::add);
+        Map<Long, Map<Long, Integer>> questionUserWeightMap = buildQuestionUserWeightMap(relevantQuestionIdSet);
+        if (questionUserWeightMap.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, Double> questionRawScoreMap = new HashMap<>();
+        Map<Long, Map<Long, Double>> contributionMap = new HashMap<>();
+        for (Map.Entry<Long, Integer> sourceEntry : sourceQuestionWeightMap.entrySet()) {
+            Long sourceQuestionId = sourceEntry.getKey();
+            Map<Long, Integer> sourceVector = questionUserWeightMap.get(sourceQuestionId);
+            if (sourceVector == null || sourceVector.isEmpty()) {
+                continue;
+            }
+            int behaviorWeight = sourceEntry.getValue();
+            for (Question candidateQuestion : candidateQuestionList) {
+                Long candidateQuestionId = candidateQuestion.getId();
+                if (candidateQuestionId == null || candidateQuestionId.equals(sourceQuestionId)) {
+                    continue;
+                }
+                Map<Long, Integer> candidateVector = questionUserWeightMap.get(candidateQuestionId);
+                if (candidateVector == null || candidateVector.isEmpty()) {
+                    continue;
+                }
+                double similarity = calculateCosineSimilarity(sourceVector, candidateVector);
+                if (similarity < MIN_COLLABORATIVE_SIMILARITY) {
+                    continue;
+                }
+                double contribution = similarity * behaviorWeight;
+                questionRawScoreMap.merge(candidateQuestionId, contribution, Double::sum);
+                contributionMap.computeIfAbsent(candidateQuestionId, key -> new HashMap<>())
+                        .merge(sourceQuestionId, contribution, Double::sum);
+            }
+        }
+
+        if (questionRawScoreMap.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        Map<Long, CollaborativeRecommendationDetail> result = new HashMap<>();
+        for (Question candidateQuestion : candidateQuestionList) {
+            Long candidateQuestionId = candidateQuestion.getId();
+            if (candidateQuestionId == null) {
+                continue;
+            }
+            double rawScore = questionRawScoreMap.getOrDefault(candidateQuestionId, 0D);
+            if (rawScore <= 0) {
+                continue;
+            }
+            int normalizedScore = normalizeCollaborativeScore(rawScore);
+            if (normalizedScore <= 0) {
+                continue;
+            }
+            String reason = buildCollaborativeReason(contributionMap.get(candidateQuestionId), sourceQuestionTitleMap);
+            result.put(candidateQuestionId, new CollaborativeRecommendationDetail(normalizedScore, reason));
+        }
+        return result;
+    }
+
+    private Map<Long, Map<Long, Integer>> buildQuestionUserWeightMap(Set<Long> questionIdSet) {
+        if (CollUtil.isEmpty(questionIdSet)) {
+            return Collections.emptyMap();
+        }
+        Map<Long, Map<Long, Integer>> questionUserWeightMap = new HashMap<>();
+
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.in("questionId", questionIdSet);
+        historyQueryWrapper.select("userId", "questionId", "status");
+        List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
+        if (CollUtil.isNotEmpty(historyList)) {
+            historyList.forEach(item -> {
+                if (item.getQuestionId() == null || item.getUserId() == null) {
+                    return;
+                }
+                questionUserWeightMap
+                        .computeIfAbsent(item.getQuestionId(), key -> new HashMap<>())
+                        .merge(item.getUserId(), convertHistoryStatusToCollaborativeWeight(item.getStatus()), Math::max);
+            });
+        }
+
+        QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
+        favourQueryWrapper.in("questionId", questionIdSet);
+        favourQueryWrapper.select("userId", "questionId");
+        List<QuestionFavour> favourList = questionFavourService.list(favourQueryWrapper);
+        if (CollUtil.isNotEmpty(favourList)) {
+            favourList.forEach(item -> {
+                if (item.getQuestionId() == null || item.getUserId() == null) {
+                    return;
+                }
+                questionUserWeightMap
+                        .computeIfAbsent(item.getQuestionId(), key -> new HashMap<>())
+                        .merge(item.getUserId(), 4, Integer::sum);
+            });
+        }
+        return questionUserWeightMap;
+    }
+
+    private double calculateCosineSimilarity(Map<Long, Integer> leftVector, Map<Long, Integer> rightVector) {
+        if (leftVector == null || rightVector == null || leftVector.isEmpty() || rightVector.isEmpty()) {
+            return 0D;
+        }
+        double dot = 0D;
+        double leftNorm = 0D;
+        double rightNorm = 0D;
+        for (Integer value : leftVector.values()) {
+            if (value != null) {
+                leftNorm += value * value;
+            }
+        }
+        for (Integer value : rightVector.values()) {
+            if (value != null) {
+                rightNorm += value * value;
+            }
+        }
+        if (leftNorm <= 0D || rightNorm <= 0D) {
+            return 0D;
+        }
+        Map<Long, Integer> smallerVector = leftVector.size() <= rightVector.size() ? leftVector : rightVector;
+        Map<Long, Integer> largerVector = smallerVector == leftVector ? rightVector : leftVector;
+        for (Map.Entry<Long, Integer> entry : smallerVector.entrySet()) {
+            Integer rightValue = largerVector.get(entry.getKey());
+            if (rightValue != null && entry.getValue() != null) {
+                dot += entry.getValue() * rightValue;
+            }
+        }
+        if (dot <= 0D) {
+            return 0D;
+        }
+        return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+    }
+
+    private int normalizeCollaborativeScore(double rawScore) {
+        return (int) Math.round(Math.min(rawScore, MAX_COLLABORATIVE_SCORE) * COLLABORATIVE_SCORE_SCALE);
+    }
+
+    private String buildCollaborativeReason(Map<Long, Double> sourceContributionMap, Map<Long, String> sourceQuestionTitleMap) {
+        if (sourceContributionMap == null || sourceContributionMap.isEmpty()) {
+            return "";
+        }
+        List<String> sourceTitleList = sourceContributionMap.entrySet().stream()
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .map(entry -> StringUtils.abbreviate(
+                        sourceQuestionTitleMap.getOrDefault(entry.getKey(), "相关题目"),
+                        18
+                ))
+                .distinct()
+                .limit(2)
+                .collect(Collectors.toList());
+        if (sourceTitleList.isEmpty()) {
+            return "";
+        }
+        if (sourceTitleList.size() == 1) {
+            return "协同过滤：与《" + sourceTitleList.get(0) + "》存在相似练习人群";
+        }
+        return "协同过滤：练过《" + sourceTitleList.get(0) + "》《" + sourceTitleList.get(1) + "》的相似用户也常练这题";
+    }
+
+    private String mergeRecommendationReason(String... reasonList) {
+        return java.util.Arrays.stream(reasonList)
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.joining("；"));
     }
 
     private ResumeAnalysisProfile buildResumeAnalysisProfile(String resumeText, Set<String> candidateTagSet) {
@@ -1047,6 +1301,24 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         public void setAnalysisSource(String analysisSource) {
             this.analysisSource = analysisSource;
+        }
+    }
+
+    private static class CollaborativeRecommendationDetail {
+        private final int score;
+        private final String reason;
+
+        private CollaborativeRecommendationDetail(int score, String reason) {
+            this.score = score;
+            this.reason = reason;
+        }
+
+        public int getScore() {
+            return score;
+        }
+
+        public String getReason() {
+            return reason;
         }
     }
 
