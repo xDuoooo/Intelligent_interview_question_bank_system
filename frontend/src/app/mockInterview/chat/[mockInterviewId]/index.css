@@ -80,6 +80,7 @@
 
 .hero-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-top: 24px;
 }
@@ -89,6 +90,10 @@
     border-radius: 16px !important;
     padding: 0 18px !important;
     font-weight: 700 !important;
+}
+
+.action-button.secondary {
+    background: #fff !important;
 }
 
 .message-list {
@@ -124,6 +129,10 @@
     background: linear-gradient(180deg, #1677ff, #0f5cd6);
     color: white;
     box-shadow: 0 18px 40px rgba(22, 119, 255, 0.18);
+}
+
+.message-bubble.streaming {
+    border-style: dashed;
 }
 
 .message-head {
@@ -167,12 +176,47 @@
     padding: 16px !important;
 }
 
-.send-button {
+.input-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
     margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.tool-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.tool-button {
+    height: 42px !important;
+    border-radius: 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px;
+}
+
+.send-button {
     height: 44px !important;
     border-radius: 16px !important;
     padding: 0 20px !important;
     font-weight: 700 !important;
+}
+
+.voice-status,
+.stream-status {
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.stream-status {
+    color: #1677ff;
+    font-weight: 700;
 }
 
 .score-pill {
@@ -553,6 +597,18 @@
 
     .hero-actions {
         flex-direction: column;
+    }
+
+    .input-toolbar,
+    .tool-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tool-button,
+    .send-button {
+        width: 100%;
+        justify-content: center;
     }
 
     .metric-grid {
