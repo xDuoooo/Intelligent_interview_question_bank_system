@@ -135,30 +135,41 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </div>
                   </div>
-                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div className="min-w-[110px] shrink-0">
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                        当前榜首
+                  {board.rankingList?.[0]?.userName ? (
+                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                      <div className="min-w-[110px] shrink-0">
+                        <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
+                          当前榜首
+                        </div>
+                        <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
+                          {getBoardSummary(board)}
+                        </div>
                       </div>
-                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-                        {getBoardSummary(board)}
-                      </div>
-                    </div>
-                    <div className="sm:min-w-[144px] sm:text-right">
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                        冠军
-                      </div>
-                      {board.rankingList?.[0]?.userName ? (
+                      <div className="sm:min-w-[144px] sm:text-right">
+                        <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
+                          冠军
+                        </div>
                         <div className="mt-1 text-sm font-black leading-tight text-slate-900 break-keep whitespace-normal">
                           {board.rankingList[0].userName}
                         </div>
-                      ) : (
-                        <div className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 whitespace-nowrap">
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-5 rounded-[1.35rem] border border-dashed border-slate-200 bg-white/75 px-4 py-4">
+                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
+                        当前榜首
+                      </div>
+                      <div className="mt-3 flex items-end justify-between gap-4">
+                        <div>
+                          <div className="text-3xl font-black tracking-tight text-slate-900">0</div>
+                          <div className="mt-1 text-xs font-medium text-slate-400">当前还没有上榜数据</div>
+                        </div>
+                        <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 whitespace-nowrap">
                           暂无榜首
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
