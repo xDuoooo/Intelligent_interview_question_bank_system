@@ -48,4 +48,9 @@ public interface UserQuestionHistoryService extends IService<UserQuestionHistory
      * 获取用户今日刷题数
      */
     long getTodayQuestionCount(long userId);
+
+    /**
+     * 上报一次学习时长会话
+     */
+    boolean reportStudySession(long userId, long questionId, int durationSeconds);
 }

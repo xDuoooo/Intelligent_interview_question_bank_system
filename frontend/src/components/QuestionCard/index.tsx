@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import TagList from "@/components/TagList";
 import MdViewer from "@/components/MdViewer";
@@ -11,6 +11,7 @@ import { Button, message, Segmented, Space, Tag, Typography } from "antd";
 import { doQuestionFavourUsingPost } from "@/api/questionFavourController";
 import { addQuestionHistoryUsingPost } from "@/api/userQuestionHistoryController";
 import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
+import { buildApiUrl } from "@/libs/request";
 
 const { Text } = Typography;
 
@@ -61,6 +62,8 @@ const QuestionCard = (props: Props) => {
   // 状态维护
   const [hasFavour, setHasFavour] = useState(question.hasFavour);
   const [favourNum, setFavourNum] = useState(question.favourNum || 0);
+  const studyStartTimeRef = useRef(Date.now());
+  const hasReportedStudyRef = useRef(false);
 
   // 签到
   useAddUserSignInRecord();
@@ -99,6 +102,45 @@ const QuestionCard = (props: Props) => {
       message.error("更新状态失败，" + error.message);
     }
   };
+
+  useEffect(() => {
+    studyStartTimeRef.current = Date.now();
+    hasReportedStudyRef.current = false;
+
+    const reportStudySession = () => {
+      if (hasReportedStudyRef.current) {
+        return;
+      }
+      const durationSeconds = Math.floor((Date.now() - studyStartTimeRef.current) / 1000);
+      if (durationSeconds < 10) {
+        return;
+      }
+      hasReportedStudyRef.current = true;
+      const payload = JSON.stringify({
+        questionId: Number(question.id),
+        durationSeconds,
+      });
+      try {
+        fetch(buildApiUrl("/api/user_question_history/session/report"), {
+          method: "POST",
+          credentials: "include",
+          keepalive: true,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: payload,
+        }).catch(() => undefined);
+      } catch {
+        // ignore silent study session reporting errors
+      }
+    };
+
+    window.addEventListener("pagehide", reportStudySession);
+    return () => {
+      reportStudySession();
+      window.removeEventListener("pagehide", reportStudySession);
+    };
+  }, [question.id]);
 
   const authorCard = question.user ? (
     <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition-all hover:border-primary/20 hover:bg-white">

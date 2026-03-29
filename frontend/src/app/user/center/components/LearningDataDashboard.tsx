@@ -8,6 +8,16 @@ import {
   updateMyLearningGoalUsingPost
 } from "@/api/userQuestionHistoryController";
 
+function formatDuration(seconds?: number) {
+  const totalSeconds = Math.max(0, Number(seconds || 0));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) {
+    return `${hours}小时${minutes}分钟`;
+  }
+  return `${minutes}分钟`;
+}
+
 /**
  * 学习数据看板
  * @constructor
@@ -134,6 +144,30 @@ const LearningDataDashboard: React.FC = () => {
             />
           </Card>
         </Col>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} loading={loading} className="stats-card">
+            <Statistic
+              title="累计学习时长"
+              value={formatDuration(stats.totalStudyDurationSeconds)}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} loading={loading} className="stats-card">
+            <Statistic
+              title="今日专注时长"
+              value={formatDuration(stats.todayStudyDurationSeconds)}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card bordered={false} loading={loading} className="stats-card">
+            <Statistic
+              title="平均单次专注"
+              value={formatDuration(stats.averageStudyDurationSeconds)}
+            />
+          </Card>
+        </Col>
       </Row>
 
       <Row gutter={[16, 16]}>
@@ -147,6 +181,10 @@ const LearningDataDashboard: React.FC = () => {
                 </Paragraph>
               </div>
               <Progress percent={goalPercent} strokeColor={stats.goalCompletedToday ? "#52c41a" : "#1677ff"} />
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-sm text-slate-500">
+                本周你已经累计了 <span className="font-semibold text-slate-800">{stats.studySessionCount || 0}</span> 次专注学习，
+                当前平均单次投入 <span className="font-semibold text-slate-800">{formatDuration(stats.averageStudyDurationSeconds)}</span>。
+              </div>
               <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                 <div className="flex items-center justify-between">
                   <Text strong>每日目标</Text>

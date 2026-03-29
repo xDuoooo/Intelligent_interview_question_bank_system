@@ -452,6 +452,11 @@ declare namespace API {
     workExperience?: string;
   };
 
+  type UserQuestionStudySessionReportRequest = {
+    durationSeconds?: number;
+    questionId?: number;
+  };
+
   type OrderItem = {
     asc?: boolean;
     column?: string;
