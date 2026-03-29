@@ -70,7 +70,7 @@ const ResumeRecommendPanel: React.FC = () => {
   };
 
   const uploadProps: UploadProps = {
-    accept: ".txt,.md,.markdown,.docx",
+    accept: ".txt,.md,.markdown,.docx,.pdf",
     maxCount: 1,
     showUploadList: false,
     beforeUpload: (file) => {
@@ -93,7 +93,7 @@ const ResumeRecommendPanel: React.FC = () => {
                 简历解析推荐
               </div>
               <Paragraph className="!mb-0 !mt-2 text-slate-500">
-                你可以直接粘贴简历文本，也可以上传 txt、md、docx 简历文件。系统会自动提取技能标签，并推荐更适合当前岗位方向的面试题。
+                你可以直接粘贴简历文本，也可以上传 txt、md、docx、pdf 简历文件。系统会自动提取技能标签，并推荐更适合当前岗位方向的面试题。
               </Paragraph>
             </div>
             <Tag color="blue">AI + 规则双驱动</Tag>
@@ -117,7 +117,7 @@ const ResumeRecommendPanel: React.FC = () => {
                   上传简历文件
                 </div>
                 <Text className="mt-1 block text-sm text-slate-500">
-                  支持 `txt / md / docx`，单个文件不超过 2MB。
+                  支持 `txt / md / docx / pdf`，单个文件不超过 2MB。
                 </Text>
               </div>
               <Upload {...uploadProps}>
