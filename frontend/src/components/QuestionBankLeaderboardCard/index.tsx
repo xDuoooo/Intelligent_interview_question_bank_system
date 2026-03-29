@@ -57,7 +57,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
 
             <div className="grid gap-3 sm:grid-cols-2 sm:min-w-[220px]">
               <div className="rounded-[1.5rem] border border-white/80 bg-white/85 px-4 py-4 shadow-lg shadow-white/50">
-                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-slate-400">
+                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-slate-400 whitespace-nowrap">
                   <Users className="h-3.5 w-3.5 text-primary" />
                   榜单维度
                 </div>
@@ -66,7 +66,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </div>
               </div>
               <div className="rounded-[1.5rem] border border-white/80 bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-200/60">
-                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-white/55">
+                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-white/55 whitespace-nowrap">
                   <BookOpenText className="h-3.5 w-3.5" />
                   榜首成绩
                 </div>
@@ -98,7 +98,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </UserProfileHoverCard>
 
                 <div className="rounded-[1.4rem] bg-amber-50 px-4 py-4 xl:text-right">
-                  <div className="text-[11px] font-black tracking-[0.14em] leading-tight text-amber-700/70 whitespace-normal">
+                  <div className="text-[11px] font-black tracking-[0.14em] leading-tight text-amber-700/70 break-keep whitespace-nowrap">
                     {champion.metricText || leaderboard.metricLabel || "完成题数"}
                   </div>
                   <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
@@ -145,14 +145,14 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </UserProfileHoverCard>
 
                 <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">排名</div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400 whitespace-nowrap">排名</div>
                   <div className="mt-1 text-xl font-black text-slate-900">
                     #{leaderboard.currentUserItem.rank || "-"}
                   </div>
                 </div>
 
                 <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                  <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 whitespace-normal">
+                  <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
                     {leaderboard.currentUserItem.metricText || leaderboard.metricLabel || "完成题数"}
                   </div>
                   <div className="mt-1 text-xl font-black text-slate-900">
@@ -192,7 +192,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                   </UserProfileHoverCard>
 
                   <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[150px] xl:justify-end">
-                    <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 whitespace-normal">
+                    <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
                       {item.metricText || leaderboard.metricLabel || "完成题数"}
                     </div>
                     <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">
