@@ -12,7 +12,19 @@ const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: "待开始", color: "orange" },
   1: { text: "进行中", color: "green" },
   2: { text: "已结束", color: "red" },
+  3: { text: "已暂停", color: "gold" },
 };
+
+function safeParseJson<T>(value?: string | null): T | null {
+  if (!value) {
+    return null;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+}
 
 export default function MockInterviewHomePage() {
   const [loading, setLoading] = useState(true);
@@ -96,6 +108,10 @@ export default function MockInterviewHomePage() {
             split={false}
             renderItem={(item) => {
               const status = statusMap[item.status ?? 0] || statusMap[0];
+              const report = safeParseJson<{
+                readinessLevel?: string;
+                currentFocus?: string;
+              }>(item.report);
               return (
                 <List.Item className="!px-0">
                   <Card className="w-full rounded-2xl border border-slate-100 shadow-sm">
@@ -125,13 +141,23 @@ export default function MockInterviewHomePage() {
                             轮次：{item.currentRound || 0}/{item.expectedRounds || 5}
                           </span>
                         </div>
+                        {report?.readinessLevel ? (
+                          <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+                            当前就绪度：{report.readinessLevel}
+                          </div>
+                        ) : null}
+                        {report?.currentFocus && item.status !== 2 ? (
+                          <Text className="block text-slate-500">
+                            当前停留重点：{report.currentFocus}
+                          </Text>
+                        ) : null}
                         <Text className="text-slate-400">
                           最近更新时间：{item.updateTime ? new Date(item.updateTime).toLocaleString() : "-"}
                         </Text>
                       </div>
                       <Link href={`/mockInterview/chat/${item.id}`}>
                         <Button type="primary" className="h-11 rounded-2xl px-5 font-bold">
-                          进入会话
+                          {item.status === 3 ? "继续会话" : "进入会话"}
                           <ArrowRight size={16} />
                         </Button>
                       </Link>

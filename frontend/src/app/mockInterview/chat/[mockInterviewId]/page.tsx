@@ -48,6 +48,9 @@ interface RoundRecord {
   problemSolvingScore?: number;
   questionStyle?: string;
   recommendedAnswerSeconds?: number;
+  responseSeconds?: number;
+  verdict?: string;
+  improvementTags?: string[];
 }
 
 interface InterviewAgendaItem {
@@ -75,6 +78,8 @@ interface InterviewReport {
   suggestedTopics?: string[];
   roundRecords?: RoundRecord[];
   agenda?: InterviewAgendaItem[];
+  readinessLevel?: string;
+  recommendedNextAction?: string;
 }
 
 interface MockInterviewDetail extends API.MockInterview {
@@ -129,7 +134,29 @@ const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: "待开始", color: "orange" },
   1: { text: "进行中", color: "green" },
   2: { text: "已结束", color: "red" },
+  3: { text: "已暂停", color: "gold" },
 };
+
+function buildAnswerCoachHints(answer: string) {
+  const normalized = answer.trim();
+  if (!normalized) {
+    return [];
+  }
+  const hints: string[] = [];
+  if (normalized.length < 40) {
+    hints.push("这段回答偏短，最好补上业务背景、你的职责和最终结果。");
+  }
+  if (!/\d/.test(normalized)) {
+    hints.push("如果能补一个量化指标，比如 QPS、耗时、成本或收益，会更像真实面试高质量回答。");
+  }
+  if (!/(因为|所以|权衡|取舍|方案|设计)/.test(normalized)) {
+    hints.push("建议补一句技术选型或设计取舍，面试官会更容易判断你的思考深度。");
+  }
+  if (!/(复盘|优化|改进|如果重来)/.test(normalized)) {
+    hints.push("可以加一句复盘或后续优化方向，这会让回答更完整。");
+  }
+  return hints.slice(0, 3);
+}
 
 function safeParseJson<T>(value?: string | null): T | null {
   if (!value) {
@@ -191,6 +218,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const streamAbortControllerRef = useRef<AbortController | null>(null);
   const refreshAfterAbortTimerRef = useRef<number | null>(null);
+  const messageListRef = useRef<HTMLDivElement | null>(null);
   const voiceBaseInputRef = useRef("");
   const lastSpokenKeyRef = useRef("");
 
@@ -247,6 +275,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const status = statusMap[interview?.status ?? 0] || statusMap[0];
   const isStarted = interview?.status === 1;
   const isEnded = interview?.status === 2;
+  const isPaused = interview?.status === 3;
   const report = interview?.parsedReport;
   const expectedRounds = interview?.expectedRounds || report?.expectedRounds || 5;
   const currentRound = interview?.currentRound || report?.completedRounds || 0;
@@ -267,7 +296,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const latestQuestionMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const item = messages[i];
-      if (item.isAI && (item.stage === "question" || item.stage === "probe")) {
+      if (item.isAI && (item.stage === "question" || item.stage === "probe" || item.stage === "resume")) {
         return item;
       }
     }
@@ -277,7 +306,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const latestSpeakableMessage = useMemo(() => {
     for (let i = messages.length - 1; i >= 0; i -= 1) {
       const item = messages[i];
-      if (item.isAI && ["question", "probe", "summary"].includes(item.stage || "")) {
+      if (item.isAI && ["question", "probe", "resume", "summary"].includes(item.stage || "")) {
         return item;
       }
     }
@@ -332,6 +361,16 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
       stopSpeaking();
     }
   }, [autoSpeakEnabled, stopSpeaking]);
+
+  useEffect(() => {
+    if (!messageListRef.current) {
+      return;
+    }
+    messageListRef.current.scrollTo({
+      top: messageListRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [messages.length, streamingReply?.content]);
 
   const cancelStreaming = useCallback((reason = "已停止当前实时输出，稍后会刷新面试结果。") => {
     if (streamAbortControllerRef.current) {
@@ -422,7 +461,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   }, [cancelStreaming, inputMessage, stopSpeaking, submitting]);
 
   const handleEvent = useCallback(
-    async (eventType: "start" | "chat" | "end", msg?: string) => {
+    async (eventType: "start" | "chat" | "pause" | "resume" | "end", msg?: string) => {
       if (!interview?.id) {
         return false;
       }
@@ -481,6 +520,12 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
         if (eventType === "start") {
           message.success("面试已开始");
         }
+        if (eventType === "pause") {
+          message.success("已暂停当前面试");
+        }
+        if (eventType === "resume") {
+          message.success("已继续面试");
+        }
         if (eventType === "end") {
           message.success("已生成最终面试报告");
         }
@@ -505,6 +550,12 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
           await loadInterview(true);
           if (eventType === "start") {
             message.success("面试已开始");
+          }
+          if (eventType === "pause") {
+            message.success("已暂停当前面试");
+          }
+          if (eventType === "resume") {
+            message.success("已继续面试");
           }
           if (eventType === "end") {
             message.success("已生成最终面试报告");
@@ -586,6 +637,17 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const currentActionHint = report?.nextActionHint || "建议用背景、方案、结果和复盘的结构组织回答。";
   const canAnswer = isStarted && !isEnded;
   const isStreaming = submitting && Boolean(streamAbortControllerRef.current);
+  const answerCoachHints = useMemo(() => buildAnswerCoachHints(inputMessage), [inputMessage]);
+
+  const appendAnswerTemplate = (template: string) => {
+    stopSpeaking();
+    setInputMessage((prev) => {
+      if (!prev.trim()) {
+        return template;
+      }
+      return `${prev.trim()}\n${template}`;
+    });
+  };
 
   if (loading) {
     return (
@@ -642,16 +704,33 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               <Button
                 type="primary"
                 onClick={() => void handleEvent("start")}
-                disabled={isStarted || isEnded}
+                disabled={isStarted || isPaused || isEnded}
                 loading={submitting}
                 className="action-button"
               >
                 开始面试
               </Button>
               <Button
+                onClick={() => void handleEvent("pause")}
+                disabled={!isStarted || isPaused || isEnded}
+                loading={submitting}
+                className="action-button secondary"
+              >
+                暂停面试
+              </Button>
+              <Button
+                type="primary"
+                onClick={() => void handleEvent("resume")}
+                disabled={!isPaused || isEnded}
+                loading={submitting}
+                className="action-button"
+              >
+                继续面试
+              </Button>
+              <Button
                 danger
                 onClick={() => void handleEvent("end")}
-                disabled={!isStarted || isEnded}
+                disabled={(!isStarted && !isPaused) || isEnded}
                 loading={submitting}
                 className="action-button"
               >
@@ -682,7 +761,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               </Text>
             </div>
 
-            <div className="message-list">
+            <div className="message-list" ref={messageListRef}>
               {messages.length ? (
                 <>
                   <List
@@ -750,6 +829,32 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   }
                 }}
               />
+              <div className="template-row">
+                <Button
+                  className="template-button"
+                  onClick={() => appendAnswerTemplate("背景：\n职责：\n方案：\n结果：\n复盘：")}
+                  disabled={!canAnswer}
+                >
+                  插入项目回答模板
+                </Button>
+                <Button
+                  className="template-button"
+                  onClick={() => appendAnswerTemplate("Situation：\nTask：\nAction：\nResult：")}
+                  disabled={!canAnswer}
+                >
+                  插入 STAR 模板
+                </Button>
+              </div>
+              {answerCoachHints.length ? (
+                <div className="answer-coach-card">
+                  <div className="answer-coach-title">发出前再补一口</div>
+                  <ul>
+                    {answerCoachHints.map((hint) => (
+                      <li key={hint}>{hint}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div className="input-toolbar">
                 <div className="tool-group">
                   <Button
@@ -832,6 +937,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               </div>
               {voiceStatus ? <div className="voice-status">{voiceStatus}</div> : null}
               {streamStatus && submitting ? <div className="stream-status">{streamStatus}</div> : null}
+              {isPaused ? <div className="pause-tip">当前面试已暂停，点击“继续面试”后才能继续回答。</div> : null}
             </div>
           </Card>
         </section>
@@ -884,6 +990,9 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               <div className="cue-tag">{currentQuestionStyle}</div>
               <div className="cue-focus">{currentFocus}</div>
               <div className="cue-hint">{currentActionHint}</div>
+              {isPaused ? (
+                <div className="cue-paused-banner">面试已暂停，继续后会从当前考察点接着追问。</div>
+              ) : null}
             </div>
           </Card>
 
@@ -905,9 +1014,22 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                     <strong>{latestRoundRecord.score || 0}</strong>
                   </div>
                 ) : null}
+                {latestRoundRecord.verdict ? (
+                  <div className="feedback-verdict">{latestRoundRecord.verdict}</div>
+                ) : null}
                 <Paragraph className="!mb-3 text-slate-600">
                   {latestRoundRecord.shortComment || "这一轮反馈将在你完成回答后显示。"}
                 </Paragraph>
+                {latestRoundRecord.responseSeconds ? (
+                  <div className="feedback-meta">本轮作答用时 {latestRoundRecord.responseSeconds}s</div>
+                ) : null}
+                {(latestRoundRecord.improvementTags || []).length ? (
+                  <div className="feedback-tags">
+                    {(latestRoundRecord.improvementTags || []).map((tag) => (
+                      <span className="feedback-tag" key={tag}>{tag}</span>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="feedback-focus">
                   <div className="focus-label">{isEnded ? "这一轮主要问题：" : "面试官观察重点："}</div>
                   <div className="focus-text">{latestRoundRecord.focus || "继续补充项目细节和设计取舍。"}</div>
@@ -968,6 +1090,9 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                     <Paragraph className="!mb-0 text-slate-500">
                       {report.summary || "面试总结已生成。"}
                     </Paragraph>
+                    {report.readinessLevel ? (
+                      <div className="readiness-pill">{report.readinessLevel}</div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -985,6 +1110,13 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                       <Progress percent={item.value} showInfo={false} strokeColor="#0f172a" />
                     </div>
                   ))}
+                </div>
+
+                <div className="report-block">
+                  <div className="block-title">下一步建议</div>
+                  <Paragraph className="!mb-0 text-slate-600">
+                    {report.recommendedNextAction || "继续围绕项目细节、技术取舍和量化结果做口头表达训练。"}
+                  </Paragraph>
                 </div>
 
                 <div className="report-block">
@@ -1043,9 +1175,20 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                       <span>{item.score || 0} 分</span>
                     </div>
                     <div className="record-question">{item.question}</div>
+                    {item.verdict ? <div className="record-verdict">{item.verdict}</div> : null}
                     {item.questionStyle ? (
                       <div className="record-style">
                         {item.questionStyle} / 建议 {item.recommendedAnswerSeconds || 120}s
+                      </div>
+                    ) : null}
+                    {item.responseSeconds ? (
+                      <div className="record-meta">实际作答 {item.responseSeconds}s</div>
+                    ) : null}
+                    {(item.improvementTags || []).length ? (
+                      <div className="record-tags">
+                        {(item.improvementTags || []).map((tag) => (
+                          <span className="feedback-tag" key={`${item.round}-${tag}`}>{tag}</span>
+                        ))}
                       </div>
                     ) : null}
                     <div className="record-comment">

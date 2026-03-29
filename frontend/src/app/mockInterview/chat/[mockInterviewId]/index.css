@@ -176,6 +176,42 @@
     padding: 16px !important;
 }
 
+.template-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.template-button {
+    border-radius: 14px !important;
+    height: 38px !important;
+    font-weight: 700 !important;
+}
+
+.answer-coach-card {
+    margin-top: 12px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(22, 119, 255, 0.08), rgba(15, 92, 214, 0.03));
+    border: 1px solid rgba(22, 119, 255, 0.12);
+    padding: 14px 16px;
+}
+
+.answer-coach-title {
+    color: #1677ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.answer-coach-card ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    color: #475569;
+    line-height: 1.8;
+}
+
 .input-toolbar {
     display: flex;
     align-items: center;
@@ -222,6 +258,13 @@
 
 .stream-status {
     color: #1677ff;
+    font-weight: 700;
+}
+
+.pause-tip {
+    margin-top: 10px;
+    color: #b45309;
+    font-size: 13px;
     font-weight: 700;
 }
 
@@ -309,6 +352,16 @@
     font-size: 13px;
 }
 
+.cue-paused-banner {
+    margin-top: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    padding: 10px 12px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 12px;
+    line-height: 1.7;
+}
+
 .feedback-score {
     display: flex;
     justify-content: space-between;
@@ -326,6 +379,43 @@
 .feedback-score strong {
     font-size: 24px;
     color: #0f172a;
+}
+
+.feedback-verdict {
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.04);
+    color: #0f172a;
+    padding: 12px 14px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    line-height: 1.7;
+}
+
+.feedback-meta,
+.record-meta {
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.feedback-tags,
+.record-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.feedback-tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(22, 119, 255, 0.08);
+    color: #1677ff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 10px;
 }
 
 .feedback-focus {
@@ -401,6 +491,18 @@
 
 .report-block {
     margin-top: 18px;
+}
+
+.readiness-pill {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 12px;
+    border-radius: 999px;
+    background: rgba(22, 119, 255, 0.08);
+    color: #1677ff;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 8px 12px;
 }
 
 .block-title {
@@ -530,6 +632,13 @@
     line-height: 1.8;
 }
 
+.record-verdict {
+    margin-top: 10px;
+    color: #0f172a;
+    font-weight: 700;
+    line-height: 1.7;
+}
+
 .record-comment {
     margin-top: 10px;
     color: #64748b;
@@ -606,7 +715,8 @@
     }
 
     .input-toolbar,
-    .tool-group {
+    .tool-group,
+    .template-row {
         flex-direction: column;
         align-items: stretch;
     }
