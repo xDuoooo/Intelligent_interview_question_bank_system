@@ -53,6 +53,27 @@ public class QuestionEsDTO implements Serializable {
     private Long userId;
 
     /**
+     * 审核状态
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 审核意见
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核人 id
+     */
+    private Long reviewUserId;
+
+    /**
+     * 审核时间
+     */
+    @Field(type = FieldType.Date, format = {}, pattern = DATE_TIME_PATTERN)
+    private Date reviewTime;
+
+    /**
      * 创建时间
      */
     @Field(type = FieldType.Date, format = {}, pattern = DATE_TIME_PATTERN)

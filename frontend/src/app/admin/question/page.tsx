@@ -10,15 +10,21 @@ import {
 import { Plus, Trash2, Edit3, Database, Wand2, Link2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Popconfirm, Space, Table } from "antd";
+import { Button, message, Popconfirm, Space, Table, Tag } from "antd";
 import TagList from "@/components/TagList";
 import Link from "next/link";
+import {
+  QUESTION_REVIEW_STATUS_COLOR_MAP,
+  QUESTION_REVIEW_STATUS_TEXT_MAP,
+  QUESTION_REVIEW_STATUS_VALUE_ENUM,
+} from "@/constants/question";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
 const UpdateBankModal = dynamic(() => import("./components/UpdateBankModal"));
 const BatchAddQuestionsToBankModal = dynamic(() => import("./components/BatchAddQuestionsToBankModal"));
 const BatchRemoveQuestionsFromBankModal = dynamic(() => import("./components/BatchRemoveQuestionsFromBankModal"));
+const ReviewModal = dynamic(() => import("./components/ReviewModal"));
 
 /**
  * 题目管理页面
@@ -30,6 +36,7 @@ const QuestionAdminPage: React.FC = () => {
   const [updateBankModalVisible, setUpdateBankModalVisible] = useState<boolean>(false);
   const [batchAddQuestionsToBankModalVisible, setBatchAddQuestionsToBankModalVisible] = useState<boolean>(false);
   const [batchRemoveQuestionsFromBankModalVisible, setBatchRemoveQuestionsFromBankModalVisible] = useState<boolean>(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState<boolean>(false);
   const [selectedQuestionIdList, setSelectedQuestionIdList] = useState<number[]>([]);
   const actionRef = useRef<ActionType>();
   const [currentRow, setCurrentRow] = useState<API.Question>();
@@ -78,6 +85,13 @@ const QuestionAdminPage: React.FC = () => {
       render: (text) => <span className="font-bold text-slate-700">{text}</span>,
     },
     {
+      title: "内容",
+      dataIndex: "content",
+      valueType: "textarea",
+      hideInTable: true,
+      hideInSearch: true,
+    },
+    {
       title: "标签",
       dataIndex: "tags",
       valueType: "select",
@@ -86,6 +100,52 @@ const QuestionAdminPage: React.FC = () => {
         const tagList = JSON.parse(record.tags || "[]");
         return <TagList tagList={tagList} />;
       },
+    },
+    {
+      title: "题解",
+      dataIndex: "answer",
+      valueType: "textarea",
+      hideInTable: true,
+      hideInSearch: true,
+    },
+    {
+      title: "投稿人",
+      dataIndex: "userId",
+      valueType: "digit",
+      width: 100,
+      hideInForm: true,
+    },
+    {
+      title: "审核状态",
+      dataIndex: "reviewStatus",
+      valueType: "select",
+      width: 120,
+      hideInForm: true,
+      valueEnum: QUESTION_REVIEW_STATUS_VALUE_ENUM,
+      render: (_, record) => {
+        const reviewStatus = Number(record.reviewStatus ?? 1);
+        return (
+          <Tag color={QUESTION_REVIEW_STATUS_COLOR_MAP[reviewStatus] || "default"} className="rounded-full px-3 py-1 font-semibold">
+            {QUESTION_REVIEW_STATUS_TEXT_MAP[reviewStatus] || "未知状态"}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "审核意见",
+      dataIndex: "reviewMessage",
+      valueType: "textarea",
+      hideInSearch: true,
+      hideInForm: true,
+      ellipsis: true,
+      render: (text) => text || <span className="text-slate-300">-</span>,
+    },
+    {
+      title: "审核时间",
+      dataIndex: "reviewTime",
+      valueType: "dateTime",
+      hideInSearch: true,
+      hideInForm: true,
     },
     {
       title: "创建时间",
@@ -120,6 +180,15 @@ const QuestionAdminPage: React.FC = () => {
           >
             <Link2 className="h-4 w-4" />
             修改题库
+          </button>
+          <button
+            onClick={() => {
+              setCurrentRow(record);
+              setReviewModalVisible(true);
+            }}
+            className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 font-bold transition-colors"
+          >
+            审核
           </button>
           <button
             onClick={() => handleDelete(record)}
@@ -213,7 +282,7 @@ const QuestionAdminPage: React.FC = () => {
               sortField,
               sortOrder,
               ...filter,
-            } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestionVO_;
+            } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestion_;
             return {
               success: code === 0,
               data: data?.records || [],
@@ -254,6 +323,21 @@ const QuestionAdminPage: React.FC = () => {
           visible={updateBankModalVisible}
           questionId={currentRow.id}
           onCancel={() => setUpdateBankModalVisible(false)}
+        />
+      )}
+      {reviewModalVisible && currentRow && (
+        <ReviewModal
+          open={reviewModalVisible}
+          question={currentRow}
+          onCancel={() => {
+            setReviewModalVisible(false);
+            setCurrentRow(undefined);
+          }}
+          onSuccess={() => {
+            setReviewModalVisible(false);
+            setCurrentRow(undefined);
+            actionRef.current?.reload();
+          }}
         />
       )}
       {batchAddQuestionsToBankModalVisible && (

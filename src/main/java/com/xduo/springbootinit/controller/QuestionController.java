@@ -12,11 +12,13 @@ import com.alibaba.csp.sentinel.SphU;
 import com.alibaba.csp.sentinel.Tracer;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
@@ -26,6 +28,7 @@ import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
+import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.QuestionSearchLogService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.SecurityAlertService;
@@ -84,6 +87,9 @@ public class QuestionController {
     @Resource
     private CounterManager counterManager;
 
+    @Resource
+    private NotificationService notificationService;
+
     /**
      * 创建题目
      *
@@ -108,9 +114,13 @@ public class QuestionController {
         questionService.validQuestion(question, true);
         User loginUser = userService.getLoginUser(request);
         question.setUserId(loginUser.getId());
+        question.setReviewStatus(userService.isAdmin(loginUser)
+                ? QuestionConstant.REVIEW_STATUS_APPROVED
+                : QuestionConstant.REVIEW_STATUS_PENDING);
         // 写入数据库
         boolean result = questionService.save(question);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        questionService.syncQuestionToEs(question);
         long newQuestionId = question.getId();
         return ResultUtils.success(newQuestionId);
     }
@@ -139,6 +149,7 @@ public class QuestionController {
         // 操作数据库
         boolean result = questionService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        questionService.deleteQuestionFromEs(id);
         return ResultUtils.success(true);
     }
 
@@ -169,6 +180,8 @@ public class QuestionController {
         // 操作数据库
         boolean result = questionService.updateById(question);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        Question latestQuestion = questionService.getById(id);
+        questionService.syncQuestionToEs(latestQuestion);
         return ResultUtils.success(true);
     }
 
@@ -181,14 +194,15 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
-        //爬虫检测
-        User loginUser = userService.getLoginUser(request);
-        crawlerDetect(loginUser, request);
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
-        // 保存浏览记录
-        userQuestionHistoryService.addQuestionHistory(loginUser.getId(), id, 0);
+        User loginUser = userService.getLoginUserPermitNull(request);
+        ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
+        if (loginUser != null && QuestionConstant.REVIEW_STATUS_APPROVED == getQuestionReviewStatus(question)) {
+            crawlerDetect(loginUser, request);
+            userQuestionHistoryService.addQuestionHistory(loginUser.getId(), id, 0);
+        }
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));
     }
@@ -279,6 +293,7 @@ public class QuestionController {
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
                                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         Entry entry = null;
@@ -289,6 +304,9 @@ public class QuestionController {
 
             // 限制爬虫
             ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+            if (!userService.isAdmin(request)) {
+                questionQueryRequest.setReviewStatus(QuestionConstant.REVIEW_STATUS_APPROVED);
+            }
             // 查询数据库
             Page<Question> questionPage = questionService.listQuestionByPage(questionQueryRequest);
             // 获取封装类
@@ -367,18 +385,36 @@ public class QuestionController {
         if (!oldQuestion.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        // 操作数据库
-        boolean result = questionService.updateById(question);
+        boolean isAdmin = userService.isAdmin(loginUser);
+        LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Question::getId, id)
+                .set(Question::getTitle, question.getTitle())
+                .set(Question::getContent, question.getContent())
+                .set(Question::getTags, question.getTags())
+                .set(Question::getAnswer, question.getAnswer());
+        if (!isAdmin) {
+            updateWrapper.set(Question::getReviewStatus, QuestionConstant.REVIEW_STATUS_PENDING)
+                    .set(Question::getReviewMessage, null)
+                    .set(Question::getReviewUserId, null)
+                    .set(Question::getReviewTime, null);
+        }
+        boolean result = questionService.update(null, updateWrapper);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        Question latestQuestion = questionService.getById(id);
+        questionService.syncQuestionToEs(latestQuestion);
         return ResultUtils.success(true);
     }
 
     @PostMapping("/search/page/vo")
     public BaseResponse<Page<QuestionVO>> searchQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
                                                                  HttpServletRequest request) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
+        if (!userService.isAdmin(request)) {
+            questionQueryRequest.setReviewStatus(QuestionConstant.REVIEW_STATUS_APPROVED);
+        }
         Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
         if (StringUtils.isNotBlank(questionQueryRequest.getSearchText())) {
             try {
@@ -395,6 +431,49 @@ public class QuestionController {
             }
         }
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+    }
+
+    /**
+     * 审核题目（仅管理员）
+     */
+    @PostMapping("/review")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> reviewQuestion(@RequestBody QuestionReviewRequest questionReviewRequest,
+                                                HttpServletRequest request) {
+        ThrowUtils.throwIf(questionReviewRequest == null || questionReviewRequest.getId() == null || questionReviewRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        Integer reviewStatus = questionReviewRequest.getReviewStatus();
+        ThrowUtils.throwIf(reviewStatus == null || !QuestionConstant.ALLOWED_ADMIN_REVIEW_STATUS_SET.contains(reviewStatus),
+                ErrorCode.PARAMS_ERROR,
+                "审核状态不合法");
+        String reviewMessage = StringUtils.trimToNull(questionReviewRequest.getReviewMessage());
+        if (QuestionConstant.REVIEW_STATUS_REJECTED == reviewStatus) {
+            ThrowUtils.throwIf(StringUtils.isBlank(reviewMessage), ErrorCode.PARAMS_ERROR, "驳回时请填写审核意见");
+        }
+        ThrowUtils.throwIf(StringUtils.length(reviewMessage) > 512, ErrorCode.PARAMS_ERROR, "审核意见过长");
+        Question oldQuestion = questionService.getById(questionReviewRequest.getId());
+        ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
+
+        User loginUser = userService.getLoginUser(request);
+        LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Question::getId, oldQuestion.getId())
+                .set(Question::getReviewStatus, reviewStatus)
+                .set(Question::getReviewMessage, reviewMessage)
+                .set(Question::getReviewUserId, loginUser.getId())
+                .set(Question::getReviewTime, new java.util.Date());
+        boolean result = questionService.update(null, updateWrapper);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+        Question latestQuestion = questionService.getById(oldQuestion.getId());
+        questionService.syncQuestionToEs(latestQuestion);
+        notificationService.sendNotification(
+                latestQuestion.getUserId(),
+                QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus ? "你的题目已审核通过" : "你的题目未通过审核",
+                buildQuestionReviewNotificationContent(latestQuestion, reviewStatus, reviewMessage),
+                "question_review",
+                latestQuestion.getId()
+        );
+        return ResultUtils.success(true);
     }
 
     @PostMapping("/delete/batch")
@@ -450,8 +529,10 @@ public class QuestionController {
                     question.setTags(JSONUtil.toJsonStr(generatedQuestion.getTags()));
                 }
                 question.setUserId(loginUser.getId());
+                question.setReviewStatus(QuestionConstant.REVIEW_STATUS_APPROVED);
                 questionService.validQuestion(question, true);
                 questionService.save(question);
+                questionService.syncQuestionToEs(question);
                 successCount++;
             }
             ThrowUtils.throwIf(successCount == 0, ErrorCode.SYSTEM_ERROR, "AI 未生成可保存的题目");
@@ -564,6 +645,24 @@ public class QuestionController {
                                                          HttpServletRequest request, Throwable ex) {
         // 可以返回本地数据或空数据
         return ResultUtils.success(new Page<>());
+    }
+
+    private int getQuestionReviewStatus(Question question) {
+        return question.getReviewStatus() == null ? QuestionConstant.REVIEW_STATUS_APPROVED : question.getReviewStatus();
+    }
+
+    private String buildQuestionReviewNotificationContent(Question question, Integer reviewStatus, String reviewMessage) {
+        StringBuilder contentBuilder = new StringBuilder();
+        contentBuilder.append("题目《").append(StringUtils.defaultIfBlank(question.getTitle(), "未命名题目")).append("》");
+        if (QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+            contentBuilder.append("已通过审核，现在可以被其他用户浏览和学习。");
+        } else {
+            contentBuilder.append("未通过审核，请根据审核意见修改后重新提交。");
+        }
+        if (StringUtils.isNotBlank(reviewMessage)) {
+            contentBuilder.append(" 审核意见：").append(reviewMessage);
+        }
+        return contentBuilder.toString();
     }
 
     private List<AiGeneratedQuestion> parseAiGeneratedQuestions(String rawContent) {
