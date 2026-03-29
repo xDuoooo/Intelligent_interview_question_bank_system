@@ -81,6 +81,18 @@ function UserCenterContent() {
 
   const router = useRouter();
   const hasShownMessage = useRef(false);
+  const validTabKeySet = useRef(
+    new Set([
+      "overview",
+      "achievement",
+      "record",
+      "favourite",
+      "submissions",
+      "notes",
+      "posts",
+      "security",
+    ]),
+  );
 
   // 获取统计数据用于侧边栏快查
   const fetchStats = useCallback(async () => {
@@ -105,14 +117,24 @@ function UserCenterContent() {
       return;
     }
     const currentSearchParams = new URLSearchParams(window.location.search);
+    const tab = currentSearchParams.get("tab");
     const error = currentSearchParams.get("error");
     const msg = currentSearchParams.get("msg");
+    if (tab && validTabKeySet.current.has(tab)) {
+      setActiveTabKey(tab);
+    }
     if ((error || msg) && !hasShownMessage.current) {
       if (error) message.error(error);
       if (msg) message.success(msg);
       hasShownMessage.current = true;
-      setActiveTabKey("security");
-      router.replace(window.location.pathname);
+      if (!tab) {
+        setActiveTabKey("security");
+      }
+      const nextSearchParams = new URLSearchParams(window.location.search);
+      nextSearchParams.delete("error");
+      nextSearchParams.delete("msg");
+      const nextQuery = nextSearchParams.toString();
+      router.replace(nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname);
     }
   }, [router]);
 

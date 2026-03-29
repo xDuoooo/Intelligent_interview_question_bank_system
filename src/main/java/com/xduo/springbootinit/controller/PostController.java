@@ -23,6 +23,7 @@ import com.xduo.springbootinit.model.dto.post.PostUpdateRequest;
 import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.entity.PostReport;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.PostSubmitResultVO;
 import com.xduo.springbootinit.model.vo.PostVO;
 import com.xduo.springbootinit.model.vo.PostReportVO;
 import com.xduo.springbootinit.mapper.PostReportMapper;
@@ -80,7 +81,7 @@ public class PostController {
      * @return
      */
     @PostMapping("/add")
-    public BaseResponse<Long> addPost(@RequestBody PostAddRequest postAddRequest, HttpServletRequest request) {
+    public BaseResponse<PostSubmitResultVO> addPost(@RequestBody PostAddRequest postAddRequest, HttpServletRequest request) {
         if (postAddRequest == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -98,8 +99,11 @@ public class PostController {
         applyPostReviewPolicy(post, loginUser, true);
         boolean result = postService.save(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        long newPostId = post.getId();
-        return ResultUtils.success(newPostId);
+        PostSubmitResultVO postSubmitResultVO = new PostSubmitResultVO();
+        postSubmitResultVO.setId(post.getId());
+        postSubmitResultVO.setReviewStatus(post.getReviewStatus());
+        postSubmitResultVO.setReviewMessage(post.getReviewMessage());
+        return ResultUtils.success(postSubmitResultVO);
     }
 
     /**

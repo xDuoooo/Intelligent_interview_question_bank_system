@@ -295,8 +295,8 @@ const PostAdminPage: React.FC = () => {
             <span className="h-2 w-2 rounded-full bg-primary" />
             Post Community
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">帖子管理</h1>
-          <p className="text-lg font-medium text-slate-500">统一维护经验帖内容，补齐社区运营和治理能力。</p>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">社区管理</h1>
+          <p className="text-lg font-medium text-slate-500">统一维护经验帖内容、举报治理与精选运营能力。</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Link href="/posts/create">

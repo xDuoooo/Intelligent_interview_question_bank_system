@@ -7,6 +7,7 @@ import { message } from "antd";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { addPostUsingPost } from "@/api/postController";
 import PostEditorForm from "@/components/PostEditorForm";
+import { POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -42,11 +43,19 @@ export default function CreatePostPage() {
             setSubmitting(true);
             try {
               const res = await addPostUsingPost(values);
-              message.success("帖子发布成功");
-              if (res.data) {
-                router.push(`/post/${res.data}`);
+              const submitResult = res.data;
+              const postId = submitResult?.id;
+              const reviewStatus = Number(submitResult?.reviewStatus ?? 1);
+              const reviewMessage = submitResult?.reviewMessage;
+
+              if (reviewStatus === 1 && postId) {
+                message.success("帖子发布成功，已在社区公开展示");
+                router.push(`/post/${postId}`);
               } else {
-                router.push("/posts");
+                message.success(
+                  `帖子已提交，当前状态：${POST_REVIEW_STATUS_TEXT_MAP[reviewStatus] || "待处理"}${reviewMessage ? `，${reviewMessage}` : ""}`,
+                );
+                router.push("/user/center?tab=posts");
               }
             } catch (error: any) {
               message.error(error?.message || "发布失败");
