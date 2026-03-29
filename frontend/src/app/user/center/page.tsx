@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Avatar, Card, Col, Row, Tag, Button, Typography, Modal, message, Progress } from "antd";
+import { Card, Col, Row, Tag, Button, Typography, Modal, message, Progress } from "antd";
 import { useSelector } from "react-redux";
 import { RootState } from "@/stores";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ import {
   FilePenLine,
   User as UserIcon
 } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
 
 import { getMyQuestionStatsUsingGet } from "@/api/userQuestionHistoryController";
 import { USER_ROLE_ENUM, USER_ROLE_TEXT_MAP } from "@/constants/user";
@@ -119,10 +120,11 @@ function UserCenterContent() {
             {/* 用户核心信息 */}
             <div className="px-6 py-8 relative">
               <div className="relative mb-6 inline-block">
-                <Avatar
+                <UserAvatar
                   src={user.userAvatar}
                   size={96}
                   className="shadow-xl ring-1 ring-slate-100"
+                  name={user.userName}
                 />
                 {user.userRole === USER_ROLE_ENUM.ADMIN && (
                   <div className="absolute -bottom-1 -right-1 bg-amber-400 p-1.5 rounded-full border-2 border-white shadow-sm">
