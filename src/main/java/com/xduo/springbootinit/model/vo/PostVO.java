@@ -46,6 +46,31 @@ public class PostVO implements Serializable {
     private Long userId;
 
     /**
+     * 审核状态
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 审核意见
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核时间
+     */
+    private Date reviewTime;
+
+    /**
+     * 是否置顶
+     */
+    private Integer isTop;
+
+    /**
+     * 是否精选
+     */
+    private Integer isFeatured;
+
+    /**
      * 创建时间
      */
     private Date createTime;
