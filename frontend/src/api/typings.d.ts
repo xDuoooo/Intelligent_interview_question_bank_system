@@ -364,19 +364,29 @@ declare namespace API {
   type MockInterview = {
     createTime?: string;
     difficulty?: string;
+    currentRound?: number;
+    expectedRounds?: number;
     id?: number;
+    interviewType?: string;
     isDelete?: number;
     jobPosition?: string;
     messages?: string;
+    report?: string;
     status?: number;
+    techStack?: string;
     updateTime?: string;
     userId?: number;
     workExperience?: string;
+    resumeText?: string;
   };
 
   type MockInterviewAddRequest = {
     difficulty?: string;
+    expectedRounds?: number;
+    interviewType?: string;
     jobPosition?: string;
+    resumeText?: string;
+    techStack?: string;
     workExperience?: string;
   };
 
@@ -390,11 +400,13 @@ declare namespace API {
     current?: number;
     difficulty?: string;
     id?: number;
+    interviewType?: string;
     jobPosition?: string;
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
     status?: number;
+    techStack?: string;
     userId?: number;
     workExperience?: string;
   };

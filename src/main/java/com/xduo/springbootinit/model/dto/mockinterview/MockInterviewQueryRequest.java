@@ -19,6 +19,10 @@ public class MockInterviewQueryRequest extends PageRequest implements Serializab
 
     private String workExperience;
 
+    private String interviewType;
+
+    private String techStack;
+
     private String difficulty;
 
     private Integer status;

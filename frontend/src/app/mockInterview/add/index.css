@@ -1,5 +1,66 @@
 #createMockInterviewPage {
-    max-width: 800px;
-    width: 60%;
+    max-width: 980px;
+    width: min(92vw, 980px);
     margin: 0 auto;
+    padding: 24px 0 56px;
+}
+
+#createMockInterviewPage .create-panel {
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 32px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+    padding: 32px;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+}
+
+#createMockInterviewPage .create-header {
+    max-width: 720px;
+}
+
+#createMockInterviewPage .create-header .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(24, 144, 255, 0.08);
+    color: #1677ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+}
+
+#createMockInterviewPage .create-header h2 {
+    margin: 16px 0 10px;
+    font-size: 32px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+#createMockInterviewPage .create-header p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.9;
+    color: #64748b;
+}
+
+#createMockInterviewPage .create-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    #createMockInterviewPage .create-panel {
+        padding: 24px 18px;
+        border-radius: 24px;
+    }
+
+    #createMockInterviewPage .create-header h2 {
+        font-size: 26px;
+    }
+
+    #createMockInterviewPage .create-grid {
+        grid-template-columns: 1fr;
+    }
 }
