@@ -34,12 +34,35 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
 
   const handleFollowChange = (targetUserId: number | undefined, followed: boolean) => {
     if (!targetUserId || followed) {
+      if (targetUserId) {
+        setRecords((prev) =>
+          prev.map((item) =>
+            item.id === targetUserId
+              ? {
+                  ...item,
+                  hasFollowed: followed,
+                }
+              : item,
+          ),
+        );
+      }
       return;
     }
     if (viewingOwnFollowingList) {
       setRecords((prev) => prev.filter((item) => item.id !== targetUserId));
       setTotal((prev) => Math.max(0, prev - 1));
+      return;
     }
+    setRecords((prev) =>
+      prev.map((item) =>
+        item.id === targetUserId
+          ? {
+              ...item,
+              hasFollowed: false,
+            }
+          : item,
+      ),
+    );
   };
 
   useEffect(() => {
@@ -128,7 +151,7 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
                   </Link>
                   <UserFollowButton
                     userId={item.id}
-                    initialFollowed={viewingOwnFollowingList}
+                    initialFollowed={viewingOwnFollowingList || Boolean(item.hasFollowed)}
                     onChange={(followed) => handleFollowChange(item.id, followed)}
                     size="small"
                     className="shrink-0 rounded-xl"
