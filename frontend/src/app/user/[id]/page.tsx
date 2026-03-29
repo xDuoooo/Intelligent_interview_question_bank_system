@@ -112,7 +112,7 @@ export default async function PublicUserProfilePage({
     },
     {
       key: "submission",
-      label: "公开投稿",
+      label: "公开题目",
       value: profile.approvedQuestionCount || 0,
       icon: <PenSquare className="h-5 w-5 text-amber-500" />,
     },
@@ -223,7 +223,7 @@ export default async function PublicUserProfilePage({
             </h2>
           </div>
           <div className="text-sm text-slate-400">
-            公开展示最近刷题与投稿动态
+            公开展示最近刷题与题目动态
           </div>
         </div>
 
@@ -278,7 +278,7 @@ export default async function PublicUserProfilePage({
               Latest Contributions
             </div>
             <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
-              最近公开投稿
+              最近公开题目
             </h2>
           </div>
           <div className="text-sm text-slate-400">
@@ -329,7 +329,7 @@ export default async function PublicUserProfilePage({
             ))
           ) : (
             <div className="rounded-[1.75rem] border border-dashed border-slate-200 px-6 py-12 text-center text-sm text-slate-400">
-              这位用户暂时还没有公开投稿的题目。
+              这位用户暂时还没有公开题目。
             </div>
           )}
         </div>

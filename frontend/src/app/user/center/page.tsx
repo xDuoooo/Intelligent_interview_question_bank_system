@@ -54,7 +54,7 @@ const ResumeRecommendPanel = dynamic(() => import("@/app/user/center/components/
 });
 
 const MyQuestionSubmissionPanel = dynamic(() => import("@/app/user/center/components/MyQuestionSubmissionPanel"), {
-  loading: () => <div className="py-8 text-center text-slate-400">正在加载投稿记录...</div>,
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载题目记录...</div>,
 });
 
 const MyQuestionNoteList = dynamic(() => import("@/app/user/center/components/MyQuestionNoteList"), {
@@ -268,7 +268,7 @@ function UserCenterContent() {
             tabList={[
               { key: "overview", label: <span className="flex items-center gap-2"><LayoutDashboard size={16} />个人概览</span> },
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
-              { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的投稿</span> },
+              { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的题目</span> },
               { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
               { key: "comments", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />评论足迹</span> },
               { key: "posts", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />社区足迹</span> },
@@ -297,7 +297,7 @@ function UserCenterContent() {
                           查看成就看板
                         </Button>
                         <Button onClick={() => setActiveTabKey("submission")}>
-                          我的投稿
+                          我的题目
                         </Button>
                         <Button onClick={() => setActiveTabKey("notes")}>
                           我的笔记

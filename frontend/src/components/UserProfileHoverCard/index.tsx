@@ -249,7 +249,7 @@ export default function UserProfileHoverCard({
           </div>
 
           <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
-            公开投稿 {profile?.approvedQuestionCount ?? 0} 篇，点击主页可以查看完整公开资料和最近投稿。
+            公开题目 {profile?.approvedQuestionCount ?? 0} 道，点击主页可以查看完整公开资料和最近题目。
           </div>
         </>
       )}

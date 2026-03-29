@@ -685,12 +685,12 @@ public class UserController {
         approvedQuestionList.forEach(question -> {
             UserActivityVO activityVO = new UserActivityVO();
             activityVO.setType("submission");
-            activityVO.setBadge("投稿");
+            activityVO.setBadge("题目");
             activityVO.setTargetId(question.getId());
             activityVO.setTargetUrl("/question/" + question.getId());
             activityVO.setActivityTime(question.getReviewTime() != null ? question.getReviewTime() : question.getCreateTime());
             activityVO.setTitle("发布了一道公开题目");
-            activityVO.setDescription("投稿《" + question.getTitle() + "》已通过审核并公开展示");
+            activityVO.setDescription("题目《" + question.getTitle() + "》已通过审核并公开展示");
             activityList.add(activityVO);
         });
 

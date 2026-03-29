@@ -141,7 +141,7 @@ const QuestionAdminPage: React.FC = () => {
       hideInSearch: true,
     },
     {
-      title: "投稿人",
+      title: "出题用户",
       dataIndex: "userId",
       valueType: "digit",
       width: 100,

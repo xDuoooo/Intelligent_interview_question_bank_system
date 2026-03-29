@@ -37,7 +37,7 @@ public class UserProfileVO implements Serializable {
     private Long currentStreak;
 
     /**
-     * 已通过审核的投稿题目数
+     * 已通过审核的公开题目数
      */
     private Long approvedQuestionCount;
 
