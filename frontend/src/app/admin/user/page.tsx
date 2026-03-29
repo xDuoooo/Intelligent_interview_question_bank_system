@@ -6,7 +6,9 @@ import { deleteUserUsingPost, listUserByPageUsingPost } from "@/api/userControll
 import { Plus, Trash2, Edit3, UserCog } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { message, Space, Tag, Avatar } from "antd";
+import { message, Space, Tag, Avatar, Popconfirm } from "antd";
+import { useSelector } from "react-redux";
+import { RootState } from "@/stores";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
@@ -16,6 +18,7 @@ const UpdateModal = dynamic(() => import("./components/UpdateModal"));
  * @constructor
  */
 const UserAdminPage: React.FC = () => {
+  const loginUser = useSelector((state: RootState) => state.loginUser);
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
   const actionRef = useRef<ActionType>();
@@ -106,7 +109,9 @@ const UserAdminPage: React.FC = () => {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
-      render: (_, record) => (
+      render: (_, record) => {
+        const isCurrentLoginUser = Boolean(loginUser?.id && record.id === loginUser.id);
+        return (
         <Space size="middle">
           <button
             onClick={() => {
@@ -118,15 +123,26 @@ const UserAdminPage: React.FC = () => {
             <Edit3 className="h-4 w-4" />
             修改
           </button>
-          <button
-            onClick={() => handleDelete(record)}
-            className="flex items-center gap-1.5 text-red-500 hover:text-red-600 font-bold transition-colors"
+          <Popconfirm
+            title="确认删除用户"
+            description={isCurrentLoginUser ? "当前登录账号不支持在这里删除。" : "删除后该用户将无法登录，请谨慎操作。"}
+            okText="确认删除"
+            cancelText="取消"
+            okButtonProps={{ danger: true, disabled: isCurrentLoginUser }}
+            disabled={isCurrentLoginUser}
+            onConfirm={() => handleDelete(record)}
           >
-            <Trash2 className="h-4 w-4" />
-            删除
-          </button>
+            <button
+              className={`flex items-center gap-1.5 font-bold transition-colors ${
+                isCurrentLoginUser ? "cursor-not-allowed text-slate-300" : "text-red-500 hover:text-red-600"
+              }`}
+            >
+              <Trash2 className="h-4 w-4" />
+              {isCurrentLoginUser ? "当前账号" : "删除"}
+            </button>
+          </Popconfirm>
         </Space>
-      ),
+      )},
     },
   ];
 
@@ -143,7 +159,7 @@ const UserAdminPage: React.FC = () => {
               User Control Center
            </div>
            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">用户权限管理</h1>
-           <p className="text-slate-500 font-medium text-lg">高效查阅、编辑和精细化管理所有效户的访问权限。</p>
+           <p className="text-slate-500 font-medium text-lg">高效查阅、编辑和精细化管理所有用户的访问权限。</p>
         </div>
         <div className="relative z-10">
           <button

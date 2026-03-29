@@ -83,6 +83,36 @@ const QuestionCard = (props: Props) => {
     }
   };
 
+  const authorCard = question.user ? (
+    <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition-all hover:border-primary/20 hover:bg-white">
+      <UserAvatar
+        src={question.user.userAvatar}
+        name={question.user.userName}
+        size={38}
+      />
+      <div className="min-w-0 text-left">
+        <div className="truncate text-sm font-black text-slate-800 transition-colors hover:text-primary">
+          {question.user.userName || "匿名用户"}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <span>
+            {question.user.userRole === "admin"
+              ? "管理员"
+              : question.user.userRole === "deleted"
+                ? "原题目贡献者"
+                : "题目贡献者"}
+          </span>
+          {question.createTime ? (
+            <span className="inline-flex items-center gap-1">
+              <CalendarClock className="h-3.5 w-3.5" />
+              {new Date(question.createTime).toLocaleDateString("zh-CN")}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Question Main Card */}
@@ -99,29 +129,9 @@ const QuestionCard = (props: Props) => {
               </h1>
               {question.user?.id ? (
                 <UserProfileHoverCard user={question.user} placement="bottomLeft">
-                  <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition-all hover:border-primary/20 hover:bg-white">
-                    <UserAvatar
-                      src={question.user.userAvatar}
-                      name={question.user.userName}
-                      size={38}
-                    />
-                    <div className="min-w-0 text-left">
-                      <div className="truncate text-sm font-black text-slate-800 transition-colors hover:text-primary">
-                        {question.user.userName || "匿名用户"}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                        <span>{question.user.userRole === "admin" ? "管理员" : "题目贡献者"}</span>
-                        {question.createTime ? (
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarClock className="h-3.5 w-3.5" />
-                            {new Date(question.createTime).toLocaleDateString("zh-CN")}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
+                  {authorCard}
                 </UserProfileHoverCard>
-              ) : null}
+              ) : authorCard}
             </div>
             <Space direction="vertical" align="end">
               <Button

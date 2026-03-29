@@ -146,10 +146,7 @@ public class QuestionController {
         if (!oldQuestion.getUserId().equals(user.getId()) && !userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
-        // 操作数据库
-        boolean result = questionService.removeById(id);
-        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-        questionService.deleteQuestionFromEs(id);
+        questionService.batchDeleteQuestions(List.of(id));
         return ResultUtils.success(true);
     }
 
@@ -415,7 +412,15 @@ public class QuestionController {
         if (!userService.isAdmin(request)) {
             questionQueryRequest.setReviewStatus(QuestionConstant.REVIEW_STATUS_APPROVED);
         }
-        Page<Question> questionPage = questionService.searchFromEs(questionQueryRequest);
+        Page<Question> questionPage;
+        boolean fallbackToDb = false;
+        try {
+            questionPage = questionService.searchFromEs(questionQueryRequest);
+        } catch (Exception e) {
+            log.warn("题目搜索 ES 不可用，已降级到数据库查询，searchText={}", questionQueryRequest.getSearchText(), e);
+            questionPage = questionService.listQuestionByPage(questionQueryRequest);
+            fallbackToDb = true;
+        }
         if (StringUtils.isNotBlank(questionQueryRequest.getSearchText())) {
             try {
                 User loginUser = userService.getLoginUserPermitNull(request);
@@ -423,8 +428,8 @@ public class QuestionController {
                         loginUser == null ? null : loginUser.getId(),
                         questionQueryRequest.getSearchText(),
                         questionPage.getTotal(),
-                        "question",
-                        request.getRemoteAddr()
+                        fallbackToDb ? "question_fallback" : "question",
+                        NetUtils.getIpAddress(request)
                 );
             } catch (Exception e) {
                 log.warn("记录题目搜索日志失败，searchText={}", questionQueryRequest.getSearchText(), e);

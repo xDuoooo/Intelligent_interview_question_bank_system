@@ -382,19 +382,21 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         if (CollUtil.isEmpty(questionIdList)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "要删除的题目列表为空");
         }
-        for (Long questionId : questionIdList) {
+        Set<Long> distinctQuestionIdSet = questionIdList.stream()
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        ThrowUtils.throwIf(CollUtil.isEmpty(distinctQuestionIdSet), ErrorCode.PARAMS_ERROR, "要删除的题目列表为空");
+
+        LambdaQueryWrapper<QuestionBankQuestion> relationQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .in(QuestionBankQuestion::getQuestionId, distinctQuestionIdSet);
+        // 题目可能还未加入任何题库，这里不应把 0 行删除视为异常。
+        questionBankQuestionService.remove(relationQueryWrapper);
+        for (Long questionId : distinctQuestionIdSet) {
             boolean result = this.removeById(questionId);
             if (!result) {
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除题目失败");
             }
             deleteQuestionFromEs(questionId);
-            // 移除题目题库关系
-            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
-                    .eq(QuestionBankQuestion::getQuestionId, questionId);
-            result = questionBankQuestionService.remove(lambdaQueryWrapper);
-            if (!result) {
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除题目题库关联失败");
-            }
         }
     }
     @Override
