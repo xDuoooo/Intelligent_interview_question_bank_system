@@ -38,6 +38,16 @@ interface RoundRecord {
   communicationScore?: number;
   technicalScore?: number;
   problemSolvingScore?: number;
+  questionStyle?: string;
+  recommendedAnswerSeconds?: number;
+}
+
+interface InterviewAgendaItem {
+  round?: number;
+  label?: string;
+  focusTopic?: string;
+  questionStyle?: string;
+  recommendedAnswerSeconds?: number;
 }
 
 interface InterviewReport {
@@ -48,10 +58,15 @@ interface InterviewReport {
   communicationScore?: number;
   technicalScore?: number;
   problemSolvingScore?: number;
+  currentFocus?: string;
+  currentQuestionStyle?: string;
+  recommendedAnswerSeconds?: number;
+  nextActionHint?: string;
   strengths?: string[];
   improvements?: string[];
   suggestedTopics?: string[];
   roundRecords?: RoundRecord[];
+  agenda?: InterviewAgendaItem[];
 }
 
 interface MockInterviewDetail extends API.MockInterview {
@@ -94,6 +109,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const [inputMessage, setInputMessage] = useState("");
   const [interview, setInterview] = useState<MockInterviewDetail>();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [questionElapsedSeconds, setQuestionElapsedSeconds] = useState(0);
 
   const loadInterview = useCallback(async (silent = false) => {
     if (!interviewId) {
@@ -135,6 +151,36 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     const roundRecords = report?.roundRecords || [];
     return roundRecords.length ? roundRecords[roundRecords.length - 1] : null;
   }, [report?.roundRecords]);
+
+  const activeAgendaRound = useMemo(() => {
+    if (isEnded) {
+      return 0;
+    }
+    return Math.min(expectedRounds, Math.max(1, currentRound + 1));
+  }, [currentRound, expectedRounds, isEnded]);
+
+  const latestQuestionMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const item = messages[i];
+      if (item.isAI && (item.stage === "question" || item.stage === "probe")) {
+        return item;
+      }
+    }
+    return null;
+  }, [messages]);
+
+  useEffect(() => {
+    if (!latestQuestionMessage?.timestamp || isEnded || !isStarted) {
+      setQuestionElapsedSeconds(0);
+      return;
+    }
+    const updateElapsed = () => {
+      setQuestionElapsedSeconds(Math.max(0, Math.floor((Date.now() - latestQuestionMessage.timestamp) / 1000)));
+    };
+    updateElapsed();
+    const timer = window.setInterval(updateElapsed, 1000);
+    return () => window.clearInterval(timer);
+  }, [isEnded, isStarted, latestQuestionMessage?.timestamp]);
 
   const handleEvent = async (eventType: "start" | "chat" | "end", msg?: string) => {
     setSubmitting(true);
@@ -187,6 +233,11 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
       label: interview?.techStack || "通用后端",
     },
   ];
+
+  const recommendedAnswerSeconds = report?.recommendedAnswerSeconds || latestRoundRecord?.recommendedAnswerSeconds || 120;
+  const currentFocus = report?.currentFocus || latestRoundRecord?.focus || "开始面试后这里会显示当前考察重点";
+  const currentQuestionStyle = report?.currentQuestionStyle || latestRoundRecord?.questionStyle || "真实面试追问";
+  const currentActionHint = report?.nextActionHint || "建议用背景、方案、结果和复盘的结构组织回答。";
 
   if (loading) {
     return (
@@ -276,24 +327,34 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
 
             <div className="message-list">
               {messages.length ? (
-                <List
-                  dataSource={messages}
-                  split={false}
-                  renderItem={(item) => (
-                    <List.Item
-                      className={item.isAI ? "message-row ai" : "message-row user"}
-                    >
-                      <div className={`message-bubble ${item.isAI ? "ai" : "user"}`}>
-                        <div className="message-head">
-                          <span className="speaker">{item.isAI ? "面试官" : "候选人"}</span>
-                          {item.round ? <span className="round-tag">第 {item.round} 轮</span> : null}
+                <>
+                  <List
+                    dataSource={messages}
+                    split={false}
+                    renderItem={(item) => (
+                      <List.Item
+                        className={item.isAI ? "message-row ai" : "message-row user"}
+                      >
+                        <div className={`message-bubble ${item.isAI ? "ai" : "user"}`}>
+                          <div className="message-head">
+                            <span className="speaker">{item.isAI ? "面试官" : "候选人"}</span>
+                            {item.round ? <span className="round-tag">第 {item.round} 轮</span> : null}
+                          </div>
+                          <div className="message-content">{item.content}</div>
+                          <div className="message-time">{formatTime(item.timestamp)}</div>
                         </div>
-                        <div className="message-content">{item.content}</div>
-                        <div className="message-time">{formatTime(item.timestamp)}</div>
-                      </div>
-                    </List.Item>
-                  )}
-                />
+                      </List.Item>
+                    )}
+                  />
+                  {submitting && isStarted && !isEnded ? (
+                    <div className="thinking-card">
+                      <div className="thinking-dot" />
+                      <div className="thinking-dot" />
+                      <div className="thinking-dot" />
+                      <span>面试官正在整理下一轮追问...</span>
+                    </div>
+                  ) : null}
+                </>
               ) : (
                 <Empty description="还没有开始这场面试" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               )}
@@ -352,9 +413,26 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                 <strong>{status.text}</strong>
               </div>
               <div className="metric-card">
-                <span>最新总分</span>
-                <strong>{report?.overallScore || latestRoundRecord?.score || "--"}</strong>
+                <span>建议作答时长</span>
+                <strong>{recommendedAnswerSeconds}s</strong>
               </div>
+            </div>
+          </Card>
+
+          <Card className="side-card">
+            <div className="section-heading compact">
+              <div>
+                <div className="section-eyebrow">Live Cue</div>
+                <Title level={5} className="!mb-0 !mt-2">
+                  当前考察点
+                </Title>
+              </div>
+              <span className="score-pill subtle">{Math.floor(questionElapsedSeconds / 60)}:{String(questionElapsedSeconds % 60).padStart(2, "0")}</span>
+            </div>
+            <div className="live-cue-panel">
+              <div className="cue-tag">{currentQuestionStyle}</div>
+              <div className="cue-focus">{currentFocus}</div>
+              <div className="cue-hint">{currentActionHint}</div>
             </div>
           </Card>
 
@@ -370,15 +448,17 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
             </div>
             {latestRoundRecord ? (
               <div className="round-feedback">
-                <div className="feedback-score">
-                  <span>本轮评分</span>
-                  <strong>{latestRoundRecord.score || 0}</strong>
-                </div>
+                {isEnded ? (
+                  <div className="feedback-score">
+                    <span>本轮评分</span>
+                    <strong>{latestRoundRecord.score || 0}</strong>
+                  </div>
+                ) : null}
                 <Paragraph className="!mb-3 text-slate-600">
                   {latestRoundRecord.shortComment || "这一轮反馈将在你完成回答后显示。"}
                 </Paragraph>
                 <div className="feedback-focus">
-                  <div className="focus-label">下一步可加强：</div>
+                  <div className="focus-label">{isEnded ? "这一轮主要问题：" : "面试官观察重点："}</div>
                   <div className="focus-text">{latestRoundRecord.focus || "继续补充项目细节和设计取舍。"}</div>
                 </div>
               </div>
@@ -386,6 +466,37 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               <Empty description="回答第一轮后，这里会显示本轮反馈" image={Empty.PRESENTED_IMAGE_SIMPLE} />
             )}
           </Card>
+
+          {(report?.agenda || []).length ? (
+            <Card className="side-card">
+              <div className="section-heading compact">
+                <div>
+                  <div className="section-eyebrow">Interview Agenda</div>
+                  <Title level={5} className="!mb-0 !mt-2">
+                    面试议程
+                  </Title>
+                </div>
+              </div>
+              <div className="agenda-list">
+                {(report?.agenda || []).map((item) => {
+                  const isActive = !isEnded && item.round === activeAgendaRound;
+                  const isCompleted = (item.round || 0) <= currentRound;
+                  return (
+                    <div
+                      key={`${item.round}-${item.label}`}
+                      className={`agenda-item ${isActive ? "active" : ""} ${isCompleted ? "done" : ""}`}
+                    >
+                      <div className="agenda-index">{item.round}</div>
+                      <div className="agenda-content">
+                        <div className="agenda-title">{item.label}</div>
+                        <div className="agenda-desc">{item.focusTopic}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ) : null}
 
           <Card className="side-card">
             <div className="section-heading compact">
@@ -473,18 +584,21 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   </Title>
                 </div>
               </div>
-              <div className="round-record-list">
-                {(report?.roundRecords || []).map((item) => (
-                  <div className="round-record-item" key={item.round}>
-                    <div className="record-head">
-                      <strong>第 {item.round} 轮</strong>
+                <div className="round-record-list">
+                  {(report?.roundRecords || []).map((item) => (
+                    <div className="round-record-item" key={item.round}>
+                      <div className="record-head">
+                        <strong>第 {item.round} 轮</strong>
                       <span>{item.score || 0} 分</span>
-                    </div>
-                    <div className="record-question">{item.question}</div>
-                    <div className="record-comment">
-                      {item.shortComment}
-                      <ChevronRight size={14} />
-                    </div>
+                      </div>
+                      <div className="record-question">{item.question}</div>
+                      {item.questionStyle ? (
+                        <div className="record-style">{item.questionStyle} / 建议 {item.recommendedAnswerSeconds || 120}s</div>
+                      ) : null}
+                      <div className="record-comment">
+                        {item.shortComment}
+                        <ChevronRight size={14} />
+                      </div>
                   </div>
                 ))}
               </div>
