@@ -162,7 +162,6 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       <div className="mt-3 flex items-end justify-between gap-4">
                         <div>
                           <div className="text-3xl font-black tracking-tight text-slate-900">0</div>
-                          <div className="mt-1 text-xs font-medium text-slate-400">当前还没有上榜数据</div>
                         </div>
                         <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 whitespace-nowrap">
                           暂无榜首
