@@ -2,6 +2,7 @@ package com.xduo.springbootinit.model.vo;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 import lombok.Data;
 
 /**
@@ -40,6 +41,16 @@ public class UserVO implements Serializable {
      * 所在城市
      */
     private String city;
+
+    /**
+     * 就业方向
+     */
+    private String careerDirection;
+
+    /**
+     * 兴趣标签
+     */
+    private List<String> interestTagList;
 
     /**
      * 创建时间

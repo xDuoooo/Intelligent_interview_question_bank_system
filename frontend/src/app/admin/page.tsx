@@ -19,7 +19,9 @@ import {
   Ban,
   Wand2,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  MousePointerClick,
+  Repeat2
 } from "lucide-react";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -37,7 +39,10 @@ interface DashboardData {
   overview?: Record<string, any>;
   todayStats?: Record<string, any>;
   trend?: Record<string, any>;
+  growthComparison?: Record<string, any>;
+  retentionAnalytics?: Record<string, any>;
   searchAnalytics?: Record<string, any>;
+  recommendationAnalytics?: Record<string, any>;
   geoDistribution?: Record<string, any>;
   tagDistribution?: any[];
   questionHealth?: any[];
@@ -71,8 +76,13 @@ export default function AdminDashboardPage() {
   const overview = dashboard.overview || {};
   const todayStats = dashboard.todayStats || {};
   const trend = dashboard.trend || {};
+  const growthComparison = dashboard.growthComparison || {};
+  const retentionAnalytics = dashboard.retentionAnalytics || {};
   const searchAnalytics = dashboard.searchAnalytics || {};
   const searchTrend = searchAnalytics.trend || {};
+  const recommendationAnalytics = dashboard.recommendationAnalytics || {};
+  const recommendationTrend = recommendationAnalytics.trend || {};
+  const recommendationSourceBreakdown = recommendationAnalytics.sourceBreakdown || [];
   const geoDistribution = dashboard.geoDistribution || {};
   const geoCityList = geoDistribution.cityList || [];
   const tagDistribution = dashboard.tagDistribution || [];
@@ -306,6 +316,71 @@ export default function AdminDashboardPage() {
     ],
   };
 
+  const retentionOption = {
+    grid: { top: 20, right: 20, bottom: 40, left: 40 },
+    tooltip: { trigger: "axis" },
+    xAxis: {
+      type: "category",
+      data: retentionAnalytics.dates || [],
+      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisLabel: { color: "#64748b", fontWeight: "bold" },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: {
+        color: "#64748b",
+        formatter: "{value}%",
+      },
+      splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } },
+      max: 100,
+    },
+    series: [
+      {
+        name: "次日留存",
+        data: retentionAnalytics.nextDayRetentionTrend || [],
+        type: "line",
+        smooth: true,
+        lineStyle: { width: 3, color: "#8b5cf6" },
+        itemStyle: { color: "#8b5cf6" },
+        areaStyle: { color: "rgba(139, 92, 246, 0.12)" },
+      },
+    ],
+  };
+
+  const recommendationTrendOption = {
+    grid: { top: 20, right: 20, bottom: 40, left: 40 },
+    tooltip: { trigger: "axis" },
+    legend: { top: 0 },
+    xAxis: {
+      type: "category",
+      data: recommendationTrend.dates || [],
+      axisLine: { lineStyle: { color: "#e2e8f0" } },
+      axisLabel: { color: "#64748b", fontWeight: "bold" },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { type: "dashed", color: "#f1f5f9" } },
+      axisLabel: { color: "#64748b" },
+    },
+    series: [
+      {
+        name: "曝光",
+        data: recommendationTrend.exposureTrend || [],
+        type: "bar",
+        barWidth: 18,
+        itemStyle: { color: "#2563eb", borderRadius: [8, 8, 0, 0] },
+      },
+      {
+        name: "点击",
+        data: recommendationTrend.clickTrend || [],
+        type: "line",
+        smooth: true,
+        lineStyle: { width: 3, color: "#14b8a6" },
+        itemStyle: { color: "#14b8a6" },
+      },
+    ],
+  };
+
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <section className="bg-white/80 backdrop-blur-xl rounded-[3rem] p-10 sm:p-14 text-slate-900 relative overflow-hidden shadow-2xl shadow-slate-200/50 border border-slate-200/60">
@@ -400,6 +475,83 @@ export default function AdminDashboardPage() {
 
       <section>
         <Row gutter={[24, 24]}>
+          <Col xs={24} lg={10}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><TrendingUp className="h-5 w-5 text-emerald-500" /> 增长对比</div>}
+              extra={<Tag color="green" bordered={false}>周环比 / 月环比 / 同比</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {[
+                    {
+                      label: "本周新增用户",
+                      value: growthComparison.currentWeekRegisterCount || 0,
+                      compareText: `上周 ${growthComparison.previousWeekRegisterCount || 0}`,
+                      rate: growthComparison.weekOverWeekRegisterRate || 0,
+                    },
+                    {
+                      label: "本月活跃用户",
+                      value: growthComparison.currentMonthActiveUserCount || 0,
+                      compareText: `上月 ${growthComparison.previousMonthActiveUserCount || 0}`,
+                      rate: growthComparison.monthOverMonthActiveRate || 0,
+                    },
+                    {
+                      label: "本月新增用户",
+                      value: growthComparison.currentMonthRegisterCount || 0,
+                      compareText: `去年同期 ${growthComparison.lastYearMonthRegisterCount || 0}`,
+                      rate: growthComparison.yearOverYearRegisterRate || 0,
+                    },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-5 py-4">
+                      <div className="text-xs font-black uppercase tracking-wider text-slate-400">{item.label}</div>
+                      <div className="mt-3 flex items-end justify-between gap-4">
+                        <div className="text-3xl font-black text-slate-900">{item.value}</div>
+                        <Tag color={Number(item.rate) >= 0 ? "success" : "error"} className="m-0 rounded-full px-3 py-1">
+                          {Number(item.rate) >= 0 ? "+" : ""}{item.rate}%
+                        </Tag>
+                      </div>
+                      <div className="mt-2 text-sm text-slate-500">{item.compareText}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={14}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><Repeat2 className="h-5 w-5 text-violet-500" /> 用户留存分析</div>}
+              extra={<Tag color="purple" bordered={false}>次日 / 3 日 / 7 日</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { label: "次日留存", value: retentionAnalytics.nextDayRetention || 0, color: "bg-violet-50 text-violet-700" },
+                      { label: "3 日留存", value: retentionAnalytics.threeDayRetention || 0, color: "bg-blue-50 text-blue-700" },
+                      { label: "7 日留存", value: retentionAnalytics.sevenDayRetention || 0, color: "bg-emerald-50 text-emerald-700" },
+                    ].map((item) => (
+                      <div key={item.label} className={`rounded-2xl border border-slate-100 px-5 py-4 ${item.color}`}>
+                        <div className="text-xs font-black uppercase tracking-wider opacity-70">{item.label}</div>
+                        <div className="mt-3 text-3xl font-black tracking-tight">{item.value}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  <ReactECharts option={retentionOption} style={{ height: "260px" }} />
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+      </section>
+
+      <section>
+        <Row gutter={[24, 24]}>
           <Col xs={24} lg={15}>
             <Card
               className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 p-6 sm:p-10 h-full"
@@ -464,6 +616,69 @@ export default function AdminDashboardPage() {
                 />
               ) : (
                 <div className="py-16 text-center text-slate-400">等待城市数据沉淀中</div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+      </section>
+
+      <section>
+        <Row gutter={[24, 24]}>
+          <Col xs={24} lg={14}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 p-6 sm:p-10 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><MousePointerClick className="h-5 w-5 text-cyan-600" /> 推荐效果分析</div>}
+              extra={<Tag color="cyan" bordered={false}>曝光 / 点击 / CTR</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : (
+                <div className="space-y-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { label: "累计曝光", value: recommendationAnalytics.totalExposureCount || 0, color: "bg-cyan-50 text-cyan-700" },
+                      { label: "累计点击", value: recommendationAnalytics.totalClickCount || 0, color: "bg-emerald-50 text-emerald-700" },
+                      { label: "点击率", value: `${recommendationAnalytics.clickThroughRate || 0}%`, color: "bg-blue-50 text-blue-700" },
+                    ].map((item) => (
+                      <div key={item.label} className={`rounded-2xl border border-slate-100 px-5 py-4 ${item.color}`}>
+                        <div className="text-xs font-black uppercase tracking-wider opacity-70">{item.label}</div>
+                        <div className="mt-3 text-3xl font-black tracking-tight">{item.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <ReactECharts option={recommendationTrendOption} style={{ height: "280px" }} />
+                </div>
+              )}
+            </Card>
+          </Col>
+          <Col xs={24} lg={10}>
+            <Card
+              className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 h-full"
+              title={<div className="flex items-center gap-2 font-black text-lg"><Sparkles className="h-5 w-5 text-amber-500" /> 推荐来源拆解</div>}
+              extra={<Tag color="gold" bordered={false}>混合推荐效果</Tag>}
+            >
+              {loading ? (
+                <Skeleton active paragraph={{ rows: 8 }} />
+              ) : (
+                <List
+                  dataSource={recommendationSourceBreakdown}
+                  locale={{ emptyText: "当前还没有推荐效果数据" }}
+                  renderItem={(item: any) => (
+                    <List.Item>
+                      <div className="w-full flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-800">{item.source || "unknown"}</div>
+                          <div className="mt-1 text-xs text-slate-500">
+                            曝光 {item.exposureCount || 0} 次 · 点击 {item.clickCount || 0} 次
+                          </div>
+                        </div>
+                        <Tag color="processing" className="m-0">
+                          CTR {item.clickThroughRate || 0}%
+                        </Tag>
+                      </div>
+                    </List.Item>
+                  )}
+                />
               )}
             </Card>
           </Col>

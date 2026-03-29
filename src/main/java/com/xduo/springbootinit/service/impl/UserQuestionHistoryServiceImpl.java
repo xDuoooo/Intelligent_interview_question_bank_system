@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.mapper.UserQuestionHistoryMapper;
+import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.model.entity.UserQuestionHistory;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import org.springframework.stereotype.Service;
@@ -193,6 +194,7 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         stats.put("reminderEnabled", reminderEnabled);
         stats.put("goalCompletedToday", todayCount >= dailyTarget);
         stats.put("todayProgress", Math.min(todayCount, dailyTarget));
+        stats.put("recommendedDifficulty", inferRecommendedDifficulty(userId));
 
         // 成就列表
         stats.put("achievementList", buildAchievementList(totalCount, masteredCount, favourCount, activeDays, currentStreak));
@@ -296,5 +298,58 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         achievement.put("achieved", current >= target);
         achievement.put("progress", Math.min(current, target));
         return achievement;
+    }
+
+    private String inferRecommendedDifficulty(long userId) {
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.orderByDesc("updateTime");
+        historyQueryWrapper.last("limit 40");
+        List<UserQuestionHistory> historyList = this.list(historyQueryWrapper);
+        if (historyList.isEmpty()) {
+            return QuestionConstant.DIFFICULTY_MEDIUM;
+        }
+        Set<Long> questionIdSet = historyList.stream()
+                .map(UserQuestionHistory::getQuestionId)
+                .collect(Collectors.toSet());
+        Map<Long, Question> questionMap = questionService.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
+        double totalDifficultyLevel = 0D;
+        int sampleCount = 0;
+        long masteredCount = 0;
+        long difficultCount = 0;
+        for (UserQuestionHistory history : historyList) {
+            Question question = questionMap.get(history.getQuestionId());
+            totalDifficultyLevel += convertDifficultyToLevel(question == null ? null : question.getDifficulty());
+            sampleCount++;
+            if (Integer.valueOf(1).equals(history.getStatus())) {
+                masteredCount++;
+            } else if (Integer.valueOf(2).equals(history.getStatus())) {
+                difficultCount++;
+            }
+        }
+        if (sampleCount == 0) {
+            return QuestionConstant.DIFFICULTY_MEDIUM;
+        }
+        double avgDifficulty = totalDifficultyLevel / sampleCount;
+        double masteredRate = masteredCount * 1D / sampleCount;
+        double difficultRate = difficultCount * 1D / sampleCount;
+        if (masteredRate >= 0.55 && avgDifficulty >= 2.2) {
+            return QuestionConstant.DIFFICULTY_HARD;
+        }
+        if (difficultRate >= 0.4 && avgDifficulty <= 2.1) {
+            return QuestionConstant.DIFFICULTY_EASY;
+        }
+        return QuestionConstant.DIFFICULTY_MEDIUM;
+    }
+
+    private int convertDifficultyToLevel(String difficulty) {
+        if (QuestionConstant.DIFFICULTY_HARD.equals(difficulty)) {
+            return 3;
+        }
+        if (QuestionConstant.DIFFICULTY_EASY.equals(difficulty)) {
+            return 1;
+        }
+        return 2;
     }
 }

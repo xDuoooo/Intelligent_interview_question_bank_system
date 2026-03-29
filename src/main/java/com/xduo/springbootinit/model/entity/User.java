@@ -73,6 +73,16 @@ public class User implements Serializable {
     private String city;
 
     /**
+     * 就业方向
+     */
+    private String careerDirection;
+
+    /**
+     * 兴趣标签（json 数组）
+     */
+    private String interestTags;
+
+    /**
      * 用户角色：user/admin/ban
      */
     private String userRole;

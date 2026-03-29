@@ -14,6 +14,15 @@ import { buildApiUrl } from "@/libs/request";
 import { CITY_GROUP_OPTIONS } from "@/config/cityOptions";
 
 const { Text } = Typography;
+const CAREER_DIRECTION_OPTIONS = [
+  { label: "Java 后端", value: "Java 后端" },
+  { label: "前端开发", value: "前端开发" },
+  { label: "大数据 / 数据开发", value: "大数据 / 数据开发" },
+  { label: "算法工程师", value: "算法工程师" },
+  { label: "测试开发", value: "测试开发" },
+  { label: "运维 / 云原生", value: "运维 / 云原生" },
+  { label: "产品 / 运营技术", value: "产品 / 运营技术" },
+];
 
 interface Props {
   user: API.LoginUserVO;
@@ -34,7 +43,10 @@ const UserInfoEditForm = (props: Props) => {
   const [avatarUrl, setAvatarUrl] = useState(user.userAvatar || "");
 
   useEffect(() => {
-    form.setFieldsValue(user);
+    form.setFieldsValue({
+      ...user,
+      interestTags: user.interestTagList,
+    });
     setAvatarUrl(user.userAvatar || "");
   }, [user, form]);
 
@@ -164,6 +176,43 @@ const UserInfoEditForm = (props: Props) => {
               showCount
               maxLength={20}
               className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <User size={16} className="text-primary"/> 就业方向
+              </span>
+            }
+            name="careerDirection"
+            rules={[{ max: 30, message: "就业方向最多 30 个字符" }]}
+          >
+            <Select
+              placeholder="请选择或输入你的目标方向"
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={CAREER_DIRECTION_OPTIONS}
+              size="large"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
+                <FileText size={16} className="text-primary"/> 兴趣标签
+              </span>
+            }
+            name="interestTags"
+            extra="最多 8 个标签，用于个性化推荐和公开主页展示。"
+          >
+            <Select
+              mode="tags"
+              placeholder="输入你关注的技术方向，例如：MySQL、Redis、并发"
+              tokenSeparators={[",", " "]}
+              maxTagCount="responsive"
+              size="large"
             />
           </Form.Item>
 

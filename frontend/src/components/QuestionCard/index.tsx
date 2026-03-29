@@ -7,9 +7,10 @@ import useAddUserSignInRecord from "@/hooks/useAddUserSignInRecord";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 import { Sparkles, CheckCircle2, Heart, CalendarClock } from "lucide-react";
-import { Button, message, Segmented, Space, Typography } from "antd";
+import { Button, message, Segmented, Space, Tag, Typography } from "antd";
 import { doQuestionFavourUsingPost } from "@/api/questionFavourController";
 import { addQuestionHistoryUsingPost } from "@/api/userQuestionHistoryController";
+import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
 
 const { Text } = Typography;
 
@@ -25,6 +26,14 @@ const CommentSection = dynamic(() => import("@/components/CommentSection"), {
   loading: () => (
     <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
       正在加载评论区...
+    </section>
+  ),
+});
+
+const QuestionNotePanel = dynamic(() => import("@/components/QuestionNotePanel"), {
+  loading: () => (
+    <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
+      正在加载个人笔记...
     </section>
   ),
 });
@@ -150,7 +159,14 @@ const QuestionCard = (props: Props) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-6">
-            <TagList tagList={question.tagList} />
+            <div className="flex flex-wrap items-center gap-3">
+              <TagList tagList={question.tagList} />
+              {question.difficulty ? (
+                <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[question.difficulty] || "default"} className="rounded-full px-3 py-1">
+                  难度：{question.difficulty}
+                </Tag>
+              ) : null}
+            </div>
             <div className="flex items-center gap-2">
               <Text type="secondary" style={{ fontSize: 13 }}>学习状态：</Text>
               <Segmented
@@ -181,6 +197,8 @@ const QuestionCard = (props: Props) => {
           <MdViewer value={question.answer} />
         </div>
       </section>
+
+      <QuestionNotePanel questionId={Number(question.id)} />
 
       <QuestionRecommendPanel questionId={Number(question.id)} />
 

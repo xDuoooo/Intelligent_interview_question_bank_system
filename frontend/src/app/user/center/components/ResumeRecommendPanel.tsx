@@ -5,8 +5,13 @@ import Link from "next/link";
 import { Button, Card, Empty, Input, List, Space, Tag, Typography, Upload, message } from "antd";
 import type { UploadProps } from "antd";
 import { ArrowRight, FileSearch, Paperclip, Sparkles, Target, UploadCloud, X } from "lucide-react";
-import { recommendQuestionsByResumeFileUsingPost, recommendQuestionsByResumeUsingPost } from "@/api/questionController";
+import {
+  logRecommendClickUsingPost,
+  recommendQuestionsByResumeFileUsingPost,
+  recommendQuestionsByResumeUsingPost,
+} from "@/api/questionController";
 import TagList from "@/components/TagList";
+import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -215,7 +220,15 @@ const ResumeRecommendPanel: React.FC = () => {
                     split={false}
                     renderItem={(item) => (
                       <List.Item className="!px-0 !py-2">
-                        <Link href={`/question/${item.id}`} className="block w-full">
+                        <Link
+                          href={`/question/${item.id}`}
+                          className="block w-full"
+                          onClick={() => {
+                            if (item.id) {
+                              void logRecommendClickUsingPost({ questionId: item.id, source: "resume" }).catch(() => undefined);
+                            }
+                          }}
+                        >
                           <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 transition-all hover:border-primary/30 hover:bg-white hover:shadow-sm">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
@@ -228,9 +241,14 @@ const ResumeRecommendPanel: React.FC = () => {
                               </div>
                               <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
                             </div>
-                            {item.tagList?.length ? (
-                              <div className="mt-3">
-                                <TagList tagList={item.tagList.slice(0, 4)} />
+                            {item.tagList?.length || item.difficulty ? (
+                              <div className="mt-3 flex flex-wrap items-center gap-2">
+                                {item.tagList?.length ? <TagList tagList={item.tagList.slice(0, 4)} /> : null}
+                                {item.difficulty ? (
+                                  <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[item.difficulty] || "default"} className="rounded-full">
+                                    {item.difficulty}
+                                  </Tag>
+                                ) : null}
                               </div>
                             ) : null}
                           </div>

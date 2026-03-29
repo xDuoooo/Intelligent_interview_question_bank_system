@@ -7,8 +7,10 @@ import { ArrowRight, Compass, Sparkles } from "lucide-react";
 import {
   listPersonalRecommendQuestionVoUsingGet,
   listRelatedQuestionVoUsingGet,
+  logRecommendClickUsingPost,
 } from "@/api/questionController";
 import TagList from "@/components/TagList";
+import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -47,7 +49,14 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
     void loadData();
   }, [loadData, questionId]);
 
-  const renderQuestionList = (dataList: API.QuestionVO[], emptyText: string) => {
+  const trackClick = (questionId?: number, source?: string) => {
+    if (!questionId || !source) {
+      return;
+    }
+    void logRecommendClickUsingPost({ questionId, source }).catch(() => undefined);
+  };
+
+  const renderQuestionList = (dataList: API.QuestionVO[], emptyText: string, source: string) => {
     if (loading) {
       return (
         <div className="py-14 text-center">
@@ -64,7 +73,11 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
         split={false}
         renderItem={(item) => (
           <List.Item className="!px-0">
-            <Link href={`/question/${item.id}`} className="block w-full">
+            <Link
+              href={`/question/${item.id}`}
+              className="block w-full"
+              onClick={() => trackClick(item.id, source)}
+            >
               <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 transition-all hover:border-primary/30 hover:bg-white hover:shadow-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -77,9 +90,14 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
                   </div>
                   <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
                 </div>
-                {item.tagList?.length ? (
-                  <div className="mt-3">
-                    <TagList tagList={item.tagList.slice(0, 3)} />
+                {item.tagList?.length || item.difficulty ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {item.tagList?.length ? <TagList tagList={item.tagList.slice(0, 3)} /> : null}
+                    {item.difficulty ? (
+                      <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[item.difficulty] || "default"} className="rounded-full">
+                        {item.difficulty}
+                      </Tag>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -105,7 +123,7 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
         <Paragraph className="text-slate-500">
           结合你的刷题记录、收藏偏好、题目标签和协同过滤结果，推荐下一步更值得继续攻克的题目。
         </Paragraph>
-        {renderQuestionList(personalList, "暂时还没有可推荐的题目")}
+        {renderQuestionList(personalList, "暂时还没有可推荐的题目", "personal")}
       </Card>
 
       <Card
@@ -122,7 +140,7 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
           根据当前题目的核心标签和相似练习人群行为，筛出更适合延伸练习的关联题目。
         </Text>
         <div className="mt-4">
-          {renderQuestionList(relatedList, "当前题目暂未找到更多关联题目")}
+          {renderQuestionList(relatedList, "当前题目暂未找到更多关联题目", "related")}
         </div>
       </Card>
     </section>

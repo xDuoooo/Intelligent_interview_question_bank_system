@@ -3,6 +3,7 @@ package com.xduo.springbootinit.model.vo;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 公开用户主页视图
@@ -54,6 +55,11 @@ public class UserProfileVO implements Serializable {
      * 当前登录用户是否已关注该用户
      */
     private Boolean hasFollowed;
+
+    /**
+     * 最近动态
+     */
+    private List<UserActivityVO> recentActivityList;
 
     private static final long serialVersionUID = 1L;
 }

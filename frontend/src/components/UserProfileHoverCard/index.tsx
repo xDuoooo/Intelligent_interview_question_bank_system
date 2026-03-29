@@ -13,7 +13,7 @@ import { RootState } from "@/stores";
 
 type PublicUser = Pick<
   API.UserVO,
-  "id" | "userName" | "userAvatar" | "userProfile" | "userRole" | "city" | "createTime"
+  "id" | "userName" | "userAvatar" | "userProfile" | "userRole" | "city" | "createTime" | "careerDirection" | "interestTagList"
 >;
 
 interface Props {
@@ -216,6 +216,26 @@ export default function UserProfileHoverCard({
             </span>
             <span>加入于 {formatJoinDate(displayUser?.createTime)}</span>
           </div>
+
+          {displayUser?.careerDirection || displayUser?.interestTagList?.length ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
+              {displayUser.careerDirection ? (
+                <div className="text-sm font-semibold text-slate-700">方向：{displayUser.careerDirection}</div>
+              ) : null}
+              {displayUser.interestTagList?.length ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {displayUser.interestTagList.slice(0, 5).map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">

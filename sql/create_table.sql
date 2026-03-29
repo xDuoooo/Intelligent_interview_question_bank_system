@@ -18,6 +18,8 @@ create table if not exists user
     phone        varchar(128)                           null comment '手机号',
     email        varchar(128)                           null comment '邮箱',
     city         varchar(128)                           null comment '所在城市',
+    careerDirection varchar(128)                        null comment '就业方向',
+    interestTags varchar(1024)                          null comment '兴趣标签（json 数组）',
     githubId     varchar(256)                           null comment 'GitHub 唯一标识',
     giteeId      varchar(256)                           null comment 'Gitee 唯一标识',
     googleId     varchar(256)                           null comment 'Google 唯一标识',
@@ -74,6 +76,7 @@ create table if not exists question
     content      text                               null comment '内容',
     tags         varchar(1024)                      null comment '标签列表（json 数组）',
     answer       text                               null comment '推荐答案',
+    difficulty   varchar(32)                        null comment '题目难度：简单 / 中等 / 困难',
     userId       bigint                             not null comment '创建用户 id',
     reviewStatus tinyint  default 1                 not null comment '审核状态：0-待审核 1-已通过 2-已驳回',
     reviewMessage varchar(512)                      null comment '审核意见',
@@ -85,6 +88,7 @@ create table if not exists question
     isDelete     tinyint  default 0                 not null comment '是否删除',
     index idx_title (title),
     index idx_userId (userId),
+    index idx_difficulty (difficulty),
     index idx_updateTime (updateTime),
     index idx_reviewStatus (reviewStatus),
     index idx_user_reviewStatus (userId, reviewStatus),
@@ -222,6 +226,40 @@ create table if not exists user_learning_goal
     isDelete         tinyint  default 0                 not null comment '是否删除',
     unique key uk_userId (userId)
 ) comment '用户学习目标';
+
+-- 用户题目私有笔记表
+create table if not exists user_question_note
+(
+    id         bigint auto_increment comment 'id' primary key,
+    userId     bigint                             not null comment '用户 id',
+    questionId bigint                             not null comment '题目 id',
+    content    longtext                           not null comment '私有笔记内容',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                 not null comment '是否删除',
+    unique key uk_user_question_note (userId, questionId),
+    index idx_userId (userId),
+    index idx_questionId (questionId),
+    index idx_updateTime (updateTime)
+) comment '用户题目私有笔记';
+
+-- 题目推荐日志表
+create table if not exists question_recommend_log
+(
+    id         bigint auto_increment comment 'id' primary key,
+    userId     bigint                             null comment '用户 id',
+    questionId bigint                             not null comment '被推荐题目 id',
+    source     varchar(64)                        not null comment '推荐来源：personal / related / resume',
+    action     varchar(32)                        not null comment '行为：exposure / click',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                 not null comment '是否删除',
+    index idx_questionId (questionId),
+    index idx_source (source),
+    index idx_action (action),
+    index idx_createTime (createTime),
+    index idx_source_action_createTime (source, action, createTime)
+) comment '题目推荐效果日志';
 
 -- 系统配置表
 create table if not exists system_config

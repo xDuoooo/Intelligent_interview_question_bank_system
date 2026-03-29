@@ -35,5 +35,15 @@ public class UserAddRequest implements Serializable {
      */
     private String city;
 
+    /**
+     * 就业方向
+     */
+    private String careerDirection;
+
+    /**
+     * 兴趣标签
+     */
+    private java.util.List<String> interestTags;
+
     private static final long serialVersionUID = 1L;
 }

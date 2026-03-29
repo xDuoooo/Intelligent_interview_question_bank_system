@@ -14,6 +14,9 @@ import { Button, message, Popconfirm, Space, Table, Tag } from "antd";
 import TagList from "@/components/TagList";
 import Link from "next/link";
 import {
+  QUESTION_DIFFICULTY_COLOR_MAP,
+  QUESTION_DIFFICULTY_OPTIONS,
+  QUESTION_DIFFICULTY_VALUE_ENUM,
   QUESTION_REVIEW_STATUS_COLOR_MAP,
   QUESTION_REVIEW_STATUS_TEXT_MAP,
   QUESTION_REVIEW_STATUS_VALUE_ENUM,
@@ -111,6 +114,24 @@ const QuestionAdminPage: React.FC = () => {
         const tagList = parseTagList(record.tags);
         return <TagList tagList={tagList} />;
       },
+    },
+    {
+      title: "难度",
+      dataIndex: "difficulty",
+      valueType: "select",
+      valueEnum: QUESTION_DIFFICULTY_VALUE_ENUM,
+      fieldProps: {
+        options: QUESTION_DIFFICULTY_OPTIONS,
+      },
+      width: 100,
+      render: (_, record) =>
+        record.difficulty ? (
+          <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[record.difficulty] || "default"} className="rounded-full px-3 py-1 font-semibold">
+            {record.difficulty}
+          </Tag>
+        ) : (
+          <span className="text-slate-300">未设置</span>
+        ),
     },
     {
       title: "题解",

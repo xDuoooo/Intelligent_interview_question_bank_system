@@ -7,6 +7,7 @@ import com.xduo.springbootinit.model.entity.MockInterview;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionComment;
 import com.xduo.springbootinit.model.entity.QuestionFavour;
+import com.xduo.springbootinit.model.entity.QuestionRecommendLog;
 import com.xduo.springbootinit.model.entity.QuestionSearchLog;
 import com.xduo.springbootinit.model.entity.SecurityAlert;
 import com.xduo.springbootinit.model.entity.User;
@@ -17,6 +18,7 @@ import com.xduo.springbootinit.service.MockInterviewService;
 import com.xduo.springbootinit.service.QuestionBankService;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.QuestionFavourService;
+import com.xduo.springbootinit.service.QuestionRecommendLogService;
 import com.xduo.springbootinit.service.QuestionSearchLogService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.SecurityAlertService;
@@ -77,6 +79,9 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private QuestionSearchLogService questionSearchLogService;
 
     @Resource
+    private QuestionRecommendLogService questionRecommendLogService;
+
+    @Resource
     private SecurityAlertService securityAlertService;
 
     @Override
@@ -92,7 +97,10 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         overviewData.put("overview", buildOverview(questionList));
         overviewData.put("todayStats", buildTodayStats());
         overviewData.put("trend", buildTrend());
+        overviewData.put("growthComparison", buildGrowthComparison());
+        overviewData.put("retentionAnalytics", buildRetentionAnalytics());
         overviewData.put("searchAnalytics", buildSearchAnalytics());
+        overviewData.put("recommendationAnalytics", buildRecommendationAnalytics());
         overviewData.put("geoDistribution", buildGeoDistribution(userList, userPracticeCountMap));
         overviewData.put("tagDistribution", buildTagDistribution(questionList));
         overviewData.put("questionHealth", buildQuestionHealth(questionList, questionPracticeCountMap));
@@ -163,6 +171,48 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         trend.put("practiceTrend", practiceTrend);
         trend.put("commentTrend", commentTrend);
         return trend;
+    }
+
+    private Map<String, Object> buildGrowthComparison() {
+        Map<String, Object> comparison = new HashMap<>();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+
+        long currentWeekRegisterCount = countUsersBetween(today.minusDays(6), today);
+        long previousWeekRegisterCount = countUsersBetween(today.minusDays(13), today.minusDays(7));
+        long currentMonthActiveUserCount = countActiveUsersBetween(today.minusDays(29), today);
+        long previousMonthActiveUserCount = countActiveUsersBetween(today.minusDays(59), today.minusDays(30));
+        long currentMonthRegisterCount = countUsersBetween(today.withDayOfMonth(1), today);
+        LocalDate lastYearSameDay = today.minusYears(1);
+        long lastYearMonthRegisterCount = countUsersBetween(lastYearSameDay.withDayOfMonth(1), lastYearSameDay);
+
+        comparison.put("currentWeekRegisterCount", currentWeekRegisterCount);
+        comparison.put("previousWeekRegisterCount", previousWeekRegisterCount);
+        comparison.put("weekOverWeekRegisterRate", calculateGrowthRate(currentWeekRegisterCount, previousWeekRegisterCount));
+        comparison.put("currentMonthActiveUserCount", currentMonthActiveUserCount);
+        comparison.put("previousMonthActiveUserCount", previousMonthActiveUserCount);
+        comparison.put("monthOverMonthActiveRate", calculateGrowthRate(currentMonthActiveUserCount, previousMonthActiveUserCount));
+        comparison.put("currentMonthRegisterCount", currentMonthRegisterCount);
+        comparison.put("lastYearMonthRegisterCount", lastYearMonthRegisterCount);
+        comparison.put("yearOverYearRegisterRate", calculateGrowthRate(currentMonthRegisterCount, lastYearMonthRegisterCount));
+        return comparison;
+    }
+
+    private Map<String, Object> buildRetentionAnalytics() {
+        Map<String, Object> retentionAnalytics = new HashMap<>();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        List<String> dateList = new ArrayList<>();
+        List<Double> nextDayRetentionTrend = new ArrayList<>();
+        for (int i = 7; i >= 1; i--) {
+            LocalDate registerDate = today.minusDays(i + 1L);
+            dateList.add(registerDate.format(DateTimeFormatter.ofPattern("MM-dd")));
+            nextDayRetentionTrend.add(calculateRetentionRate(registerDate, registerDate.plusDays(1)));
+        }
+        retentionAnalytics.put("nextDayRetention", calculateRetentionRate(today.minusDays(2), today.minusDays(1)));
+        retentionAnalytics.put("threeDayRetention", calculateRetentionRate(today.minusDays(4), today.minusDays(1)));
+        retentionAnalytics.put("sevenDayRetention", calculateRetentionRate(today.minusDays(8), today.minusDays(1)));
+        retentionAnalytics.put("dates", dateList);
+        retentionAnalytics.put("nextDayRetentionTrend", nextDayRetentionTrend);
+        return retentionAnalytics;
     }
 
     private List<Map<String, Object>> buildTagDistribution(List<Question> questionList) {
@@ -244,6 +294,72 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         analytics.put("zeroResultKeywords", buildTopSearchKeywords(true));
         analytics.put("trend", buildSearchTrend());
         return analytics;
+    }
+
+    private Map<String, Object> buildRecommendationAnalytics() {
+        Map<String, Object> analytics = new HashMap<>();
+        QueryWrapper<QuestionRecommendLog> exposureWrapper = new QueryWrapper<>();
+        exposureWrapper.eq("action", "exposure");
+        long totalExposureCount = questionRecommendLogService.count(exposureWrapper);
+
+        QueryWrapper<QuestionRecommendLog> clickWrapper = new QueryWrapper<>();
+        clickWrapper.eq("action", "click");
+        long totalClickCount = questionRecommendLogService.count(clickWrapper);
+
+        analytics.put("totalExposureCount", totalExposureCount);
+        analytics.put("totalClickCount", totalClickCount);
+        analytics.put("clickThroughRate", totalExposureCount == 0 ? 0D : Math.round(totalClickCount * 10000D / totalExposureCount) / 100D);
+        analytics.put("sourceBreakdown", buildRecommendationSourceBreakdown());
+        analytics.put("trend", buildRecommendationTrend());
+        return analytics;
+    }
+
+    private List<Map<String, Object>> buildRecommendationSourceBreakdown() {
+        QueryWrapper<QuestionRecommendLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("source", "action", "count(*) as totalCount");
+        queryWrapper.isNotNull("source");
+        queryWrapper.groupBy("source", "action");
+        Map<String, Map<String, Long>> sourceActionCountMap = new HashMap<>();
+        questionRecommendLogService.listMaps(queryWrapper).forEach(item -> {
+            String source = String.valueOf(item.get("source"));
+            String action = String.valueOf(item.get("action"));
+            sourceActionCountMap.computeIfAbsent(source, key -> new HashMap<>())
+                    .put(action, getLongValue(item.get("totalCount")));
+        });
+        return sourceActionCountMap.entrySet().stream()
+                .map(entry -> {
+                    long exposureCount = entry.getValue().getOrDefault("exposure", 0L);
+                    long clickCount = entry.getValue().getOrDefault("click", 0L);
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("source", entry.getKey());
+                    item.put("exposureCount", exposureCount);
+                    item.put("clickCount", clickCount);
+                    item.put("clickThroughRate", exposureCount == 0 ? 0D : Math.round(clickCount * 10000D / exposureCount) / 100D);
+                    return item;
+                })
+                .sorted(Comparator.comparingLong((Map<String, Object> item) -> (Long) item.get("exposureCount")).reversed())
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> buildRecommendationTrend() {
+        Map<String, Object> trend = new HashMap<>();
+        List<String> dateList = new ArrayList<>();
+        List<Long> exposureTrend = new ArrayList<>();
+        List<Long> clickTrend = new ArrayList<>();
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
+        LocalDate startDate = today.minusDays(6);
+        Map<LocalDate, Long> exposureTrendMap = listDateCountMapForRecommendationLog(startDate, today, "exposure");
+        Map<LocalDate, Long> clickTrendMap = listDateCountMapForRecommendationLog(startDate, today, "click");
+        for (int i = 6; i >= 0; i--) {
+            LocalDate date = today.minusDays(i);
+            dateList.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
+            exposureTrend.add(exposureTrendMap.getOrDefault(date, 0L));
+            clickTrend.add(clickTrendMap.getOrDefault(date, 0L));
+        }
+        trend.put("dates", dateList);
+        trend.put("exposureTrend", exposureTrend);
+        trend.put("clickTrend", clickTrend);
+        return trend;
     }
 
     private List<Map<String, Object>> buildTopSearchKeywords(boolean onlyNoResult) {
@@ -439,6 +555,33 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         return Math.toIntExact(extractSingleCount(questionSearchLogService.listMaps(queryWrapper)));
     }
 
+    private double calculateRetentionRate(LocalDate registerDate, LocalDate activityDate) {
+        if (registerDate == null || activityDate == null || activityDate.isBefore(registerDate)) {
+            return 0D;
+        }
+        QueryWrapper<User> registerWrapper = new QueryWrapper<>();
+        registerWrapper.select("id");
+        registerWrapper.between("createTime", toDate(registerDate, true), toDate(registerDate, false));
+        List<User> registerUserList = userService.list(registerWrapper);
+        if (registerUserList.isEmpty()) {
+            return 0D;
+        }
+        Set<Long> registerUserIdSet = registerUserList.stream().map(User::getId).collect(Collectors.toSet());
+        QueryWrapper<UserQuestionHistory> activeWrapper = new QueryWrapper<>();
+        activeWrapper.select("count(distinct userId) as totalCount");
+        activeWrapper.in("userId", registerUserIdSet);
+        activeWrapper.between("updateTime", toDate(activityDate, true), toDate(activityDate, false));
+        long retainedUserCount = extractSingleCount(userQuestionHistoryService.listMaps(activeWrapper));
+        return Math.round(retainedUserCount * 10000D / registerUserIdSet.size()) / 100D;
+    }
+
+    private double calculateGrowthRate(long currentValue, long previousValue) {
+        if (previousValue <= 0) {
+            return currentValue > 0 ? 100D : 0D;
+        }
+        return Math.round((currentValue - previousValue) * 10000D / previousValue) / 100D;
+    }
+
     private List<User> listUserCitySnapshot() {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("id", "city");
@@ -520,6 +663,15 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         }
         queryWrapper.groupBy("DATE(createTime)");
         return dateCountMapFrom(questionSearchLogService.listMaps(queryWrapper));
+    }
+
+    private Map<LocalDate, Long> listDateCountMapForRecommendationLog(LocalDate startDate, LocalDate endDate, String action) {
+        QueryWrapper<QuestionRecommendLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("DATE(createTime) as statDate", "count(*) as totalCount");
+        queryWrapper.between("createTime", toDate(startDate, true), toDate(endDate, false));
+        queryWrapper.eq(StringUtils.isNotBlank(action), "action", action);
+        queryWrapper.groupBy("DATE(createTime)");
+        return dateCountMapFrom(questionRecommendLogService.listMaps(queryWrapper));
     }
 
     private Map<LocalDate, Long> dateCountMapFrom(List<Map<String, Object>> mapList) {

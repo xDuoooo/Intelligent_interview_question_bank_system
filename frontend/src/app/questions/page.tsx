@@ -47,6 +47,7 @@ export default async function QuestionsPage({
     title?: string | string[];
     content?: string | string[];
     answer?: string | string[];
+    difficulty?: string | string[];
     tags?: string | string[];
     sortField?: string | string[];
     sortOrder?: string | string[];
@@ -58,6 +59,7 @@ export default async function QuestionsPage({
     title: getSingleParam(searchParams.title),
     content: getSingleParam(searchParams.content),
     answer: getSingleParam(searchParams.answer),
+    difficulty: getSingleParam(searchParams.difficulty),
     tags: parseTagParam(searchParams.tags),
     sortField: normalizeSortField(searchParams.sortField),
     sortOrder: normalizeSortOrder(searchParams.sortOrder),

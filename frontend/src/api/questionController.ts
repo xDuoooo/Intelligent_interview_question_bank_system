@@ -157,6 +157,21 @@ export async function recommendQuestionsByResumeFileUsingPost(
   });
 }
 
+/** logRecommendClick POST /api/question/recommend/click */
+export async function logRecommendClickUsingPost(
+  body: API.QuestionRecommendClickRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/question/recommend/click', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** reviewQuestion POST /api/question/review */
 export async function reviewQuestionUsingPost(
   body: API.QuestionReviewRequest,

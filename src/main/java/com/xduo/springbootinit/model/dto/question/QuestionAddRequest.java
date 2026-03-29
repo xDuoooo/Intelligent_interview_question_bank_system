@@ -31,5 +31,10 @@ public class QuestionAddRequest implements Serializable {
      */
     private String answer;
 
+    /**
+     * 题目难度
+     */
+    private String difficulty;
+
     private static final long serialVersionUID = 1L;
 }
