@@ -92,7 +92,7 @@ export async function listFeaturedPostUsingGet(options?: { [key: string]: any })
 /** listRelatedPost GET /api/post/related/list */
 export async function listRelatedPostUsingGet(
   params: {
-    postId?: number;
+    postId?: string | number;
     size?: number;
   },
   options?: { [key: string]: any },

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PostDetailPage({ params }: { params: { postId: string } }) {
   const cookie = headers().get("cookie") || "";
-  const postId = Number(params.postId);
+  const postId = params.postId;
   let post: API.PostVO | undefined;
   let relatedPostList: API.PostVO[] = [];
 

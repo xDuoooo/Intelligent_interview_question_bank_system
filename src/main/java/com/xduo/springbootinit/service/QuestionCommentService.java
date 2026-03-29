@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.comment.CommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
+import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReviewRequest;
@@ -11,6 +12,7 @@ import com.xduo.springbootinit.model.entity.QuestionComment;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.CommentVO;
 import com.xduo.springbootinit.model.vo.CommentSubmitResultVO;
+import com.xduo.springbootinit.model.vo.UserCommentActivityVO;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -71,4 +73,14 @@ public interface QuestionCommentService extends IService<QuestionComment> {
      * 管理员审核评论
      */
     boolean reviewComment(CommentReviewRequest request, User adminUser);
+
+    /**
+     * 分页获取我点赞过的评论
+     */
+    Page<UserCommentActivityVO> listMyLikedCommentVOByPage(CommentActivityQueryRequest request, User loginUser);
+
+    /**
+     * 分页获取我回复过的评论
+     */
+    Page<UserCommentActivityVO> listMyReplyCommentVOByPage(CommentActivityQueryRequest request, User loginUser);
 }

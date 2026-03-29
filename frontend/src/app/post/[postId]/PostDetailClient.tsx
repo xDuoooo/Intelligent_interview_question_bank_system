@@ -5,7 +5,7 @@ import { getMyPostVoByIdUsingGet, getPostVoByIdUsingGet, listRelatedPostUsingGet
 import PostDetailContent from "@/components/PostDetailContent";
 
 interface Props {
-  postId: number;
+  postId: string | number;
   initialPost?: API.PostVO;
   initialRelatedPostList?: API.PostVO[];
 }

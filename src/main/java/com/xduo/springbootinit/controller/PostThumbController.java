@@ -1,11 +1,17 @@
 package com.xduo.springbootinit.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
 import com.xduo.springbootinit.model.dto.postthumb.PostThumbAddRequest;
+import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.PostVO;
+import com.xduo.springbootinit.service.PostService;
 import com.xduo.springbootinit.service.PostThumbService;
 import com.xduo.springbootinit.service.UserService;
 import jakarta.annotation.Resource;
@@ -31,6 +37,9 @@ public class PostThumbController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private PostService postService;
+
     /**
      * 点赞 / 取消点赞
      *
@@ -49,6 +58,28 @@ public class PostThumbController {
         long postId = postThumbAddRequest.getPostId();
         int result = postThumbService.doPostThumb(postId, loginUser);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 获取我点赞的帖子列表
+     *
+     * @param postQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/my/list/page")
+    public BaseResponse<Page<PostVO>> listMyThumbPostByPage(@RequestBody PostQueryRequest postQueryRequest,
+            HttpServletRequest request) {
+        if (postQueryRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        long current = postQueryRequest.getCurrent();
+        long size = postQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current <= 0 || size <= 0 || size > 20, ErrorCode.PARAMS_ERROR);
+        Page<Post> postPage = postThumbService.listThumbPostByPage(new Page<>(current, size),
+                postService.getQueryWrapper(postQueryRequest), loginUser.getId());
+        return ResultUtils.success(postService.getPostVOPage(postPage, request));
     }
 
 }

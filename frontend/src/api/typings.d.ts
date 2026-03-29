@@ -284,7 +284,7 @@ declare namespace API {
   };
 
   type DeleteRequest = {
-    id?: number;
+    id?: string | number;
   };
 
   type doLoginUsingDELETEParams = {
@@ -329,7 +329,7 @@ declare namespace API {
 
   type getPostVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getQuestionBankQuestionVOByIdUsingGETParams = {
@@ -709,13 +709,13 @@ declare namespace API {
 
   type PostEditRequest = {
     content?: string;
-    id?: number;
+    id?: string | number;
     tags?: string[];
     title?: string;
   };
 
   type PostFavourAddRequest = {
-    postId?: number;
+    postId?: string | number;
   };
 
   type PostFavourQueryRequest = {
@@ -728,7 +728,7 @@ declare namespace API {
   };
 
   type PostOperateRequest = {
-    id?: number;
+    id?: string | number;
     isFeatured?: number;
     isTop?: number;
   };
@@ -753,32 +753,32 @@ declare namespace API {
   };
 
   type PostReviewRequest = {
-    id?: number;
+    id?: string | number;
     reviewMessage?: string;
     reviewStatus?: number;
   };
 
   type PostReportRequest = {
-    postId?: number;
+    postId?: string | number;
     reason?: string;
   };
 
   type PostReportQueryRequest = {
     current?: number;
     pageSize?: number;
-    postId?: number;
+    postId?: string | number;
     sortField?: string;
     sortOrder?: string;
     status?: number;
   };
 
   type PostReportProcessRequest = {
-    id?: number;
+    id?: string | number;
     status?: number;
   };
 
   type PostThumbAddRequest = {
-    postId?: number;
+    postId?: string | number;
   };
 
   type PostUpdateRequest = {
@@ -794,7 +794,7 @@ declare namespace API {
     favourNum?: number;
     hasFavour?: boolean;
     hasThumb?: boolean;
-    id?: number;
+    id?: string | number;
     isFeatured?: number;
     isTop?: number;
     reportNum?: number;
@@ -806,21 +806,21 @@ declare namespace API {
     title?: string;
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PostReportVO = {
     createTime?: string;
-    id?: number;
-    postId?: number;
+    id?: string | number;
+    postId?: string | number;
     reason?: string;
     reporter?: UserVO;
     status?: number;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PostSubmitResultVO = {
-    id?: number;
+    id?: string | number;
     reviewMessage?: string;
     reviewStatus?: number;
   };

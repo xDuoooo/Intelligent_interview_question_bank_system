@@ -33,7 +33,7 @@ const PostAdminPage: React.FC = () => {
   const [reportingPost, setReportingPost] = useState<API.PostVO | undefined>();
   const [reportRecords, setReportRecords] = useState<API.PostReportVO[]>([]);
   const [reportListLoading, setReportListLoading] = useState(false);
-  const [reportProcessingId, setReportProcessingId] = useState<number>();
+  const [reportProcessingId, setReportProcessingId] = useState<string | number>();
 
   const governanceHighlights = [
     {
@@ -56,7 +56,7 @@ const PostAdminPage: React.FC = () => {
     },
   ];
 
-  const handleDelete = async (id?: number) => {
+  const handleDelete = async (id?: string | number) => {
     if (!id) {
       return;
     }
@@ -84,7 +84,7 @@ const PostAdminPage: React.FC = () => {
     setFeaturedValue(Number(record.isFeatured || 0) > 0);
   };
 
-  const loadPostReports = async (postId?: number) => {
+  const loadPostReports = async (postId?: string | number) => {
     if (!postId) {
       setReportRecords([]);
       return;
@@ -109,7 +109,7 @@ const PostAdminPage: React.FC = () => {
     await loadPostReports(record.id);
   };
 
-  const handleProcessReport = async (reportId?: number, status?: number) => {
+  const handleProcessReport = async (reportId?: string | number, status?: number) => {
     if (!reportId || !status) {
       return;
     }

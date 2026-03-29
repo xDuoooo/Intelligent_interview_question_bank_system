@@ -14,12 +14,14 @@ import com.xduo.springbootinit.mapper.QuestionCommentReportMapper;
 import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.model.dto.comment.CommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
+import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReviewRequest;
 import com.xduo.springbootinit.model.entity.*;
 import com.xduo.springbootinit.model.vo.CommentVO;
 import com.xduo.springbootinit.model.vo.CommentSubmitResultVO;
+import com.xduo.springbootinit.model.vo.UserCommentActivityVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.service.NotificationService;
@@ -622,6 +624,50 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         return true;
     }
 
+    @Override
+    public Page<UserCommentActivityVO> listMyLikedCommentVOByPage(CommentActivityQueryRequest request, User loginUser) {
+        ThrowUtils.throwIf(request == null || loginUser == null || loginUser.getId() == null, ErrorCode.PARAMS_ERROR);
+        long current = request.getCurrent();
+        long pageSize = Math.min(request.getPageSize(), 20);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+
+        LambdaQueryWrapper<QuestionCommentLike> likeWrapper = new LambdaQueryWrapper<>();
+        likeWrapper.eq(QuestionCommentLike::getUserId, loginUser.getId())
+                .orderByDesc(QuestionCommentLike::getCreateTime);
+        Page<QuestionCommentLike> likePage = commentLikeMapper.selectPage(new Page<>(current, pageSize), likeWrapper);
+
+        Page<UserCommentActivityVO> resultPage = new Page<>(current, pageSize, likePage.getTotal());
+        List<QuestionCommentLike> likeRecords = likePage.getRecords();
+        if (likeRecords == null || likeRecords.isEmpty()) {
+            resultPage.setRecords(Collections.emptyList());
+            return resultPage;
+        }
+
+        LinkedHashMap<Long, Date> actionTimeMap = new LinkedHashMap<>();
+        likeRecords.forEach(item -> actionTimeMap.put(item.getCommentId(), item.getCreateTime()));
+        List<QuestionComment> commentList = listByIds(new ArrayList<>(actionTimeMap.keySet()));
+        resultPage.setRecords(buildUserCommentActivityVOList(commentList, loginUser, actionTimeMap, true));
+        return resultPage;
+    }
+
+    @Override
+    public Page<UserCommentActivityVO> listMyReplyCommentVOByPage(CommentActivityQueryRequest request, User loginUser) {
+        ThrowUtils.throwIf(request == null || loginUser == null || loginUser.getId() == null, ErrorCode.PARAMS_ERROR);
+        long current = request.getCurrent();
+        long pageSize = Math.min(request.getPageSize(), 20);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+
+        LambdaQueryWrapper<QuestionComment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(QuestionComment::getUserId, loginUser.getId())
+                .isNotNull(QuestionComment::getParentId)
+                .orderByDesc(QuestionComment::getCreateTime);
+        Page<QuestionComment> commentPage = page(new Page<>(current, pageSize), wrapper);
+
+        Page<UserCommentActivityVO> resultPage = new Page<>(current, pageSize, commentPage.getTotal());
+        resultPage.setRecords(buildUserCommentActivityVOList(commentPage.getRecords(), loginUser, null, false));
+        return resultPage;
+    }
+
     private CommentAutoReviewResult autoReviewComment(String content) {
         String lowerCaseText = StringUtils.defaultString(content).toLowerCase();
         if (containsAny(lowerCaseText, "赌博", "色情", "外挂", "vpn", "代考", "作弊器", "刷单", "telegram", "qq群", "vx:", "微信:", "联系方式")) {
@@ -699,6 +745,114 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                 );
             }
         }
+    }
+
+    private List<UserCommentActivityVO> buildUserCommentActivityVOList(List<QuestionComment> commentList,
+                                                                       User loginUser,
+                                                                       Map<Long, Date> actionTimeMap,
+                                                                       boolean likedContext) {
+        if (commentList == null || commentList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, QuestionComment> commentMap = commentList.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(QuestionComment::getId, item -> item, (a, b) -> a));
+
+        Set<Long> userIds = commentList.stream()
+                .map(QuestionComment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> replyToCommentIds = commentList.stream()
+                .map(QuestionComment::getReplyToId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!replyToCommentIds.isEmpty()) {
+            List<QuestionComment> replyToComments = listByIds(replyToCommentIds);
+            replyToComments.forEach(replyComment -> {
+                if (replyComment != null) {
+                    userIds.add(replyComment.getUserId());
+                    commentMap.putIfAbsent(replyComment.getId(), replyComment);
+                }
+            });
+        }
+
+        Map<Long, User> userMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (a, b) -> a));
+
+        Set<Long> questionIds = commentList.stream()
+                .map(QuestionComment::getQuestionId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> questionTitleMap = questionIds.isEmpty()
+                ? Collections.emptyMap()
+                : questionMapper.selectBatchIds(questionIds).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(
+                        Question::getId,
+                        question -> StringUtils.defaultIfBlank(question.getTitle(), "题目已不可见"),
+                        (a, b) -> a
+                ));
+
+        Set<Long> likedIds = Collections.emptySet();
+        if (!likedContext) {
+            Set<Long> commentIds = commentList.stream().map(QuestionComment::getId).collect(Collectors.toSet());
+            if (!commentIds.isEmpty()) {
+                LambdaQueryWrapper<QuestionCommentLike> likedWrapper = new LambdaQueryWrapper<>();
+                likedWrapper.eq(QuestionCommentLike::getUserId, loginUser.getId())
+                        .in(QuestionCommentLike::getCommentId, commentIds);
+                likedIds = commentLikeMapper.selectList(likedWrapper).stream()
+                        .map(QuestionCommentLike::getCommentId)
+                        .collect(Collectors.toSet());
+            }
+        }
+
+        List<QuestionComment> orderedComments = commentList;
+        if (actionTimeMap != null && !actionTimeMap.isEmpty()) {
+            orderedComments = actionTimeMap.keySet().stream()
+                    .map(commentMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        Set<Long> finalLikedIds = likedIds;
+        return orderedComments.stream().map(comment -> {
+            UserCommentActivityVO vo = new UserCommentActivityVO();
+            vo.setId(comment.getId());
+            vo.setQuestionId(comment.getQuestionId());
+            vo.setQuestionTitle(questionTitleMap.getOrDefault(comment.getQuestionId(), "题目已不可见"));
+            vo.setParentId(comment.getParentId());
+            vo.setReplyToId(comment.getReplyToId());
+            vo.setContent(comment.getContent());
+            vo.setLikeNum(comment.getLikeNum());
+            vo.setStatus(comment.getStatus());
+            vo.setReviewMessage(comment.getReviewMessage());
+            vo.setCreateTime(comment.getCreateTime());
+            vo.setActionTime(actionTimeMap != null
+                    ? actionTimeMap.getOrDefault(comment.getId(), comment.getCreateTime())
+                    : comment.getCreateTime());
+            vo.setDeleted(comment.getIsDelete() != null && comment.getIsDelete() == 1);
+            vo.setHasLiked(likedContext || finalLikedIds.contains(comment.getId()));
+
+            User author = userMap.get(comment.getUserId());
+            if (author != null) {
+                vo.setUser(userService.getUserVO(author));
+            }
+
+            if (comment.getReplyToId() != null) {
+                QuestionComment replyToComment = commentMap.get(comment.getReplyToId());
+                if (replyToComment != null) {
+                    User replyToUser = userMap.get(replyToComment.getUserId());
+                    if (replyToUser != null) {
+                        vo.setReplyToUser(userService.getUserVO(replyToUser));
+                    }
+                }
+            }
+
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     private record CommentAutoReviewResult(int status, String reviewMessage) {

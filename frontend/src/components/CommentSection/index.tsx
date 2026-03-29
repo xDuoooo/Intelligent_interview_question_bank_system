@@ -156,7 +156,7 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
   }
 
   return (
-    <div className={cn("group", depth > 0 && "ml-10 border-l-2 border-slate-100 pl-6 mt-4")}>
+    <div id={`comment-${comment.id}`} className={cn("group scroll-mt-28", depth > 0 && "ml-10 border-l-2 border-slate-100 pl-6 mt-4")}>
       <div className="flex gap-3 items-start">
         <UserProfileHoverCard user={comment.user} placement="rightTop">
           <div>
