@@ -1,5 +1,7 @@
 import React from "react";
 import { Activity, Flame, Trophy } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
+import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
 interface Props {
   leaderboard?: API.GlobalLeaderboardVO;
@@ -83,8 +85,21 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                 <div className="mb-3 text-xs font-black uppercase tracking-wider text-primary">我的位置</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
                   <div className="min-w-0">
-                    <div className="truncate font-semibold text-slate-800">{board.currentUserItem.userName || "当前用户"}</div>
-                    <div className="mt-1 text-sm text-slate-500">继续刷题就能稳定往前冲</div>
+                    <UserProfileHoverCard user={board.currentUserItem} placement="topLeft">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar
+                          src={board.currentUserItem.userAvatar}
+                          name={board.currentUserItem.userName}
+                          size={38}
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-slate-800 transition-colors hover:text-primary">
+                            {board.currentUserItem.userName || "当前用户"}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-500">继续刷题就能稳定往前冲</div>
+                        </div>
+                      </div>
+                    </UserProfileHoverCard>
                   </div>
                   <div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm">
                     <div className="text-xs font-bold text-slate-400">当前排名</div>
@@ -109,15 +124,20 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                   className={`rounded-2xl border px-4 py-4 ${getRankStyle(item.rank)}`}
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
-                        {item.rank}
+                    <UserProfileHoverCard user={item} placement="topLeft">
+                      <div className="min-w-0 flex items-center gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
+                          {item.rank}
+                        </div>
+                        <UserAvatar src={item.userAvatar} name={item.userName} size={38} />
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-slate-800 transition-colors hover:text-primary">
+                            {item.userName || "匿名用户"}
+                          </div>
+                          <div className="text-xs text-slate-500">{item.userRole === "admin" ? "管理员" : "学习者"}</div>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold text-slate-800">{item.userName || "匿名用户"}</div>
-                        <div className="text-xs text-slate-500">{item.userRole === "admin" ? "管理员" : "学习者"}</div>
-                      </div>
-                    </div>
+                    </UserProfileHoverCard>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
                       <div className="text-xs font-bold text-slate-400">{item.metricText}</div>
                       <div className="inline-flex min-w-[88px] items-center justify-center rounded-2xl bg-white/80 px-4 py-2 text-base font-black text-slate-900 shadow-sm">

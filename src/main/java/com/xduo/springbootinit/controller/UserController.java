@@ -1,11 +1,13 @@
 package com.xduo.springbootinit.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
@@ -15,9 +17,13 @@ import com.xduo.springbootinit.model.dto.user.UserQueryRequest;
 import com.xduo.springbootinit.model.dto.user.UserRegisterRequest;
 import com.xduo.springbootinit.model.dto.user.UserUpdateMyRequest;
 import com.xduo.springbootinit.model.dto.user.UserUpdateRequest;
+import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.LoginUserVO;
+import com.xduo.springbootinit.model.vo.UserProfileVO;
 import com.xduo.springbootinit.model.vo.UserVO;
+import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
 
 import java.util.List;
@@ -47,6 +53,12 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private UserQuestionHistoryService userQuestionHistoryService;
+
+    @Resource
+    private QuestionService questionService;
 
     // region 登录相关
 
@@ -250,9 +262,20 @@ public class UserController {
      */
     @GetMapping("/get/vo")
     public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
-        BaseResponse<User> response = getUserById(id, request);
-        User user = response.getData();
+        User user = getPublicUserById(id);
         return ResultUtils.success(userService.getUserVO(user));
+    }
+
+    /**
+     * 获取公开用户主页摘要
+     *
+     * @param id 用户 id
+     * @return 公开资料与学习摘要
+     */
+    @GetMapping("/profile/vo")
+    public BaseResponse<UserProfileVO> getUserProfileVOById(long id) {
+        User user = getPublicUserById(id);
+        return ResultUtils.success(buildUserProfileVO(user));
     }
 
     /**
@@ -474,5 +497,42 @@ public class UserController {
         User loginUser = userService.getLoginUser(request);
         userService.unbindGoogle(loginUser.getId());
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 获取公开可见的用户
+     */
+    private User getPublicUserById(long id) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User user = userService.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(UserConstant.BAN_ROLE.equals(user.getUserRole()), ErrorCode.NOT_FOUND_ERROR);
+        return user;
+    }
+
+    /**
+     * 组装公开主页摘要
+     */
+    private UserProfileVO buildUserProfileVO(User user) {
+        UserProfileVO userProfileVO = new UserProfileVO();
+        userProfileVO.setUser(userService.getUserVO(user));
+
+        java.util.Map<String, Object> stats = userQuestionHistoryService.getUserQuestionStats(user.getId());
+        userProfileVO.setTotalQuestionCount(getLongValue(stats.get("totalCount")));
+        userProfileVO.setMasteredQuestionCount(getLongValue(stats.get("masteredCount")));
+        userProfileVO.setActiveDays(getLongValue(stats.get("activeDays")));
+        userProfileVO.setCurrentStreak(getLongValue(stats.get("currentStreak")));
+
+        QueryWrapper<Question> questionQueryWrapper = new QueryWrapper<>();
+        questionQueryWrapper.eq("userId", user.getId());
+        questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+        userProfileVO.setApprovedQuestionCount(questionService.count(questionQueryWrapper));
+        return userProfileVO;
+    }
+
+    private long getLongValue(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 }

@@ -37,34 +37,9 @@ public class UserVO implements Serializable {
     private String userRole;
 
     /**
-     * 手机号
-     */
-    private String phone;
-
-    /**
-     * 邮箱
-     */
-    private String email;
-
-    /**
      * 所在城市
      */
     private String city;
-
-    /**
-     * GitHub 唯一标识
-     */
-    private String githubId;
-
-    /**
-     * Gitee 唯一标识
-     */
-    private String giteeId;
-
-    /**
-     * Google 唯一标识
-     */
-    private String googleId;
 
     /**
      * 创建时间
