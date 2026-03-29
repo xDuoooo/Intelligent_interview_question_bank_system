@@ -148,9 +148,15 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                         冠军
                       </div>
-                      <div className="mt-1 text-sm font-black leading-tight text-slate-900 break-keep whitespace-normal">
-                        {board.rankingList?.[0]?.userName || "待上榜"}
-                      </div>
+                      {board.rankingList?.[0]?.userName ? (
+                        <div className="mt-1 text-sm font-black leading-tight text-slate-900 break-keep whitespace-normal">
+                          {board.rankingList[0].userName}
+                        </div>
+                      ) : (
+                        <div className="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 whitespace-nowrap">
+                          暂无榜首
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
