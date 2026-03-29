@@ -17,6 +17,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListPostVO_ = {
+    code?: number;
+    data?: PostVO[];
+    message?: string;
+  };
+
   type BaseResponseInt_ = {
     code?: number;
     data?: number;

@@ -153,6 +153,52 @@ create table if not exists user_question_study_session
     index idx_user_createTime (userId, createTime)
 ) comment '用户题目学习时长会话';
 
+-- 帖子
+create table if not exists post
+(
+    id         bigint                             not null comment 'id' primary key,
+    title      varchar(80)                       not null comment '标题',
+    content    text                              not null comment '内容',
+    tags       varchar(1024)                     null comment '标签列表 json',
+    thumbNum   int      default 0                not null comment '点赞数',
+    favourNum  int      default 0                not null comment '收藏数',
+    userId     bigint                            not null comment '创建用户 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete   tinyint  default 0                not null comment '是否删除',
+    index idx_userId (userId),
+    index idx_createTime (createTime),
+    index idx_thumbNum (thumbNum),
+    index idx_favourNum (favourNum)
+) comment '帖子';
+
+-- 帖子点赞
+create table if not exists post_thumb
+(
+    id         bigint auto_increment comment 'id' primary key,
+    postId     bigint                             not null comment '帖子 id',
+    userId     bigint                             not null comment '用户 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_post_user (postId, userId),
+    index idx_userId (userId),
+    index idx_postId (postId)
+) comment '帖子点赞';
+
+-- 帖子收藏
+create table if not exists post_favour
+(
+    id         bigint auto_increment comment 'id' primary key,
+    postId     bigint                             not null comment '帖子 id',
+    userId     bigint                             not null comment '用户 id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_post_user (postId, userId),
+    index idx_userId (userId),
+    index idx_postId (postId),
+    index idx_user_createTime (userId, createTime)
+) comment '帖子收藏';
+
 -- 题目评论表
 create table if not exists question_comment
 (

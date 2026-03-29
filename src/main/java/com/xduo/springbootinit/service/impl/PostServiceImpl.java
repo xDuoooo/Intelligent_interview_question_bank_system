@@ -20,6 +20,7 @@ import com.xduo.springbootinit.service.PostService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -311,5 +312,92 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }).collect(Collectors.toList());
         postVOPage.setRecords(postVOList);
         return postVOPage;
+    }
+
+    @Override
+    public List<PostVO> listHotPostVO(int size, HttpServletRequest request) {
+        int safeSize = Math.max(1, Math.min(size, 12));
+        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+        queryWrapper.orderByDesc("thumbNum", "favourNum", "createTime");
+        queryWrapper.last("limit " + safeSize * 3);
+        List<Post> candidateList = this.list(queryWrapper);
+        if (CollUtil.isEmpty(candidateList)) {
+            return new ArrayList<>();
+        }
+        candidateList.sort((left, right) -> Double.compare(buildPostHotScore(right), buildPostHotScore(left)));
+        List<Post> topList = candidateList.stream().limit(safeSize).collect(Collectors.toList());
+        Page<Post> page = new Page<>(1, safeSize, topList.size());
+        page.setRecords(topList);
+        return getPostVOPage(page, request).getRecords();
+    }
+
+    @Override
+    public List<PostVO> listRelatedPostVO(long postId, int size, HttpServletRequest request) {
+        if (postId <= 0) {
+            return new ArrayList<>();
+        }
+        Post currentPost = this.getById(postId);
+        if (currentPost == null) {
+            return new ArrayList<>();
+        }
+        List<String> currentTagList = PostVO.objToVo(currentPost).getTagList();
+        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+        queryWrapper.ne("id", postId);
+        if (CollUtil.isNotEmpty(currentTagList)) {
+            queryWrapper.and(qw -> {
+                for (int i = 0; i < currentTagList.size(); i++) {
+                    String tag = currentTagList.get(i);
+                    if (i == 0) {
+                        qw.like("tags", "\"" + tag + "\"");
+                    } else {
+                        qw.or().like("tags", "\"" + tag + "\"");
+                    }
+                }
+            });
+        }
+        queryWrapper.orderByDesc("thumbNum", "favourNum", "createTime");
+        queryWrapper.last("limit " + Math.max(size * 3, 12));
+        List<Post> candidateList = this.list(queryWrapper);
+        if (CollUtil.isEmpty(candidateList)) {
+            return new ArrayList<>();
+        }
+        candidateList.sort((left, right) -> Double.compare(
+                buildRelatedScore(currentTagList, right),
+                buildRelatedScore(currentTagList, left)
+        ));
+        List<Post> topList = candidateList.stream()
+                .filter(post -> buildRelatedScore(currentTagList, post) > 0)
+                .limit(Math.max(1, Math.min(size, 8)))
+                .collect(Collectors.toList());
+        if (CollUtil.isEmpty(topList)) {
+            topList = candidateList.stream().limit(Math.max(1, Math.min(size, 8))).collect(Collectors.toList());
+        }
+        Page<Post> page = new Page<>(1, topList.size(), topList.size());
+        page.setRecords(topList);
+        return getPostVOPage(page, request).getRecords();
+    }
+
+    private double buildPostHotScore(Post post) {
+        if (post == null) {
+            return 0;
+        }
+        long ageHours = Math.max(1L, (System.currentTimeMillis() - post.getCreateTime().getTime()) / (1000 * 60 * 60));
+        double interactionScore = (post.getThumbNum() == null ? 0 : post.getThumbNum()) * 1.5
+                + (post.getFavourNum() == null ? 0 : post.getFavourNum()) * 2.2;
+        double freshnessBonus = 48.0 / Math.sqrt(ageHours + 1);
+        return interactionScore + freshnessBonus;
+    }
+
+    private double buildRelatedScore(List<String> currentTagList, Post candidatePost) {
+        if (candidatePost == null) {
+            return 0;
+        }
+        List<String> candidateTagList = PostVO.objToVo(candidatePost).getTagList();
+        long overlapCount = currentTagList == null ? 0 : currentTagList.stream()
+                .filter(candidateTagList::contains)
+                .count();
+        return overlapCount * 10
+                + (candidatePost.getThumbNum() == null ? 0 : candidatePost.getThumbNum()) * 0.8
+                + (candidatePost.getFavourNum() == null ? 0 : candidatePost.getFavourNum()) * 1.1;
     }
 }

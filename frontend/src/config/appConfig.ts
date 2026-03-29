@@ -51,6 +51,7 @@ export const FOOTER_LINK_GROUPS: AppLinkGroup[] = [
     links: [
       { label: "热门题库", href: "/banks" },
       { label: "精选试题", href: "/questions" },
+      { label: "经验社区", href: "/posts" },
       { label: "AI 模拟面试", href: "/mockInterview" },
       { label: "个人成长中心", href: "/user/center" },
     ],

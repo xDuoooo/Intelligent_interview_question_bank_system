@@ -55,4 +55,14 @@ public interface PostService extends IService<Post> {
      * @return
      */
     Page<PostVO> getPostVOPage(Page<Post> postPage, HttpServletRequest request);
+
+    /**
+     * 获取热门帖子列表
+     */
+    java.util.List<PostVO> listHotPostVO(int size, HttpServletRequest request);
+
+    /**
+     * 获取相关帖子列表
+     */
+    java.util.List<PostVO> listRelatedPostVO(long postId, int size, HttpServletRequest request);
 }

@@ -17,6 +17,16 @@ export const menus = [
     name: "题目",
   },
   {
+    path: "/posts",
+    name: "社区",
+  },
+  {
+    path: "/posts/create",
+    name: "发布帖子",
+    access: ACCESS_ENUM.USER,
+    hideInMenu: true,
+  },
+  {
     path: "/mockInterview/add",
     name: "AI 模拟面试",
     access: ACCESS_ENUM.USER,
@@ -61,6 +71,11 @@ export const menus = [
       {
         path: "/admin/question",
         name: "题目管理",
+        access: ACCESS_ENUM.ADMIN,
+      },
+      {
+        path: "/admin/post",
+        name: "帖子管理",
         access: ACCESS_ENUM.ADMIN,
       },
       {
