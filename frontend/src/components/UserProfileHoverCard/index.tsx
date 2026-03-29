@@ -3,10 +3,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Popover, Skeleton, type PopoverProps } from "antd";
+import { useSelector } from "react-redux";
 import { Activity, BookOpen, Flame, MapPin, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
+import UserFollowButton from "@/components/UserFollowButton";
 import { cn } from "@/lib/utils";
 import UserAvatar from "@/components/UserAvatar";
+import { RootState } from "@/stores";
 
 type PublicUser = Pick<
   API.UserVO,
@@ -22,6 +25,14 @@ interface Props {
 
 const profileCache = new Map<number, API.UserProfileVO>();
 const profilePromiseCache = new Map<number, Promise<API.UserProfileVO | undefined>>();
+
+function updateCachedProfile(userId: number, updater: (profile: API.UserProfileVO) => API.UserProfileVO) {
+  const currentProfile = profileCache.get(userId);
+  if (!currentProfile) {
+    return;
+  }
+  profileCache.set(userId, updater(currentProfile));
+}
 
 async function fetchUserProfile(userId: number) {
   if (profileCache.has(userId)) {
@@ -69,6 +80,7 @@ export default function UserProfileHoverCard({
   placement = "top",
   triggerClassName,
 }: Props) {
+  const loginUser = useSelector((state: RootState) => state.loginUser);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<API.UserProfileVO | undefined>(() =>
@@ -83,6 +95,7 @@ export default function UserProfileHoverCard({
 
   const canOpen = Boolean(user?.id);
   const displayUser = useMemo(() => profile?.user || user, [profile?.user, user]);
+  const isSelf = Boolean(loginUser?.id && displayUser?.id && loginUser.id === displayUser.id);
 
   const stats = useMemo(
     () => [
@@ -131,6 +144,25 @@ export default function UserProfileHoverCard({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFollowChange = (nextFollowed: boolean) => {
+    const targetUserId = user?.id;
+    if (!targetUserId) {
+      return;
+    }
+    setProfile((currentProfile) => {
+      if (!currentProfile) {
+        return currentProfile;
+      }
+      const nextProfile = {
+        ...currentProfile,
+        hasFollowed: nextFollowed,
+        followerCount: Math.max(0, Number(currentProfile.followerCount || 0) + (nextFollowed ? 1 : -1)),
+      };
+      updateCachedProfile(targetUserId, () => nextProfile);
+      return nextProfile;
+    });
   };
 
   const content = (
@@ -185,6 +217,17 @@ export default function UserProfileHoverCard({
             <span>加入于 {formatJoinDate(displayUser?.createTime)}</span>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+              <div className="text-xs font-bold text-slate-400">粉丝</div>
+              <div className="mt-2 text-lg font-black text-slate-900">{profile?.followerCount ?? 0}</div>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+              <div className="text-xs font-bold text-slate-400">关注</div>
+              <div className="mt-2 text-lg font-black text-slate-900">{profile?.followingCount ?? 0}</div>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
             公开投稿 {profile?.approvedQuestionCount ?? 0} 篇，点击主页可以查看完整公开资料和最近投稿。
           </div>
@@ -193,13 +236,23 @@ export default function UserProfileHoverCard({
 
       {loadError ? <div className="text-sm text-red-400">{loadError}</div> : null}
 
-      <Link
-        href={`/user/${user?.id}`}
-        prefetch={false}
-        className="flex h-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
-      >
-        进入主页
-      </Link>
+      <div className={cn("grid gap-3", isSelf ? "grid-cols-1" : "grid-cols-2")}>
+        {!isSelf ? (
+          <UserFollowButton
+            userId={displayUser?.id}
+            initialFollowed={Boolean(profile?.hasFollowed)}
+            onChange={handleFollowChange}
+            className="h-10 rounded-xl font-bold"
+          />
+        ) : null}
+        <Link
+          href={`/user/${user?.id}`}
+          prefetch={false}
+          className="flex h-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
+        >
+          进入主页
+        </Link>
+      </div>
     </div>
   );
 

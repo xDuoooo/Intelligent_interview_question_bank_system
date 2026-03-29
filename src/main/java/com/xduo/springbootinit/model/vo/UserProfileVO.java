@@ -40,5 +40,20 @@ public class UserProfileVO implements Serializable {
      */
     private Long approvedQuestionCount;
 
+    /**
+     * 粉丝数
+     */
+    private Long followerCount;
+
+    /**
+     * 关注数
+     */
+    private Long followingCount;
+
+    /**
+     * 当前登录用户是否已关注该用户
+     */
+    private Boolean hasFollowed;
+
     private static final long serialVersionUID = 1L;
 }

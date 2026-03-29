@@ -5,6 +5,7 @@ import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
+import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -164,7 +165,7 @@ export default async function PublicUserProfilePage({
           </div>
 
           <div className="rounded-[2rem] border border-primary/10 bg-primary/5 px-5 py-4 text-sm leading-7 text-slate-600 lg:max-w-sm">
-            这里展示的是公开资料与公开学习数据。关注功能我先没有一并塞进来，避免把主页、关注关系和通知系统耦合得太重。
+            这里展示的是公开资料、公开学习数据以及关注关系。你可以直接查看 Ta 的粉丝和关注列表，也可以在这里完成关注。
           </div>
         </div>
 
@@ -184,6 +185,13 @@ export default async function PublicUserProfilePage({
             </div>
           ))}
         </div>
+
+        <UserRelationPanel
+          user={profile.user}
+          initialFollowerCount={profile.followerCount}
+          initialFollowingCount={profile.followingCount}
+          initialHasFollowed={profile.hasFollowed}
+        />
       </section>
 
       <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
