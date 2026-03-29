@@ -44,6 +44,18 @@ export default function PostEditorForm({
 }: Props) {
   const [form] = Form.useForm<PostFormValues>();
   const [content, setContent] = useState(initialValues?.content || "");
+  const [contentError, setContentError] = useState<string>();
+
+  const getContentError = (value: string) => {
+    const normalizedValue = String(value || "").trim();
+    if (!normalizedValue) {
+      return "请输入帖子内容";
+    }
+    if (normalizedValue.length < 20) {
+      return "内容至少 20 个字";
+    }
+    return undefined;
+  };
 
   useEffect(() => {
     form.setFieldsValue({
@@ -52,6 +64,7 @@ export default function PostEditorForm({
       content: initialValues?.content || "",
     });
     setContent(initialValues?.content || "");
+    setContentError(undefined);
   }, [form, initialValues]);
 
   const tagOptions = useMemo(
@@ -64,9 +77,14 @@ export default function PostEditorForm({
       form={form}
       layout="vertical"
       onFinish={async (values) => {
+        const nextContentError = getContentError(content);
+        if (nextContentError) {
+          setContentError(nextContentError);
+          return;
+        }
         await onSubmit({
           ...values,
-          content,
+          content: content.trim(),
         });
       }}
       initialValues={{
@@ -112,7 +130,8 @@ export default function PostEditorForm({
       <Form.Item
         label={<span className="font-bold text-slate-700">内容</span>}
         required
-        help="支持 Markdown，建议包含问题背景、你的做法、踩坑点和复盘。"
+        validateStatus={contentError ? "error" : undefined}
+        help={contentError || "支持 Markdown，建议包含问题背景、你的做法、踩坑点和复盘。"}
       >
         <div className="space-y-3">
           <MdEditor
@@ -120,6 +139,7 @@ export default function PostEditorForm({
             onChange={(nextValue) => {
               setContent(nextValue);
               form.setFieldValue("content", nextValue);
+              setContentError(getContentError(nextValue));
             }}
             placeholder={"建议结构：\n1. 面试背景或问题场景\n2. 你的回答/解决方案\n3. 面试官追问\n4. 你的复盘与建议"}
           />
@@ -133,16 +153,6 @@ export default function PostEditorForm({
       <Form.Item
         name="content"
         hidden
-        rules={[
-          { required: true, message: "请输入帖子内容" },
-          {
-            validator: async (_, value) => {
-              if (!value || String(value).trim().length < 20) {
-                throw new Error("内容至少 20 个字");
-              }
-            },
-          },
-        ]}
       >
         <Input />
       </Form.Item>
