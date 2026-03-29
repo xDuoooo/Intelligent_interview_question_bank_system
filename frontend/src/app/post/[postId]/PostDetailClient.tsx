@@ -25,22 +25,22 @@ export default function PostDetailClient({
     }
     let mounted = true;
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       getPostVoByIdUsingGet({ id: postId }),
       listRelatedPostUsingGet({ postId, size: 4 }),
     ])
-      .then(([postRes, relatedRes]) => {
+      .then(([postResult, relatedResult]) => {
         if (!mounted) {
           return;
         }
-        setPost(postRes.data);
-        setRelatedPostList(relatedRes.data || []);
-      })
-      .catch(() => {
-        if (!mounted) {
-          return;
+        if (postResult.status === "fulfilled") {
+          setPost(postResult.value.data);
+        } else {
+          setPost(undefined);
         }
-        setPost(undefined);
+        if (relatedResult.status === "fulfilled") {
+          setRelatedPostList(relatedResult.value.data || []);
+        }
       })
       .finally(() => {
         if (mounted) {

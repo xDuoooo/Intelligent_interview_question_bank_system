@@ -52,6 +52,8 @@ export default async function PostsPage() {
     console.error("获取我的帖子失败", myPostListResult.reason);
   }
 
+  const myPendingPostList = myPostList.filter((item) => Number(item.reviewStatus ?? 1) !== 1);
+
   return (
     <div className="max-width-content space-y-10">
       <section className="rounded-[3rem] border border-slate-100 bg-white px-8 py-12 shadow-2xl shadow-slate-200/40">
@@ -73,21 +75,21 @@ export default async function PostsPage() {
         </div>
       </section>
 
-      {myPostList.length ? (
+      {myPendingPostList.length ? (
         <section className="space-y-6">
           <div className="flex items-end justify-between">
             <div>
               <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">My Community</div>
-              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">我的社区投稿</h2>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">我的待处理投稿</h2>
               <p className="mt-2 text-sm leading-7 text-slate-500">
-                这里会展示你最近发布的帖子，包括待审核和已驳回内容，方便你直接回看和修改。
+                这里会展示你最近发布但尚未公开的帖子，方便你快速查看审核状态并回到个人中心继续修改。
               </p>
             </div>
             <Link href="/user/center?tab=posts" className="text-sm font-black text-slate-400 transition-colors hover:text-primary">
               去个人中心查看全部
             </Link>
           </div>
-          <PostList postList={myPostList} />
+          <PostList postList={myPendingPostList} getHref={() => "/user/center?tab=posts"} />
         </section>
       ) : null}
 

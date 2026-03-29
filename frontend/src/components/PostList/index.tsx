@@ -9,15 +9,16 @@ import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/con
 
 interface Props {
   postList: API.PostVO[];
+  getHref?: (post: API.PostVO) => string;
 }
 
-export default function PostList({ postList = [] }: Props) {
+export default function PostList({ postList = [], getHref }: Props) {
   return (
     <div className="grid gap-4">
       {postList.map((item) => (
         <Link
           key={item.id}
-          href={`/post/${item.id}`}
+          href={getHref?.(item) || `/post/${item.id}`}
           className="group flex flex-col gap-4 rounded-[2rem] border border-slate-100 bg-white p-6 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
         >
           <div className="flex items-start justify-between gap-4">
