@@ -65,12 +65,12 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                   {leaderboard.metricLabel || "完成题数"}
                 </div>
               </div>
-              <div className="rounded-[1.5rem] border border-white/80 bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-200/60">
-                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-white/55 whitespace-nowrap">
-                  <BookOpenText className="h-3.5 w-3.5" />
+              <div className="rounded-[1.5rem] border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 px-4 py-4 shadow-lg shadow-amber-100/50">
+                <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-amber-700/70 whitespace-nowrap">
+                  <BookOpenText className="h-3.5 w-3.5 text-amber-500" />
                   榜首成绩
                 </div>
-                <div className="mt-3 text-2xl font-black tracking-tight">
+                <div className="mt-3 text-2xl font-black tracking-tight text-slate-900">
                   {champion?.metricValue || 0}
                 </div>
               </div>
