@@ -67,6 +67,11 @@ export default function AdminLayout({ children }: Props) {
     { label: "全局设置", icon: Settings, href: "/admin/settings" },
   ];
 
+  const activeMenuHref =
+    menuItems
+      .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? "";
+
   return (
     <div id="adminLayout" className="flex flex-col lg:flex-row gap-8 pb-20">
       {/* Admin Sidebar Navigation */}
@@ -95,7 +100,7 @@ export default function AdminLayout({ children }: Props) {
 
             <nav className="mt-6 space-y-2">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const isActive = activeMenuHref === item.href;
                 return (
                   <Link
                     key={item.href}

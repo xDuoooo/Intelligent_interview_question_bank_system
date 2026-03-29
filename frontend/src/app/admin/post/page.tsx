@@ -2,9 +2,9 @@
 
 import React, { useRef, useState } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, Input, message, Modal, Popconfirm, Radio, Space, Switch, Tag } from "antd";
+import { Button, Input, message, Modal, Popconfirm, Radio, Switch, Tag } from "antd";
 import Link from "next/link";
-import { AlertTriangle, CheckCheck, Edit3, FilePlus2, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCheck, Edit3, FilePlus2, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import PostEditorForm from "@/components/PostEditorForm";
 import {
@@ -34,6 +34,27 @@ const PostAdminPage: React.FC = () => {
   const [reportRecords, setReportRecords] = useState<API.PostReportVO[]>([]);
   const [reportListLoading, setReportListLoading] = useState(false);
   const [reportProcessingId, setReportProcessingId] = useState<number>();
+
+  const governanceHighlights = [
+    {
+      title: "自动审核",
+      description: "普通发帖会先走规则和 AI 预审，降低人工筛查压力。",
+      badge: "内容预筛",
+      tone: "border-blue-100 bg-blue-50/70 text-blue-700",
+    },
+    {
+      title: "人工复核",
+      description: "命中风险规则或被举报的帖子会进入二审，避免误放或误杀。",
+      badge: "二次审核",
+      tone: "border-amber-100 bg-amber-50/70 text-amber-700",
+    },
+    {
+      title: "精选运营",
+      description: "支持精选与置顶，方便把高质量内容稳定展示在社区前排。",
+      badge: "内容运营",
+      tone: "border-violet-100 bg-violet-50/70 text-violet-700",
+    },
+  ];
 
   const handleDelete = async (id?: number) => {
     if (!id) {
@@ -119,9 +140,13 @@ const PostAdminPage: React.FC = () => {
       title: "标题",
       dataIndex: "title",
       valueType: "text",
+      width: 260,
       render: (_, record) => (
-        <Link href={`/post/${record.id}`} className="font-black text-slate-800 transition-colors hover:text-primary">
-          {record.title}
+        <Link
+          href={`/post/${record.id}`}
+          className="block max-w-[320px] text-sm font-black leading-6 text-slate-800 transition-colors hover:text-primary"
+        >
+          <span className="line-clamp-2">{record.title}</span>
         </Link>
       ),
     },
@@ -132,17 +157,23 @@ const PostAdminPage: React.FC = () => {
       hideInSearch: true,
       render: (_, record) => (
         <div className="flex flex-wrap gap-2">
-          {record.tagList?.map((tag) => (
+          {(record.tagList || []).slice(0, 3).map((tag) => (
             <Tag key={tag} className="m-0 rounded-full border-slate-200 bg-slate-50 px-3 py-1">
               {tag}
             </Tag>
           ))}
+          {(record.tagList?.length || 0) > 3 ? (
+            <Tag className="m-0 rounded-full border-slate-200 bg-white px-3 py-1 text-slate-500">
+              +{(record.tagList?.length || 0) - 3}
+            </Tag>
+          ) : null}
         </div>
       ),
     },
     {
       title: "作者",
       dataIndex: ["user", "userName"],
+      width: 140,
       hideInSearch: true,
       render: (_, record) => record.user?.userName || `用户 ${record.userId || "-"}`,
     },
@@ -223,7 +254,8 @@ const PostAdminPage: React.FC = () => {
       dataIndex: "reviewMessage",
       hideInSearch: true,
       ellipsis: true,
-      render: (text) => text || <span className="text-slate-300">-</span>,
+      width: 220,
+      render: (text) => text ? <div className="max-w-[220px] whitespace-normal leading-6 text-slate-600">{text}</div> : <span className="text-slate-300">-</span>,
     },
     {
       title: "创建时间",
@@ -236,26 +268,26 @@ const PostAdminPage: React.FC = () => {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
-      width: 260,
+      width: 320,
       render: (_, record) => (
-        <Space size="middle">
+        <div className="flex max-w-[320px] flex-wrap gap-2">
           <button
             onClick={() => setEditingPost(record)}
-            className="flex items-center gap-1.5 text-primary transition-colors hover:text-primary/80 font-bold"
+            className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100"
           >
             <Edit3 className="h-4 w-4" />
             编辑
           </button>
           <button
             onClick={() => openReviewModal(record)}
-            className="flex items-center gap-1.5 text-emerald-600 transition-colors hover:text-emerald-700 font-bold"
+            className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition hover:bg-emerald-100"
           >
             <CheckCheck className="h-4 w-4" />
             审核
           </button>
           <button
             onClick={() => openOperateModal(record)}
-            className="flex items-center gap-1.5 text-violet-600 transition-colors hover:text-violet-700 font-bold"
+            className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700 transition hover:bg-violet-100"
           >
             <Sparkles className="h-4 w-4" />
             运营
@@ -263,7 +295,7 @@ const PostAdminPage: React.FC = () => {
           {Number(record.reportNum || 0) > 0 ? (
             <button
               onClick={() => void openReportModal(record)}
-              className="flex items-center gap-1.5 text-amber-600 transition-colors hover:text-amber-700 font-bold"
+              className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100"
             >
               <AlertTriangle className="h-4 w-4" />
               举报
@@ -277,41 +309,61 @@ const PostAdminPage: React.FC = () => {
             okButtonProps={{ danger: true }}
             onConfirm={() => handleDelete(record.id)}
           >
-            <button className="flex items-center gap-1.5 text-red-500 transition-colors hover:text-red-600 font-bold">
+            <button className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100">
               <Trash2 className="h-4 w-4" />
               删除
             </button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col gap-6 rounded-[2.5rem] border border-white bg-white/70 p-8 shadow-2xl shadow-slate-200/40 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
-        <div className="space-y-3">
+      <div className="rounded-[2.5rem] border border-white bg-white/70 p-8 shadow-2xl shadow-slate-200/40 backdrop-blur-xl">
+        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
             <span className="h-2 w-2 rounded-full bg-primary" />
             Post Community
           </div>
             <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">社区管理</h1>
           <p className="text-lg font-medium text-slate-500">统一维护经验帖内容、举报治理与精选运营能力。</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/posts/create">
-            <Button className="h-12 rounded-2xl px-6 font-black">
-              前台发帖页
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/posts/create">
+              <Button className="h-12 rounded-2xl px-6 font-black">
+                前台发帖页
+              </Button>
+            </Link>
+            <Button
+              type="primary"
+              icon={<FilePlus2 size={16} />}
+              className="h-12 rounded-2xl px-6 font-black"
+              onClick={() => setCreateVisible(true)}
+            >
+              新建帖子
             </Button>
-          </Link>
-          <Button
-            type="primary"
-            icon={<FilePlus2 size={16} />}
-            className="h-12 rounded-2xl px-6 font-black"
-            onClick={() => setCreateVisible(true)}
-          >
-            新建帖子
-          </Button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {governanceHighlights.map((item) => (
+            <div
+              key={item.title}
+              className={`rounded-[1.6rem] border px-5 py-4 shadow-sm ${item.tone}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-base font-black">{item.title}</div>
+                <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {item.badge}
+                </div>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -320,7 +372,8 @@ const PostAdminPage: React.FC = () => {
           headerTitle={null}
           actionRef={actionRef}
           rowKey="id"
-          search={{ labelWidth: 80 }}
+          search={{ labelWidth: 80, defaultCollapsed: false }}
+          scroll={{ x: 1380 }}
           columns={columns}
           request={async (params, sort) => {
             const sortField = Object.keys(sort || {})?.[0];
