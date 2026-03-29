@@ -6,6 +6,7 @@ import { CalendarClock, Heart, ThumbsUp } from "lucide-react";
 import MdViewer from "@/components/MdViewer";
 import PostActionBar from "@/components/PostActionBar";
 import PostList from "@/components/PostList";
+import PostCommentSection from "@/components/PostCommentSection";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
@@ -91,6 +92,8 @@ export default function PostDetailContent({ post, relatedPostList = [] }: Props)
           </div>
         </div>
       </section>
+
+      <PostCommentSection postId={post.id ?? ""} />
 
       {relatedPostList.length ? (
         <section className="space-y-6">

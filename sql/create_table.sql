@@ -223,6 +223,31 @@ create table if not exists post_report
     index idx_status_createTime (status, createTime)
 ) comment '帖子举报' collate = utf8mb4_unicode_ci;
 
+-- 帖子评论
+create table if not exists post_comment
+(
+    id            bigint auto_increment comment 'id' primary key,
+    postId        bigint                             not null comment '帖子 id',
+    userId        bigint                             not null comment '发表者 id',
+    parentId      bigint                             null comment '父评论 id（null=顶级评论）',
+    replyToId     bigint                             null comment '回复的具体评论 id',
+    content       text                               not null comment '内容',
+    status        tinyint  default 0                 not null comment '状态：0正常 1待审核 2已驳回',
+    reviewMessage varchar(512)                       null comment '审核意见',
+    reviewUserId  bigint                             null comment '审核人 id',
+    reviewTime    datetime                           null comment '审核时间',
+    editTime      datetime default CURRENT_TIMESTAMP null comment '编辑时间',
+    createTime    datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime    datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete      tinyint  default 0                 not null comment '是否已删除',
+    index idx_postId (postId),
+    index idx_parentId (parentId),
+    index idx_userId (userId),
+    index idx_createTime (createTime),
+    index idx_post_parent_status_createTime (postId, parentId, status, createTime),
+    index idx_parent_status_createTime (parentId, status, createTime)
+) comment '帖子评论' collate = utf8mb4_unicode_ci;
+
 -- 题目评论表
 create table if not exists question_comment
 (

@@ -89,6 +89,11 @@ export const menus = [
         access: ACCESS_ENUM.ADMIN,
       },
       {
+        path: "/admin/post/comment",
+        name: "社区回复审核",
+        access: ACCESS_ENUM.ADMIN,
+      },
+      {
         path: "/admin/question/ai",
         name: "AI 出题",
         access: ACCESS_ENUM.ADMIN,

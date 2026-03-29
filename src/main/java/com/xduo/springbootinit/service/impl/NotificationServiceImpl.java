@@ -118,6 +118,9 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
                     return "/user/center?tab=posts";
                 }
                 return targetId != null && targetId > 0 ? "/post/" + targetId : "/user/center?tab=posts";
+            case "post_reply":
+            case "post_comment_review":
+                return targetId != null && targetId > 0 ? "/post/" + targetId + "#post-comment-section" : "/user/notifications";
             case "question_review":
                 if (title.contains("未通过") || content.contains("未通过")) {
                     return "/user/center?tab=submission";
