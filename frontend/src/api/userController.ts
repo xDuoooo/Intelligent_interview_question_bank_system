@@ -105,6 +105,20 @@ export async function getUserVoByIdUsingGet(
   });
 }
 
+/** getUserProfileVOById GET /api/user/profile/vo */
+export async function getUserProfileVoByIdUsingGet(
+  params: API.getUserProfileVOByIdUsingGETParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseUserProfileVO_>('/api/user/profile/vo', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** listUserByPage POST /api/user/list/page */
 export async function listUserByPageUsingPost(
   body: API.UserQueryRequest,

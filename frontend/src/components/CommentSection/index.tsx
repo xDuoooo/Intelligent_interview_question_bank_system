@@ -1,6 +1,5 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import { message, Modal } from "antd";
 import {
   ThumbsUp, MessageCircle, MoreHorizontal, Flag, Trash2,
@@ -18,9 +17,11 @@ import {
   pinComment,
   setOfficialAnswer,
 } from "@/api/commentController";
-import { cn, validateImageSrc } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
+import UserAvatar from "@/components/UserAvatar";
+import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
 interface Props {
   questionId: number;
@@ -35,27 +36,6 @@ function timeAgo(dateStr: string) {
   } catch {
     return dateStr;
   }
-}
-
-// ---------------------- 头像组件 ----------------------
-function Avatar({ src, name, size = 36 }: { src?: string | null; name?: string; size?: number }) {
-  const initials = (name || "?").charAt(0).toUpperCase();
-  const validSrc = validateImageSrc(src || undefined, "");
-  if (validSrc) {
-    return (
-      <div style={{ width: size, height: size }} className="rounded-full overflow-hidden ring-2 ring-white shadow-sm shrink-0">
-        <Image src={validSrc} width={size} height={size} alt={name || "用户"} className="object-cover" />
-      </div>
-    );
-  }
-  return (
-    <div
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
-      className="rounded-full bg-gradient-to-br from-primary/80 to-blue-500 flex items-center justify-center text-white font-black shrink-0 ring-2 ring-white shadow-sm"
-    >
-      {initials}
-    </div>
-  );
 }
 
 // ---------------------- 评论输入框 ----------------------
@@ -175,12 +155,24 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
   return (
     <div className={cn("group", depth > 0 && "ml-10 border-l-2 border-slate-100 pl-6 mt-4")}>
       <div className="flex gap-3 items-start">
-        <Avatar src={comment.user?.userAvatar} name={comment.user?.userName} size={depth === 0 ? 40 : 32} />
+        <UserProfileHoverCard user={comment.user} placement="rightTop">
+          <div>
+            <UserAvatar
+              src={comment.user?.userAvatar}
+              name={comment.user?.userName}
+              size={depth === 0 ? 40 : 32}
+            />
+          </div>
+        </UserProfileHoverCard>
 
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <span className="text-sm font-black text-slate-800">{comment.user?.userName || "匿名用户"}</span>
+            <UserProfileHoverCard user={comment.user} placement="topLeft">
+              <span className="text-sm font-black text-slate-800 transition-colors hover:text-primary">
+                {comment.user?.userName || "匿名用户"}
+              </span>
+            </UserProfileHoverCard>
             {comment.user?.userRole === "admin" && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">ADMIN</span>
             )}
@@ -205,9 +197,11 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
             "bg-slate-50/60 border border-slate-100"
           )}>
             {comment.replyToUser && (
-              <span className="text-primary font-bold mr-2">
-                回复 @{comment.replyToUser.userName}：
-              </span>
+              <UserProfileHoverCard user={comment.replyToUser} placement="topLeft">
+                <span className="mr-2 text-primary font-bold">
+                  回复 @{comment.replyToUser.userName}：
+                </span>
+              </UserProfileHoverCard>
             )}
             {comment.content}
           </div>
@@ -540,7 +534,7 @@ export default function CommentSection({ questionId }: Props) {
       {/* Input box */}
       {loginUser?.id ? (
         <div className="flex gap-3 items-start">
-          <Avatar src={loginUser.userAvatar} name={loginUser.userName} size={40} />
+          <UserAvatar src={loginUser.userAvatar} name={loginUser.userName} size={40} />
           <div className="flex-1">
             <CommentInput
               placeholder={replyState ? `回复 @${replyState.replyToName}...` : "分享你对这道题的见解、笔记或疑惑...  (Ctrl+Enter 快速发布)"}

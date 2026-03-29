@@ -179,6 +179,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseUserProfileVO_ = {
+    code?: number;
+    data?: UserProfileVO;
+    message?: string;
+  };
+
   type BaseResponsePageUserQuestionHistoryVO_ = {
     code?: number;
     data?: PageUserQuestionHistoryVO_;
@@ -299,6 +305,11 @@ declare namespace API {
   };
 
   type getUserVOByIdUsingGETParams = {
+    /** id */
+    id?: number;
+  };
+
+  type getUserProfileVOByIdUsingGETParams = {
     /** id */
     id?: number;
   };
@@ -1008,9 +1019,15 @@ declare namespace API {
     userName?: string;
     userProfile?: string;
     userRole?: string;
-    githubId?: string;
-    giteeId?: string;
-    googleId?: string;
+  };
+
+  type UserProfileVO = {
+    activeDays?: number;
+    approvedQuestionCount?: number;
+    currentStreak?: number;
+    masteredQuestionCount?: number;
+    totalQuestionCount?: number;
+    user?: UserVO;
   };
   type UserQuestionHistoryVO = {
     createTime?: string;

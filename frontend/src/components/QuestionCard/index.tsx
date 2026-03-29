@@ -4,7 +4,9 @@ import dynamic from "next/dynamic";
 import TagList from "@/components/TagList";
 import MdViewer from "@/components/MdViewer";
 import useAddUserSignInRecord from "@/hooks/useAddUserSignInRecord";
-import { Sparkles, CheckCircle2, Heart } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
+import UserProfileHoverCard from "@/components/UserProfileHoverCard";
+import { Sparkles, CheckCircle2, Heart, CalendarClock } from "lucide-react";
 import { Button, message, Segmented, Space, Typography } from "antd";
 import { doQuestionFavourUsingPost } from "@/api/questionFavourController";
 import { addQuestionHistoryUsingPost } from "@/api/userQuestionHistoryController";
@@ -91,9 +93,36 @@ const QuestionCard = (props: Props) => {
 
         <div className="space-y-6 relative z-10">
           <div className="flex justify-between items-start gap-4">
-            <h1 className="text-3xl sm:text-4xl font-black text-foreground leading-tight">
-              {question.title}
-            </h1>
+            <div className="space-y-4">
+              <h1 className="text-3xl sm:text-4xl font-black text-foreground leading-tight">
+                {question.title}
+              </h1>
+              {question.user?.id ? (
+                <UserProfileHoverCard user={question.user} placement="bottomLeft">
+                  <div className="inline-flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 transition-all hover:border-primary/20 hover:bg-white">
+                    <UserAvatar
+                      src={question.user.userAvatar}
+                      name={question.user.userName}
+                      size={38}
+                    />
+                    <div className="min-w-0 text-left">
+                      <div className="truncate text-sm font-black text-slate-800 transition-colors hover:text-primary">
+                        {question.user.userName || "匿名用户"}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span>{question.user.userRole === "admin" ? "管理员" : "题目贡献者"}</span>
+                        {question.createTime ? (
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            {new Date(question.createTime).toLocaleDateString("zh-CN")}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </UserProfileHoverCard>
+              ) : null}
+            </div>
             <Space direction="vertical" align="end">
               <Button
                 type="text"

@@ -1,5 +1,7 @@
 import React from "react";
 import { Crown, Users } from "lucide-react";
+import UserAvatar from "@/components/UserAvatar";
+import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
 interface Props {
   leaderboard?: API.QuestionBankLeaderboardVO;
@@ -40,15 +42,20 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
               key={`bank-rank-${item.userId}`}
               className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3"
             >
-              <div className="min-w-0 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
-                  {item.rank}
+              <UserProfileHoverCard user={item} placement="topLeft">
+                <div className="min-w-0 flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
+                    {item.rank}
+                  </div>
+                  <UserAvatar src={item.userAvatar} name={item.userName} size={38} />
+                  <div className="min-w-0">
+                    <div className="truncate font-semibold text-slate-800 transition-colors hover:text-primary">
+                      {item.userName || "匿名用户"}
+                    </div>
+                    <div className="text-xs text-slate-500">{item.userRole === "admin" ? "管理员" : "学习者"}</div>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <div className="truncate font-semibold text-slate-800">{item.userName || "匿名用户"}</div>
-                  <div className="text-xs text-slate-500">{item.userRole === "admin" ? "管理员" : "学习者"}</div>
-                </div>
-              </div>
+              </UserProfileHoverCard>
               <div className="shrink-0 text-right">
                 <div className="font-black text-slate-900">{item.metricValue || 0}</div>
                 <div className="text-xs text-slate-500">{item.metricText}</div>
@@ -66,10 +73,21 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
         <div className="mt-6 rounded-2xl border border-dashed border-primary/20 bg-primary/5 px-4 py-3">
           <div className="text-xs font-black uppercase tracking-wider text-primary">我在本题库的排名</div>
           <div className="mt-2 flex items-center justify-between gap-4">
-            <div>
-              <div className="font-semibold text-slate-800">{leaderboard.currentUserItem.userName || "当前用户"}</div>
-              <div className="text-sm text-slate-500">第 {leaderboard.currentUserItem.rank || "-"} 名</div>
-            </div>
+            <UserProfileHoverCard user={leaderboard.currentUserItem} placement="topLeft">
+              <div className="flex items-center gap-3">
+                <UserAvatar
+                  src={leaderboard.currentUserItem.userAvatar}
+                  name={leaderboard.currentUserItem.userName}
+                  size={38}
+                />
+                <div>
+                  <div className="font-semibold text-slate-800 transition-colors hover:text-primary">
+                    {leaderboard.currentUserItem.userName || "当前用户"}
+                  </div>
+                  <div className="text-sm text-slate-500">第 {leaderboard.currentUserItem.rank || "-"} 名</div>
+                </div>
+              </div>
+            </UserProfileHoverCard>
             <div className="text-right">
               <div className="font-black text-slate-900">{leaderboard.currentUserItem.metricValue || 0}</div>
               <div className="text-xs text-slate-500">{leaderboard.currentUserItem.metricText}</div>
