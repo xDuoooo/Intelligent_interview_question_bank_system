@@ -160,8 +160,10 @@ public class QuestionBankController {
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<QuestionBank>> listQuestionBankByPage(
             @RequestBody QuestionBankQueryRequest questionBankQueryRequest) {
+        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 100, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         // 查询数据库
         Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
                 questionBankService.getQueryWrapper(questionBankQueryRequest));
@@ -179,6 +181,7 @@ public class QuestionBankController {
     public BaseResponse<Page<QuestionBankVO>> listQuestionBankVOByPage(
             @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
             HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
         long current = questionBankQueryRequest.getCurrent();
         long size = questionBankQueryRequest.getPageSize();
         Entry entry = null;
@@ -186,7 +189,7 @@ public class QuestionBankController {
         try {
             entry = SphU.entry("listQuestionBankVOByPage", EntryType.IN, 1, remoteAddr);
             // 限制爬虫
-            ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);
+            ThrowUtils.throwIf(current < 1 || size < 1 || size > 100, ErrorCode.PARAMS_ERROR, "分页参数不合法");
             // 查询数据库
             Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
                     questionBankService.getQueryWrapper(questionBankQueryRequest));
