@@ -63,6 +63,21 @@ public class PostEsDTO implements Serializable {
     private Long userId;
 
     /**
+     * 审核状态
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 是否置顶
+     */
+    private Integer isTop;
+
+    /**
+     * 是否精选
+     */
+    private Integer isFeatured;
+
+    /**
      * 创建时间
      */
     @Field(index = false, store = true, type = FieldType.Date, format = {}, pattern = DATE_TIME_PATTERN)

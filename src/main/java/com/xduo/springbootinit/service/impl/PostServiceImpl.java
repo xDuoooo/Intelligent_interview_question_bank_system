@@ -122,7 +122,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
-        queryWrapper.eq(reviewStatus != null && PostConstant.ALLOWED_REVIEW_STATUS_SET.contains(reviewStatus), "reviewStatus", reviewStatus);
+        if (reviewStatus != null && PostConstant.ALLOWED_REVIEW_STATUS_SET.contains(reviewStatus)) {
+            if (PostConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+                queryWrapper.and(qw -> qw.eq("reviewStatus", reviewStatus).or().isNull("reviewStatus"));
+            } else {
+                queryWrapper.eq("reviewStatus", reviewStatus);
+            }
+        }
         queryWrapper.eq(isTop != null, "isTop", isTop);
         queryWrapper.eq(isFeatured != null, "isFeatured", isFeatured);
         queryWrapper.orderByDesc("isTop", "isFeatured");
@@ -155,7 +161,14 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         // 过滤
         boolQueryBuilder.filter(f -> f.term(t -> t.field("isDelete").value(0)));
         if (reviewStatus != null && PostConstant.ALLOWED_REVIEW_STATUS_SET.contains(reviewStatus)) {
-            boolQueryBuilder.filter(f -> f.term(t -> t.field("reviewStatus").value(reviewStatus)));
+            if (PostConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+                boolQueryBuilder.filter(f -> f.bool(b -> b
+                        .should(s -> s.term(t -> t.field("reviewStatus").value(reviewStatus)))
+                        .should(s -> s.bool(bb -> bb.mustNot(m -> m.exists(e -> e.field("reviewStatus")))))
+                        .minimumShouldMatch("1")));
+            } else {
+                boolQueryBuilder.filter(f -> f.term(t -> t.field("reviewStatus").value(reviewStatus)));
+            }
         }
         if (id != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("id").value(id)));
@@ -338,7 +351,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     public List<PostVO> listHotPostVO(int size, HttpServletRequest request) {
         int safeSize = Math.max(1, Math.min(size, 12));
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED);
+        queryWrapper.and(qw -> qw.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
         queryWrapper.orderByDesc("thumbNum", "favourNum", "createTime");
         queryWrapper.last("limit " + safeSize * 3);
         List<Post> candidateList = this.list(queryWrapper);
@@ -364,7 +377,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         List<String> currentTagList = PostVO.objToVo(currentPost).getTagList();
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
         queryWrapper.ne("id", postId);
-        queryWrapper.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED);
+        queryWrapper.and(qw -> qw.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
         if (CollUtil.isNotEmpty(currentTagList)) {
             queryWrapper.and(qw -> {
                 for (int i = 0; i < currentTagList.size(); i++) {

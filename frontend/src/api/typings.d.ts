@@ -642,7 +642,13 @@ declare namespace API {
     createTime?: string;
     favourNum?: number;
     id?: number;
+    isFeatured?: number;
     isDelete?: number;
+    isTop?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
+    reviewUserId?: number;
     tags?: string;
     thumbNum?: number;
     title?: string;
@@ -676,20 +682,35 @@ declare namespace API {
     userId?: number;
   };
 
+  type PostOperateRequest = {
+    id?: number;
+    isFeatured?: number;
+    isTop?: number;
+  };
+
   type PostQueryRequest = {
     content?: string;
     current?: number;
     favourUserId?: number;
     id?: number;
+    isFeatured?: number;
+    isTop?: number;
     notId?: number;
     orTags?: string[];
     pageSize?: number;
+    reviewStatus?: number;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     tags?: string[];
     title?: string;
     userId?: number;
+  };
+
+  type PostReviewRequest = {
+    id?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
   };
 
   type PostThumbAddRequest = {
@@ -710,6 +731,11 @@ declare namespace API {
     hasFavour?: boolean;
     hasThumb?: boolean;
     id?: number;
+    isFeatured?: number;
+    isTop?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
     tagList?: string[];
     thumbNum?: number;
     title?: string;

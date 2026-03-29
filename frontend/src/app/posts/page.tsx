@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { searchPostVoByPageUsingPost } from "@/api/postController";
+import { listPostVoByPageUsingPost } from "@/api/postController";
 import PostList from "@/components/PostList";
 import { FilePlus2 } from "lucide-react";
 
@@ -10,7 +10,7 @@ export default async function PostsPage() {
   const cookie = headers().get("cookie") || "";
   let postList: API.PostVO[] = [];
   try {
-    const res = await searchPostVoByPageUsingPost(
+    const res = await listPostVoByPageUsingPost(
       {
         current: 1,
         pageSize: 12,

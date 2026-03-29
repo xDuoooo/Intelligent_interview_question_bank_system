@@ -10,6 +10,7 @@ import {
   listMyPostVoByPageUsingPost,
 } from "@/api/postController";
 import PostEditorForm from "@/components/PostEditorForm";
+import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
 
 export default function MyPostList() {
   const [postList, setPostList] = useState<API.PostVO[]>([]);
@@ -89,6 +90,15 @@ export default function MyPostList() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
+                      <Tag color={POST_REVIEW_STATUS_COLOR_MAP[Number(item.reviewStatus ?? 1)] || "default"} className="m-0 rounded-full px-3 py-1 font-bold">
+                        {POST_REVIEW_STATUS_TEXT_MAP[Number(item.reviewStatus ?? 1)] || "未知状态"}
+                      </Tag>
+                      {Number(item.isTop || 0) > 0 ? (
+                        <Tag color="gold" className="m-0 rounded-full px-3 py-1 font-bold">置顶</Tag>
+                      ) : null}
+                      {Number(item.isFeatured || 0) > 0 ? (
+                        <Tag color="purple" className="m-0 rounded-full px-3 py-1 font-bold">精选</Tag>
+                      ) : null}
                       {item.tagList?.map((tag) => (
                         <Tag key={tag} className="m-0 rounded-full border-slate-200 bg-slate-50 px-3 py-1">
                           {tag}
@@ -104,6 +114,11 @@ export default function MyPostList() {
                     <p className="line-clamp-3 max-w-4xl text-sm leading-7 text-slate-500">
                       {item.content}
                     </p>
+                    {item.reviewMessage ? (
+                      <div className="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 text-sm text-amber-700">
+                        审核说明：{item.reviewMessage}
+                      </div>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-slate-400">
                       <span className="inline-flex items-center gap-1">
                         <CalendarClock className="h-4 w-4" />

@@ -84,6 +84,21 @@ export async function listRelatedPostUsingGet(
   });
 }
 
+/** operatePost POST /api/post/operate */
+export async function operatePostUsingPost(
+  body: API.PostOperateRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/post/operate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** listPostByPage POST /api/post/list/page */
 export async function listPostByPageUsingPost(
   body: API.PostQueryRequest,
@@ -135,6 +150,21 @@ export async function searchPostVoByPageUsingPost(
   options?: { [key: string]: any },
 ) {
   return request<API.BaseResponsePagePostVO_>('/api/post/search/page/vo', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** reviewPost POST /api/post/review */
+export async function reviewPostUsingPost(
+  body: API.PostReviewRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/post/review', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
