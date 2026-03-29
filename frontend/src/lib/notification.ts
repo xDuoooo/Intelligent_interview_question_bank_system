@@ -22,6 +22,9 @@ export function getNotificationTargetUrl(item?: {
         return "/user/center?tab=posts";
       }
       return targetId > 0 ? `/post/${targetId}` : "/user/center?tab=posts";
+    case "post_reply":
+    case "post_comment_review":
+      return targetId > 0 ? `/post/${targetId}#post-comment-section` : "/user/notifications";
     case "question_review":
       if (title.includes("未通过") || content.includes("未通过")) {
         return "/user/center?tab=submission";

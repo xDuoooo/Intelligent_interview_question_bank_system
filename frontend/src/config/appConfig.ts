@@ -34,7 +34,7 @@ export const APP_CONFIG = {
     statusText: "System Status: Operational",
     notesTitle: "我的学习笔记",
     notesDescription: ["公众号", "扫描上方二维码，", "即可前往查看。"],
-    githubUrl: "https://github.com/xduo",
+    githubUrl: "https://github.com/xDuoooo",
     githubLabel: "View GitHub",
     icp: "京ICP备XXXXXXXX号-1",
   },
