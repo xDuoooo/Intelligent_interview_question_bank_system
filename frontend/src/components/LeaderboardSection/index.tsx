@@ -114,30 +114,30 @@ export default function LeaderboardSection({ leaderboard }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-2 2xl:min-w-[620px] 2xl:grid-cols-3">
+          <div className="grid gap-4 xl:grid-cols-2 2xl:min-w-[760px] 2xl:grid-cols-3">
             {boardList.map((board) => {
               const theme = getBoardTheme(board.key);
               return (
                 <div
                   key={`summary-${board.key}`}
-                  className={`rounded-[1.75rem] border px-4 py-4 shadow-sm backdrop-blur sm:min-h-[156px] ${theme.badge}`}
+                  className={`rounded-[1.9rem] border px-5 py-5 shadow-sm backdrop-blur sm:min-h-[180px] ${theme.badge}`}
                 >
                   <div className="flex items-center gap-3">
                     <span className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 ${theme.accentText}`}>
                       {theme.icon}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-black leading-tight text-slate-900 whitespace-normal">
+                      <div className="break-keep text-sm font-black leading-tight text-slate-900">
                         {board.title}
                       </div>
-                      <div className="mt-1 text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-normal leading-tight">
+                      <div className="mt-1 text-[11px] font-bold tracking-[0.14em] text-slate-400">
                         {board.metricLabel}
                       </div>
                     </div>
                   </div>
                   {board.rankingList?.[0]?.userName ? (
-                    <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="min-w-[110px] shrink-0">
+                    <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(120px,auto)] xl:items-end">
+                      <div className="min-w-0">
                         <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                           当前榜首
                         </div>
@@ -145,26 +145,24 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                           {getBoardSummary(board)}
                         </div>
                       </div>
-                      <div className="sm:min-w-[144px] sm:text-right">
+                      <div className="min-w-0 xl:text-right">
                         <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                           冠军
                         </div>
-                        <div className="mt-1 text-sm font-black leading-tight text-slate-900 break-keep whitespace-normal">
+                        <div className="mt-1 break-keep text-sm font-black leading-tight text-slate-900">
                           {board.rankingList[0].userName}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-5 rounded-[1.35rem] border border-dashed border-slate-200 bg-white/75 px-4 py-4">
+                    <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-white/80 px-4 py-4">
                       <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                         当前榜首
                       </div>
-                      <div className="mt-3 flex items-end justify-between gap-4">
-                        <div>
-                          <div className="text-3xl font-black tracking-tight text-slate-900">0</div>
-                        </div>
-                        <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500 whitespace-nowrap">
-                          暂无榜首
+                      <div className="mt-3 space-y-2">
+                        <div className="text-3xl font-black tracking-tight text-slate-900">0</div>
+                        <div className="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+                          暂未形成排行
                         </div>
                       </div>
                     </div>
@@ -216,7 +214,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                 </div>
 
                 {champion ? (
-                  <div className="mt-6 grid gap-4 rounded-[1.8rem] border border-white/80 bg-white/80 p-4 shadow-lg shadow-white/50 xl:grid-cols-[minmax(0,1fr)_140px] xl:items-center">
+                  <div className="mt-6 grid gap-4 rounded-[1.8rem] border border-white/80 bg-white/85 p-4 shadow-lg shadow-white/50 xl:grid-cols-[minmax(0,1fr)_160px] xl:items-center">
                     <UserProfileHoverCard user={champion} placement="topLeft">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] ${theme.champion}`}>
@@ -224,7 +222,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                         </div>
                         <UserAvatar src={champion.userAvatar} name={champion.userName} size={48} />
                         <div className="min-w-0">
-                          <div className="text-lg font-black leading-tight text-slate-900 whitespace-normal">
+                          <div className="break-keep text-lg font-black leading-tight text-slate-900">
                             {champion.userName || "匿名用户"}
                           </div>
                           <div className="mt-1 text-sm text-slate-500">
@@ -234,11 +232,11 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </UserProfileHoverCard>
 
-                    <div className="rounded-[1.35rem] bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-200/60 xl:text-right">
-                      <div className="text-[11px] font-bold tracking-[0.16em] leading-tight text-white/55 break-keep whitespace-nowrap">
+                    <div className={`rounded-[1.35rem] border bg-gradient-to-br px-4 py-4 shadow-lg xl:text-right ${theme.panel} ${theme.accentSoft}`}>
+                      <div className={`text-[11px] font-bold tracking-[0.14em] leading-tight whitespace-nowrap ${theme.accentText}`}>
                         {champion.metricText || board.metricLabel}
                       </div>
-                      <div className="mt-2 text-3xl font-black tracking-tight">
+                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
                         {champion.metricValue || 0}
                       </div>
                     </div>
@@ -259,7 +257,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_96px_132px] xl:items-center">
+                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_104px_144px] xl:items-center">
                       <UserProfileHoverCard user={board.currentUserItem} placement="topLeft">
                         <div className="flex min-w-0 items-center gap-3">
                           <UserAvatar
@@ -268,7 +266,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                             size={40}
                           />
                           <div className="min-w-0">
-                            <div className="text-base font-black leading-tight text-slate-900 whitespace-normal">
+                            <div className="break-keep text-base font-black leading-tight text-slate-900">
                               {board.currentUserItem.userName || "当前用户"}
                             </div>
                             <div className="mt-1 text-sm text-slate-500">
@@ -279,7 +277,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </UserProfileHoverCard>
 
                       <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 whitespace-nowrap">排名</div>
+                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 whitespace-nowrap">排名</div>
                         <div className="mt-1 text-xl font-black text-slate-900">
                           #{board.currentUserItem.rank || "-"}
                         </div>
@@ -317,7 +315,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                             </div>
                             <UserAvatar src={item.userAvatar} name={item.userName} size={40} />
                             <div className="min-w-0">
-                              <div className="font-black leading-tight text-slate-900 whitespace-normal">
+                              <div className="break-keep font-black leading-tight text-slate-900">
                                 {item.userName || "匿名用户"}
                               </div>
                               <div className="mt-1 text-xs text-slate-500">
@@ -327,8 +325,8 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                           </div>
                         </UserProfileHoverCard>
 
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[150px] xl:justify-end">
-                          <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
+                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[172px] xl:justify-end">
+                          <div className="text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
                             {item.metricText || board.metricLabel}
                           </div>
                           <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">

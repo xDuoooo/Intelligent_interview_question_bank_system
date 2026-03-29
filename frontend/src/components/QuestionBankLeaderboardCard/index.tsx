@@ -55,13 +55,13 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 sm:min-w-[220px]">
+            <div className="grid gap-3 sm:grid-cols-2 sm:min-w-[260px]">
               <div className="rounded-[1.5rem] border border-white/80 bg-white/85 px-4 py-4 shadow-lg shadow-white/50">
                 <div className="flex items-center gap-2 text-[11px] font-black tracking-[0.14em] text-slate-400 whitespace-nowrap">
                   <Users className="h-3.5 w-3.5 text-primary" />
                   榜单维度
                 </div>
-                <div className="mt-3 text-lg font-black leading-tight text-slate-900 whitespace-normal">
+                <div className="mt-3 break-keep text-lg font-black leading-tight text-slate-900">
                   {leaderboard.metricLabel || "完成题数"}
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                     </div>
                     <UserAvatar src={champion.userAvatar} name={champion.userName} size={48} />
                     <div className="min-w-0">
-                      <div className="text-lg font-black leading-tight text-slate-900 whitespace-normal">
+                      <div className="break-keep text-lg font-black leading-tight text-slate-900">
                         {champion.userName || "匿名用户"}
                       </div>
                       <div className="mt-1 text-sm text-slate-500">
@@ -125,7 +125,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </div>
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_96px_132px] xl:items-center">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_104px_144px] xl:items-center">
                 <UserProfileHoverCard user={leaderboard.currentUserItem} placement="topLeft">
                   <div className="flex min-w-0 items-center gap-3">
                     <UserAvatar
@@ -134,7 +134,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                       size={40}
                     />
                     <div className="min-w-0">
-                      <div className="text-base font-black leading-tight text-slate-900 whitespace-normal">
+                      <div className="break-keep text-base font-black leading-tight text-slate-900">
                         {leaderboard.currentUserItem.userName || "当前用户"}
                       </div>
                       <div className="mt-1 text-sm text-slate-500">
@@ -152,7 +152,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                 </div>
 
                 <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                  <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
+                  <div className="text-[11px] font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
                     {leaderboard.currentUserItem.metricText || leaderboard.metricLabel || "完成题数"}
                   </div>
                   <div className="mt-1 text-xl font-black text-slate-900">
@@ -181,7 +181,7 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                       </div>
                       <UserAvatar src={item.userAvatar} name={item.userName} size={40} />
                       <div className="min-w-0">
-                        <div className="font-black leading-tight text-slate-900 whitespace-normal">
+                        <div className="break-keep font-black leading-tight text-slate-900">
                           {item.userName || "匿名用户"}
                         </div>
                         <div className="mt-1 text-xs text-slate-500">
@@ -191,8 +191,8 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
                     </div>
                   </UserProfileHoverCard>
 
-                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[150px] xl:justify-end">
-                    <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[172px] xl:justify-end">
+                    <div className="text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
                       {item.metricText || leaderboard.metricLabel || "完成题数"}
                     </div>
                     <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">
