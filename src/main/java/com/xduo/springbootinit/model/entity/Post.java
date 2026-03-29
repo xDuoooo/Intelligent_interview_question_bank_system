@@ -54,6 +54,36 @@ public class Post implements Serializable {
     private Long userId;
 
     /**
+     * 审核状态：0-待审核 1-已通过 2-已驳回
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 审核意见
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核人 id
+     */
+    private Long reviewUserId;
+
+    /**
+     * 审核时间
+     */
+    private Date reviewTime;
+
+    /**
+     * 是否置顶
+     */
+    private Integer isTop;
+
+    /**
+     * 是否精选
+     */
+    private Integer isFeatured;
+
+    /**
      * 创建时间
      */
     private Date createTime;

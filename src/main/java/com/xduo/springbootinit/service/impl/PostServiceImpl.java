@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.PageRequest;
 import com.xduo.springbootinit.constant.CommonConstant;
+import com.xduo.springbootinit.constant.PostConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.PostFavourMapper;
@@ -104,6 +105,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         List<String> tagList = postQueryRequest.getTags();
         Long userId = postQueryRequest.getUserId();
         Long notId = postQueryRequest.getNotId();
+        Integer reviewStatus = postQueryRequest.getReviewStatus();
+        Integer isTop = postQueryRequest.getIsTop();
+        Integer isFeatured = postQueryRequest.getIsFeatured();
         // 拼接查询条件
         if (StringUtils.isNotBlank(searchText)) {
             queryWrapper.and(qw -> qw.like("title", searchText).or().like("content", searchText));
@@ -118,6 +122,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
+        queryWrapper.eq(reviewStatus != null && PostConstant.ALLOWED_REVIEW_STATUS_SET.contains(reviewStatus), "reviewStatus", reviewStatus);
+        queryWrapper.eq(isTop != null, "isTop", isTop);
+        queryWrapper.eq(isFeatured != null, "isFeatured", isFeatured);
+        queryWrapper.orderByDesc("isTop", "isFeatured");
         queryWrapper.orderBy(SqlUtils.validSortField(sortField), CommonConstant.SORT_ORDER_ASC.equals(sortOrder),
                 sortField);
         return queryWrapper;
@@ -133,6 +141,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         List<String> tagList = postQueryRequest.getTags();
         List<String> orTagList = postQueryRequest.getOrTags();
         Long userId = postQueryRequest.getUserId();
+        Integer reviewStatus = postQueryRequest.getReviewStatus();
+        Integer isTop = postQueryRequest.getIsTop();
+        Integer isFeatured = postQueryRequest.getIsFeatured();
         // es 起始页为 0
         long current = Math.max(0, postQueryRequest.getCurrent() - 1);
         long pageSize = postQueryRequest.getPageSize();
@@ -143,6 +154,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
         // 过滤
         boolQueryBuilder.filter(f -> f.term(t -> t.field("isDelete").value(0)));
+        if (reviewStatus != null && PostConstant.ALLOWED_REVIEW_STATUS_SET.contains(reviewStatus)) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("reviewStatus").value(reviewStatus)));
+        }
         if (id != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("id").value(id)));
         }
@@ -151,6 +165,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }
         if (userId != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("userId").value(userId)));
+        }
+        if (isTop != null) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("isTop").value(isTop)));
+        }
+        if (isFeatured != null) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("isFeatured").value(isFeatured)));
         }
         // 必须包含所有标签
         if (CollUtil.isNotEmpty(tagList)) {
@@ -318,6 +338,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
     public List<PostVO> listHotPostVO(int size, HttpServletRequest request) {
         int safeSize = Math.max(1, Math.min(size, 12));
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED);
         queryWrapper.orderByDesc("thumbNum", "favourNum", "createTime");
         queryWrapper.last("limit " + safeSize * 3);
         List<Post> candidateList = this.list(queryWrapper);
@@ -343,6 +364,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         List<String> currentTagList = PostVO.objToVo(currentPost).getTagList();
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
         queryWrapper.ne("id", postId);
+        queryWrapper.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED);
         if (CollUtil.isNotEmpty(currentTagList)) {
             queryWrapper.and(qw -> {
                 for (int i = 0; i < currentTagList.size(); i++) {

@@ -7,22 +7,29 @@ import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.constant.PostConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.post.PostAddRequest;
 import com.xduo.springbootinit.model.dto.post.PostEditRequest;
+import com.xduo.springbootinit.model.dto.post.PostOperateRequest;
 import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
+import com.xduo.springbootinit.model.dto.post.PostReviewRequest;
 import com.xduo.springbootinit.model.dto.post.PostUpdateRequest;
 import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.PostVO;
+import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.manager.AiManager;
 import java.util.List;
+import java.util.Date;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,6 +51,12 @@ public class PostController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private NotificationService notificationService;
+
+    @Resource
+    private AiManager aiManager;
 
     // region 增删改查
 
@@ -70,6 +83,7 @@ public class PostController {
         post.setUserId(loginUser.getId());
         post.setFavourNum(0);
         post.setThumbNum(0);
+        applyPostReviewPolicy(post, loginUser, true);
         boolean result = postService.save(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         long newPostId = post.getId();
@@ -144,6 +158,10 @@ public class PostController {
         if (post == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
+        User loginUser = userService.getLoginUserPermitNull(request);
+        if (!isPostVisible(post, loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "帖子暂不可见");
+        }
         return ResultUtils.success(postService.getPostVO(post, request));
     }
 
@@ -195,6 +213,7 @@ public class PostController {
     public BaseResponse<Page<PostVO>> listPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
         ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        postQueryRequest.setReviewStatus(PostConstant.REVIEW_STATUS_APPROVED);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
@@ -241,6 +260,7 @@ public class PostController {
     public BaseResponse<Page<PostVO>> searchPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
         ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        postQueryRequest.setReviewStatus(PostConstant.REVIEW_STATUS_APPROVED);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
@@ -284,8 +304,188 @@ public class PostController {
         if (!oldPost.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        applyPostReviewPolicy(post, loginUser, false);
         boolean result = postService.updateById(post);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 审核帖子（仅管理员）
+     */
+    @PostMapping("/review")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> reviewPost(@RequestBody PostReviewRequest postReviewRequest,
+                                            HttpServletRequest request) {
+        ThrowUtils.throwIf(postReviewRequest == null || postReviewRequest.getId() == null || postReviewRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        Integer reviewStatus = postReviewRequest.getReviewStatus();
+        ThrowUtils.throwIf(reviewStatus == null || !PostConstant.ALLOWED_ADMIN_REVIEW_STATUS_SET.contains(reviewStatus),
+                ErrorCode.PARAMS_ERROR, "审核状态不合法");
+        String reviewMessage = StringUtils.trimToNull(postReviewRequest.getReviewMessage());
+        if (PostConstant.REVIEW_STATUS_REJECTED == reviewStatus) {
+            ThrowUtils.throwIf(StringUtils.isBlank(reviewMessage), ErrorCode.PARAMS_ERROR, "驳回时请填写审核意见");
+        }
+        ThrowUtils.throwIf(StringUtils.length(reviewMessage) > 512, ErrorCode.PARAMS_ERROR, "审核意见过长");
+        User adminUser = userService.getLoginUser(request);
+        Post oldPost = postService.getById(postReviewRequest.getId());
+        ThrowUtils.throwIf(oldPost == null, ErrorCode.NOT_FOUND_ERROR);
+
+        Post updatePost = new Post();
+        updatePost.setId(oldPost.getId());
+        updatePost.setReviewStatus(reviewStatus);
+        updatePost.setReviewMessage(reviewMessage);
+        updatePost.setReviewUserId(adminUser.getId());
+        updatePost.setReviewTime(new Date());
+        boolean result = postService.updateById(updatePost);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+
+        notificationService.sendNotification(
+                oldPost.getUserId(),
+                PostConstant.REVIEW_STATUS_APPROVED == reviewStatus ? "你的帖子已审核通过" : "你的帖子未通过审核",
+                buildPostReviewNotificationContent(oldPost, reviewStatus, reviewMessage),
+                "post_review",
+                oldPost.getId()
+        );
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 帖子运营设置（仅管理员）
+     */
+    @PostMapping("/operate")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> operatePost(@RequestBody PostOperateRequest postOperateRequest) {
+        ThrowUtils.throwIf(postOperateRequest == null || postOperateRequest.getId() == null || postOperateRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        Post oldPost = postService.getById(postOperateRequest.getId());
+        ThrowUtils.throwIf(oldPost == null, ErrorCode.NOT_FOUND_ERROR);
+        Post updatePost = new Post();
+        updatePost.setId(oldPost.getId());
+        if (postOperateRequest.getIsTop() != null) {
+            updatePost.setIsTop(postOperateRequest.getIsTop() > 0 ? 1 : 0);
+        }
+        if (postOperateRequest.getIsFeatured() != null) {
+            updatePost.setIsFeatured(postOperateRequest.getIsFeatured() > 0 ? 1 : 0);
+        }
+        boolean result = postService.updateById(updatePost);
+        return ResultUtils.success(result);
+    }
+
+    private void applyPostReviewPolicy(Post post, User operator, boolean add) {
+        if (userService.isAdmin(operator)) {
+            post.setReviewStatus(PostConstant.REVIEW_STATUS_APPROVED);
+            post.setReviewMessage("管理员直接发布");
+            post.setReviewUserId(operator.getId());
+            post.setReviewTime(new Date());
+            post.setIsTop(post.getIsTop() == null ? 0 : post.getIsTop());
+            post.setIsFeatured(post.getIsFeatured() == null ? 0 : post.getIsFeatured());
+            return;
+        }
+        PostAutoReviewResult autoReviewResult = autoReviewPost(post);
+        post.setReviewStatus(autoReviewResult.reviewStatus());
+        post.setReviewMessage(autoReviewResult.reviewMessage());
+        post.setReviewUserId(null);
+        post.setReviewTime(PostConstant.REVIEW_STATUS_APPROVED == autoReviewResult.reviewStatus() ? new Date() : null);
+        if (add) {
+            post.setIsTop(0);
+            post.setIsFeatured(0);
+        }
+    }
+
+    private PostAutoReviewResult autoReviewPost(Post post) {
+        String combinedText = StringUtils.defaultString(post.getTitle()) + "\n" + StringUtils.defaultString(post.getContent());
+        String lowerCaseText = combinedText.toLowerCase();
+        if (containsAny(lowerCaseText, "赌博", "色情", "外挂", "vpn", "代考", "作弊器", "刷单", "telegram", "qq裙", "qq群", "vx:", "微信:", "联系方式")) {
+            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_REJECTED, "内容包含高风险词，已自动拦截，请修改后重试");
+        }
+        if (StringUtils.length(StringUtils.trimToEmpty(post.getContent())) < 80) {
+            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_PENDING, "内容较短，已进入人工复核");
+        }
+        try {
+            String aiResult = aiManager.doChat(buildPostAutoReviewSystemPrompt(), buildPostAutoReviewUserPrompt(post));
+            String normalized = aiResult.toLowerCase();
+            if (normalized.contains("reject")) {
+                return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_REJECTED, extractReviewMessage(aiResult, "AI 识别到内容存在风险，建议人工复核"));
+            }
+            if (normalized.contains("pending")) {
+                return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_PENDING, extractReviewMessage(aiResult, "AI 建议人工复核"));
+            }
+            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_APPROVED, "系统自动审核通过");
+        } catch (Exception e) {
+            log.warn("post auto review fallback, reason={}", e.getMessage());
+            return new PostAutoReviewResult(PostConstant.REVIEW_STATUS_APPROVED, "规则自动审核通过");
+        }
+    }
+
+    private String buildPostAutoReviewSystemPrompt() {
+        return "你是内容审核助手。请仅输出一行 JSON，格式为 {\"decision\":\"approve|pending|reject\",\"reason\":\"...\"}。"
+                + "如果内容明显违规、广告导流、联系方式引流、色情赌博作弊等，decision=reject；"
+                + "如果内容有风险但不确定，decision=pending；"
+                + "正常的面经、项目复盘、技术经验分享，decision=approve。";
+    }
+
+    private String buildPostAutoReviewUserPrompt(Post post) {
+        return "请审核以下帖子内容：\n标题：" + StringUtils.defaultString(post.getTitle())
+                + "\n标签：" + StringUtils.defaultString(post.getTags())
+                + "\n内容：" + StringUtils.defaultString(post.getContent());
+    }
+
+    private String extractReviewMessage(String aiResult, String defaultMessage) {
+        if (StringUtils.isBlank(aiResult)) {
+            return defaultMessage;
+        }
+        int reasonIndex = aiResult.indexOf("\"reason\"");
+        if (reasonIndex < 0) {
+            return defaultMessage;
+        }
+        String text = aiResult.substring(reasonIndex);
+        int colonIndex = text.indexOf(':');
+        if (colonIndex < 0) {
+            return defaultMessage;
+        }
+        String value = text.substring(colonIndex + 1).replaceAll("[\"{}]", "").trim();
+        return StringUtils.isBlank(value) ? defaultMessage : StringUtils.abbreviate(value, 120);
+    }
+
+    private String buildPostReviewNotificationContent(Post post, Integer reviewStatus, String reviewMessage) {
+        StringBuilder contentBuilder = new StringBuilder("你的帖子《")
+                .append(post.getTitle())
+                .append("》");
+        if (PostConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+            contentBuilder.append("已通过审核，现在可以在社区中公开展示。");
+        } else {
+            contentBuilder.append("未通过审核，请根据审核意见修改后重新提交。");
+        }
+        if (StringUtils.isNotBlank(reviewMessage)) {
+            contentBuilder.append(" 审核意见：").append(reviewMessage);
+        }
+        return contentBuilder.toString();
+    }
+
+    private boolean isPostVisible(Post post, User loginUser) {
+        Integer reviewStatus = post.getReviewStatus();
+        if (reviewStatus == null || PostConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+            return true;
+        }
+        if (loginUser == null) {
+            return false;
+        }
+        return loginUser.getId().equals(post.getUserId()) || userService.isAdmin(loginUser);
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        if (StringUtils.isBlank(text) || keywords == null) {
+            return false;
+        }
+        for (String keyword : keywords) {
+            if (StringUtils.isNotBlank(keyword) && text.contains(keyword.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private record PostAutoReviewResult(int reviewStatus, String reviewMessage) {
     }
 
 }
