@@ -38,6 +38,14 @@ const QuestionNotePanel = dynamic(() => import("@/components/QuestionNotePanel")
   ),
 });
 
+const QuestionAnswerEvaluator = dynamic(() => import("@/components/QuestionAnswerEvaluator"), {
+  loading: () => (
+    <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
+      正在加载 AI 判题...
+    </section>
+  ),
+});
+
 interface Props {
   question: API.QuestionVO;
 }
@@ -181,6 +189,11 @@ const QuestionCard = (props: Props) => {
           </div>
         </div>
       </section>
+
+      <QuestionAnswerEvaluator
+        questionId={Number(question.id)}
+        questionTitle={question.title}
+      />
 
       {/* Answer Card */}
       <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sm:p-12 relative overflow-hidden">

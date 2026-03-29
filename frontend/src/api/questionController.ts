@@ -32,6 +32,21 @@ export async function aiGenerateQuestionsUsingPost(
   });
 }
 
+/** evaluateQuestionAnswer POST /api/question/ai/evaluate */
+export async function evaluateQuestionAnswerUsingPost(
+  body: API.QuestionAnswerEvaluateRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseQuestionAnswerEvaluateVO_>('/api/question/ai/evaluate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** deleteQuestion POST /api/question/delete */
 export async function deleteQuestionUsingPost(
   body: API.DeleteRequest,

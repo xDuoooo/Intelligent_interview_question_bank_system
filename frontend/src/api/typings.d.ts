@@ -149,6 +149,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseQuestionAnswerEvaluateVO_ = {
+    code?: number;
+    data?: QuestionAnswerEvaluateVO;
+    message?: string;
+  };
+
   type BaseResponseQuestionBankLeaderboardVO_ = {
     code?: number;
     data?: QuestionBankLeaderboardVO;
@@ -725,6 +731,23 @@ declare namespace API {
     difficulty?: string;
     tags?: string[];
     title?: string;
+  };
+
+  type QuestionAnswerEvaluateRequest = {
+    answerContent?: string;
+    questionId?: number;
+  };
+
+  type QuestionAnswerEvaluateVO = {
+    analysisSource?: string;
+    followUpQuestionList?: string[];
+    improvementList?: string[];
+    level?: string;
+    missedPointList?: string[];
+    referenceSuggestion?: string;
+    score?: number;
+    strengthList?: string[];
+    summary?: string;
   };
 
   type QuestionAIGenerateRequest = {
