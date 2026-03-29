@@ -136,3 +136,16 @@ app:
   ip-location:
     # 本地调试“按 IP 自动识别城市”时，可临时指定一个模拟城市（需是系统支持的城市）
     dev-city: 杭州
+  es-sync:
+    question:
+      # 建议默认关闭；若想让题目 ES 同步有定时兜底，可改为 true
+      incremental-enabled: false
+      full-sync-on-start: false
+      incremental-fixed-rate-ms: 60000
+      incremental-lookback-minutes: 5
+    post:
+      # 建议默认关闭；若想让帖子 ES 同步有定时兜底，可改为 true
+      incremental-enabled: false
+      full-sync-on-start: false
+      incremental-fixed-rate-ms: 60000
+      incremental-lookback-minutes: 5
