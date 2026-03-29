@@ -46,10 +46,10 @@ public interface UserFollowService extends IService<UserFollow> {
     /**
      * 分页获取粉丝列表
      */
-    Page<UserVO> listFollowerUserVOByPage(long userId, long current, long pageSize);
+    Page<UserVO> listFollowerUserVOByPage(long userId, long current, long pageSize, Long loginUserId);
 
     /**
      * 分页获取关注列表
      */
-    Page<UserVO> listFollowingUserVOByPage(long userId, long current, long pageSize);
+    Page<UserVO> listFollowingUserVOByPage(long userId, long current, long pageSize, Long loginUserId);
 }

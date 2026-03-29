@@ -1059,6 +1059,7 @@ declare namespace API {
   type UserVO = {
     city?: string;
     createTime?: string;
+    hasFollowed?: boolean;
     id?: number;
     userAvatar?: string;
     userName?: string;

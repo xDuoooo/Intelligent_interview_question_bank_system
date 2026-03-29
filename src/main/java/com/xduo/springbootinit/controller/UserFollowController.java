@@ -57,9 +57,16 @@ public class UserFollowController {
      * 分页获取粉丝列表
      */
     @PostMapping("/follower/list/page/vo")
-    public BaseResponse<Page<UserVO>> listFollowerUserVOByPage(@RequestBody UserFollowQueryRequest userFollowQueryRequest) {
+    public BaseResponse<Page<UserVO>> listFollowerUserVOByPage(@RequestBody UserFollowQueryRequest userFollowQueryRequest,
+                                                               HttpServletRequest httpServletRequest) {
         UserFollowQueryRequest request = validateListRequest(userFollowQueryRequest);
-        Page<UserVO> page = userFollowService.listFollowerUserVOByPage(request.getUserId(), request.getCurrent(), request.getPageSize());
+        User loginUser = userService.getLoginUserPermitNull(httpServletRequest);
+        Page<UserVO> page = userFollowService.listFollowerUserVOByPage(
+                request.getUserId(),
+                request.getCurrent(),
+                request.getPageSize(),
+                loginUser == null ? null : loginUser.getId()
+        );
         return ResultUtils.success(page);
     }
 
@@ -67,9 +74,16 @@ public class UserFollowController {
      * 分页获取关注列表
      */
     @PostMapping("/following/list/page/vo")
-    public BaseResponse<Page<UserVO>> listFollowingUserVOByPage(@RequestBody UserFollowQueryRequest userFollowQueryRequest) {
+    public BaseResponse<Page<UserVO>> listFollowingUserVOByPage(@RequestBody UserFollowQueryRequest userFollowQueryRequest,
+                                                                HttpServletRequest httpServletRequest) {
         UserFollowQueryRequest request = validateListRequest(userFollowQueryRequest);
-        Page<UserVO> page = userFollowService.listFollowingUserVOByPage(request.getUserId(), request.getCurrent(), request.getPageSize());
+        User loginUser = userService.getLoginUserPermitNull(httpServletRequest);
+        Page<UserVO> page = userFollowService.listFollowingUserVOByPage(
+                request.getUserId(),
+                request.getCurrent(),
+                request.getPageSize(),
+                loginUser == null ? null : loginUser.getId()
+        );
         return ResultUtils.success(page);
     }
 

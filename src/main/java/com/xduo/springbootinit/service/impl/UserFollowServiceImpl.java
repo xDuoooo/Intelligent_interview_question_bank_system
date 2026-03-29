@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -113,7 +114,7 @@ public class UserFollowServiceImpl extends ServiceImpl<UserFollowMapper, UserFol
     }
 
     @Override
-    public Page<UserVO> listFollowerUserVOByPage(long userId, long current, long pageSize) {
+    public Page<UserVO> listFollowerUserVOByPage(long userId, long current, long pageSize, Long loginUserId) {
         long total = getFollowerCount(userId);
         Page<UserVO> page = new Page<>(current, pageSize, total);
         if (total <= 0) {
@@ -121,12 +122,12 @@ public class UserFollowServiceImpl extends ServiceImpl<UserFollowMapper, UserFol
         }
         long offset = Math.max(0L, (current - 1) * pageSize);
         List<Long> userIdList = baseMapper.listVisibleFollowerUserIds(userId, offset, pageSize);
-        page.setRecords(buildOrderedUserVOList(userIdList));
+        page.setRecords(buildOrderedUserVOList(userIdList, loginUserId));
         return page;
     }
 
     @Override
-    public Page<UserVO> listFollowingUserVOByPage(long userId, long current, long pageSize) {
+    public Page<UserVO> listFollowingUserVOByPage(long userId, long current, long pageSize, Long loginUserId) {
         long total = getFollowingCount(userId);
         Page<UserVO> page = new Page<>(current, pageSize, total);
         if (total <= 0) {
@@ -134,24 +135,38 @@ public class UserFollowServiceImpl extends ServiceImpl<UserFollowMapper, UserFol
         }
         long offset = Math.max(0L, (current - 1) * pageSize);
         List<Long> userIdList = baseMapper.listVisibleFollowingUserIds(userId, offset, pageSize);
-        page.setRecords(buildOrderedUserVOList(userIdList));
+        page.setRecords(buildOrderedUserVOList(userIdList, loginUserId));
         return page;
     }
 
     /**
      * 构造稳定顺序的用户视图列表
      */
-    private List<UserVO> buildOrderedUserVOList(List<Long> userIdList) {
+    private List<UserVO> buildOrderedUserVOList(List<Long> userIdList, Long loginUserId) {
         if (CollectionUtils.isEmpty(userIdList)) {
             return Collections.emptyList();
         }
         List<User> userList = userService.listByIds(userIdList);
         Map<Long, User> userMap = userList.stream()
                 .collect(Collectors.toMap(User::getId, Function.identity(), (left, right) -> left));
+        Set<Long> followedUserIdSet = Collections.emptySet();
+        if (loginUserId != null && loginUserId > 0) {
+            QueryWrapper<UserFollow> followQueryWrapper = new QueryWrapper<>();
+            followQueryWrapper.eq("userId", loginUserId);
+            followQueryWrapper.in("followUserId", userIdList);
+            followedUserIdSet = this.list(followQueryWrapper).stream()
+                    .map(UserFollow::getFollowUserId)
+                    .collect(Collectors.toSet());
+        }
+        Set<Long> finalFollowedUserIdSet = followedUserIdSet;
         return userIdList.stream()
                 .map(userMap::get)
                 .filter(Objects::nonNull)
-                .map(userService::getUserVO)
+                .map(user -> {
+                    UserVO userVO = userService.getUserVO(user);
+                    userVO.setHasFollowed(finalFollowedUserIdSet.contains(user.getId()));
+                    return userVO;
+                })
                 .collect(Collectors.toList());
     }
 
