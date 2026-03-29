@@ -98,10 +98,12 @@ export async function handleMockInterviewEventUsingPost(
 export async function streamMockInterviewEventUsingPost(
   body: API.MockInterviewEventRequest,
   onEvent: StreamEventCallback,
+  signal?: AbortSignal,
 ) {
   const response = await fetch(buildApiUrl('/api/mockInterview/stream/handleEvent'), {
     method: 'POST',
     credentials: 'include',
+    signal,
     headers: {
       'Accept': 'text/event-stream',
       'Content-Type': 'application/json',
