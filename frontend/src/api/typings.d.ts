@@ -149,6 +149,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponsePageSecurityAlert_ = {
+    code?: number;
+    data?: PageSecurityAlert_;
+    message?: string;
+  };
+
   type BaseResponseQuestionBankQuestionVO_ = {
     code?: number;
     data?: QuestionBankQuestionVO;
@@ -662,6 +668,19 @@ declare namespace API {
     total?: number;
   };
 
+  type PageSecurityAlert_ = {
+    countId?: string;
+    current?: number;
+    maxLimit?: number;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: number;
+    records?: SecurityAlert[];
+    searchCount?: boolean;
+    size?: number;
+    total?: number;
+  };
+
   type Post = {
     content?: string;
     createTime?: string;
@@ -1063,6 +1082,37 @@ declare namespace API {
 
   type SecurityAlertHandleRequest = {
     id?: number;
+  };
+
+  type SecurityAlertQueryRequest = {
+    alertType?: string;
+    current?: number;
+    pageSize?: number;
+    riskLevel?: string;
+    searchText?: string;
+    sortField?: string;
+    sortOrder?: string;
+    status?: number;
+    userId?: number;
+    userName?: string;
+  };
+
+  type SecurityAlert = {
+    alertType?: string;
+    createTime?: string;
+    detail?: string;
+    handleAction?: string;
+    handleTime?: string;
+    handlerUserId?: number;
+    id?: number;
+    ip?: string;
+    isDelete?: number;
+    reason?: string;
+    riskLevel?: string;
+    status?: number;
+    updateTime?: string;
+    userId?: number;
+    userName?: string;
   };
 
   type uploadFileUsingPOSTParams = {

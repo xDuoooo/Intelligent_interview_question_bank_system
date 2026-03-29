@@ -254,7 +254,7 @@ export default function AdminDashboardPage() {
       value: overview.pendingRiskAlertTotal || 0,
       icon: <AlertTriangle className="h-6 w-6 text-amber-500" />,
       desc: "风控面板待处理",
-      href: "/admin",
+      href: "/admin/security",
     },
   ];
 
@@ -418,6 +418,18 @@ export default function AdminDashboardPage() {
             <Button type="primary" size="large" shape="round" onClick={fetchDashboard} className="h-12 px-8 font-bold">
               刷新驾驶舱
             </Button>
+            <Link href="/admin/post">
+              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                <MessageSquareText className="h-4 w-4" />
+                社区管理
+              </Button>
+            </Link>
+            <Link href="/admin/security">
+              <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                风控面板
+              </Button>
+            </Link>
             <Link href="/admin/question/ai">
               <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
                 <Wand2 className="h-4 w-4" />
