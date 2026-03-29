@@ -14,7 +14,15 @@ public class MockInterviewAddRequest implements Serializable {
 
     private String workExperience;
 
+    private String interviewType;
+
+    private String techStack;
+
+    private String resumeText;
+
     private String difficulty;
+
+    private Integer expectedRounds;
 
     private static final long serialVersionUID = 1L;
 }

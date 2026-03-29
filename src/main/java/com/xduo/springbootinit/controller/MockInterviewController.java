@@ -44,7 +44,9 @@ public class MockInterviewController {
         mockInterviewService.validMockInterview(mockInterview, true);
         mockInterview.setUserId(loginUser.getId());
         mockInterview.setStatus(0);
+        mockInterview.setCurrentRound(0);
         mockInterview.setMessages("[]");
+        mockInterview.setReport(null);
         boolean result = mockInterviewService.save(mockInterview);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(mockInterview.getId());

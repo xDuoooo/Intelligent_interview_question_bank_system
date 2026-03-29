@@ -30,14 +30,44 @@ public class MockInterview implements Serializable {
     private String workExperience;
 
     /**
+     * 面试类型
+     */
+    private String interviewType;
+
+    /**
+     * 技术方向 / 技术栈
+     */
+    private String techStack;
+
+    /**
+     * 简历 / 项目背景
+     */
+    private String resumeText;
+
+    /**
      * 面试难度
      */
     private String difficulty;
 
     /**
+     * 计划轮次
+     */
+    private Integer expectedRounds;
+
+    /**
+     * 当前已完成轮次
+     */
+    private Integer currentRound;
+
+    /**
      * 面试消息记录（json 数组）
      */
     private String messages;
+
+    /**
+     * 结构化面试报告（json）
+     */
+    private String report;
 
     /**
      * 状态：0-待开始, 1-进行中, 2-已结束
