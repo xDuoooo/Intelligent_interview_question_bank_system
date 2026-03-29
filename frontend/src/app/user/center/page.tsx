@@ -15,6 +15,7 @@ import {
   Calendar,
   BookOpen,
   Flame,
+  FilePenLine,
   User as UserIcon
 } from "lucide-react";
 
@@ -46,6 +47,10 @@ const LearningHistoryList = dynamic(() => import("@/app/user/center/components/L
 
 const ResumeRecommendPanel = dynamic(() => import("@/app/user/center/components/ResumeRecommendPanel"), {
   loading: () => <div className="py-8 text-center text-slate-400">正在加载简历推荐...</div>,
+});
+
+const MyQuestionSubmissionPanel = dynamic(() => import("@/app/user/center/components/MyQuestionSubmissionPanel"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载投稿记录...</div>,
 });
 
 const CalendarChart = dynamic(() => import("@/app/user/center/components/CalendarChart"), {
@@ -186,6 +191,7 @@ function UserCenterContent() {
             tabList={[
               { key: "overview", label: <span className="flex items-center gap-2"><LayoutDashboard size={16} />个人概览</span> },
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
+              { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的投稿</span> },
               { key: "security", label: <span className="flex items-center gap-2"><ShieldCheck size={16} />账号安全</span> },
               { key: "favour", label: <span className="flex items-center gap-2"><Heart size={16} />收藏题目</span> },
               { key: "history", label: <span className="flex items-center gap-2"><History size={16} />刷题轨迹</span> },
@@ -209,6 +215,9 @@ function UserCenterContent() {
                       <div className="flex flex-wrap gap-3">
                         <Button type="primary" onClick={() => setActiveTabKey("record")}>
                           查看成就看板
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("submission")}>
+                          我的投稿
                         </Button>
                         <Button onClick={() => setActiveTabKey("favour")}>
                           查看收藏题目
@@ -274,6 +283,11 @@ function UserCenterContent() {
             {activeTabKey === "security" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <AccountSecurityCenter user={user} />
+              </div>
+            )}
+            {activeTabKey === "submission" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <MyQuestionSubmissionPanel />
               </div>
             )}
             {activeTabKey === "record" && (

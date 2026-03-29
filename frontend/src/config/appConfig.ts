@@ -27,8 +27,6 @@ export const APP_CONFIG = {
   },
   auth: {
     loginActionText: "进入智面",
-    registerTitle: "加入智面",
-    registerSubtitle: "START YOUR JOURNEY",
     firstLoginHint: "首次使用验证码登录将自动创建账号",
     socialLoginTitle: "第三方登录",
   },
@@ -61,7 +59,6 @@ export const FOOTER_LINK_GROUPS: AppLinkGroup[] = [
     title: "快速入口",
     links: [
       { label: "登录入口", href: "/user/login" },
-      { label: "创建账号", href: "/user/register" },
       { label: "我的通知", href: "/user/notifications" },
       { label: "发起模拟面试", href: "/mockInterview/add" },
     ],

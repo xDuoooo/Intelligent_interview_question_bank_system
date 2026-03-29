@@ -55,6 +55,11 @@ public class QuestionQueryRequest extends PageRequest implements Serializable {
     private Long userId;
 
     /**
+     * 审核状态：0-待审核 1-已通过 2-已驳回
+     */
+    private Integer reviewStatus;
+
+    /**
      * 题库 id（查询某个题库中的题目）
      */
     private Long questionBankId;

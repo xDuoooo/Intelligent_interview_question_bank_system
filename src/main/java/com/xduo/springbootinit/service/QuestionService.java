@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
+import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 
@@ -78,4 +79,19 @@ public interface QuestionService extends IService<Question> {
      * 根据简历内容推荐题目
      */
     ResumeQuestionRecommendVO recommendQuestionsByResume(long userId, String resumeText, int size, HttpServletRequest request);
+
+    /**
+     * 当前用户是否可查看题目
+     */
+    boolean canViewQuestion(Question question, User loginUser);
+
+    /**
+     * 同步题目到 ES
+     */
+    void syncQuestionToEs(Question question);
+
+    /**
+     * 从 ES 删除题目
+     */
+    void deleteQuestionFromEs(Long questionId);
 }

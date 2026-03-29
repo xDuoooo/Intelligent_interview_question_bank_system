@@ -650,6 +650,10 @@ declare namespace API {
     editTime?: string;
     id?: number;
     isDelete?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
+    reviewUserId?: number;
     tags?: string;
     title?: string;
     updateTime?: string;
@@ -805,12 +809,19 @@ declare namespace API {
     notId?: number;
     pageSize?: number;
     questionBankId?: number;
+    reviewStatus?: number;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     tags?: string[];
     title?: string;
     userId?: number;
+  };
+
+  type QuestionReviewRequest = {
+    id?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
   };
 
   type QuestionResumeRecommendRequest = {
@@ -843,6 +854,10 @@ declare namespace API {
     hasFavour?: boolean;
     id?: number;
     recommendReason?: string;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
+    reviewUserId?: number;
     tagList?: string[];
     title?: string;
     updateTime?: string;

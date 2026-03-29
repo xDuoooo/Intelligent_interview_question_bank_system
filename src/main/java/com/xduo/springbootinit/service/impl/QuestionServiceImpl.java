@@ -11,7 +11,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.constant.CommonConstant;
-    import com.xduo.springbootinit.manager.AiManager;
+import com.xduo.springbootinit.constant.QuestionConstant;
+import com.xduo.springbootinit.esdao.QuestionEsDao;
+import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.QuestionMapper;
 import com.xduo.springbootinit.mapper.UserQuestionHistoryMapper;
@@ -89,6 +91,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Resource
     private AiManager aiManager;
 
+    @Resource
+    private QuestionEsDao questionEsDao;
+
     /**
      * 校验数据
      *
@@ -99,13 +104,21 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     public void validQuestion(Question question, boolean add) {
         ThrowUtils.throwIf(question == null, ErrorCode.PARAMS_ERROR);
         String title = question.getTitle();
+        String content = question.getContent();
+        String answer = question.getAnswer();
         // 创建数据时，参数不能为空
         if (add) {
-            ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR);
+            ThrowUtils.throwIf(StringUtils.isAnyBlank(title, content, answer), ErrorCode.PARAMS_ERROR, "题目标题、内容和题解不能为空");
         }
         // 修改数据时，有参数则校验
         if (StringUtils.isNotBlank(title)) {
             ThrowUtils.throwIf(title.length() > 80, ErrorCode.PARAMS_ERROR, "标题过长");
+        }
+        if (content != null) {
+            ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "题目内容不能为空");
+        }
+        if (answer != null) {
+            ThrowUtils.throwIf(StringUtils.isBlank(answer), ErrorCode.PARAMS_ERROR, "题解不能为空");
         }
     }
 
@@ -131,6 +144,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         String sortOrder = questionQueryRequest.getSortOrder();
         List<String> tagList = questionQueryRequest.getTags();
         Long userId = questionQueryRequest.getUserId();
+        Integer reviewStatus = questionQueryRequest.getReviewStatus();
         // 从多字段中搜索
         if (StringUtils.isNotBlank(searchText)) {
             queryWrapper.and(qw -> qw.like("title", searchText).or().like("content", searchText));
@@ -149,6 +163,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
+        if (reviewStatus != null) {
+            if (QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+                queryWrapper.and(qw -> qw.eq("reviewStatus", reviewStatus).or().isNull("reviewStatus"));
+            } else {
+                queryWrapper.eq("reviewStatus", reviewStatus);
+            }
+        }
         // 排序规则
         queryWrapper.orderBy(SqlUtils.validSortField(sortField),
                 CommonConstant.SORT_ORDER_ASC.equals(sortOrder),
@@ -260,6 +281,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         List<String> tags = questionQueryRequest.getTags();
         Long questionBankId = questionQueryRequest.getQuestionBankId();
         Long userId = questionQueryRequest.getUserId();
+        Integer reviewStatus = questionQueryRequest.getReviewStatus();
         // 注意，ES 的起始页为 0
         int current = Math.max(0, questionQueryRequest.getCurrent() - 1);
         int pageSize = questionQueryRequest.getPageSize();
@@ -277,6 +299,16 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         if (userId != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("userId").value(userId)));
+        }
+        if (reviewStatus != null) {
+            if (QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+                boolQueryBuilder.filter(f -> f.bool(b -> b
+                        .should(s -> s.term(t -> t.field("reviewStatus").value(reviewStatus)))
+                        .should(s -> s.bool(bb -> bb.mustNot(m -> m.exists(e -> e.field("reviewStatus")))))
+                        .minimumShouldMatch("1")));
+            } else {
+                boolQueryBuilder.filter(f -> f.term(t -> t.field("reviewStatus").value(reviewStatus)));
+            }
         }
         if (questionBankId != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("questionBankId").value(questionBankId)));
@@ -343,6 +375,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             if (!result) {
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除题目失败");
             }
+            deleteQuestionFromEs(questionId);
             // 移除题目题库关系
             LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
                     .eq(QuestionBankQuestion::getQuestionId, questionId);
@@ -625,6 +658,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private List<Question> listRecommendationCandidateQuestions(int limit, Long excludeQuestionId) {
         int candidateLimit = Math.max(20, Math.min(limit, 500));
         QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
+        queryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
         queryWrapper.orderByDesc("updateTime");
         queryWrapper.last("limit " + (excludeQuestionId == null ? candidateLimit : candidateLimit + 1));
         List<Question> candidateList = this.list(queryWrapper);
@@ -1005,6 +1039,42 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
     }
 
+    @Override
+    public boolean canViewQuestion(Question question, User loginUser) {
+        if (question == null) {
+            return false;
+        }
+        Integer reviewStatus = question.getReviewStatus();
+        if (reviewStatus == null || QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+            return true;
+        }
+        if (loginUser == null) {
+            return false;
+        }
+        return userService.isAdmin(loginUser) || loginUser.getId().equals(question.getUserId());
+    }
 
+    @Override
+    public void syncQuestionToEs(Question question) {
+        if (question == null || question.getId() == null) {
+            return;
+        }
+        try {
+            questionEsDao.save(QuestionEsDTO.objToDto(question));
+        } catch (Exception e) {
+            log.error("sync question to es error, questionId={}", question.getId(), e);
+        }
+    }
 
+    @Override
+    public void deleteQuestionFromEs(Long questionId) {
+        if (questionId == null || questionId <= 0) {
+            return;
+        }
+        try {
+            questionEsDao.deleteById(questionId);
+        } catch (Exception e) {
+            log.error("delete question from es error, questionId={}", questionId, e);
+        }
+    }
 }

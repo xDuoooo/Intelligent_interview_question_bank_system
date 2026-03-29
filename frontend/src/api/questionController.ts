@@ -157,6 +157,21 @@ export async function recommendQuestionsByResumeFileUsingPost(
   });
 }
 
+/** reviewQuestion POST /api/question/review */
+export async function reviewQuestionUsingPost(
+  body: API.QuestionReviewRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/question/review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** listQuestionByPage POST /api/question/list/page */
 export async function listQuestionByPageUsingPost(
   body: API.QuestionQueryRequest,
