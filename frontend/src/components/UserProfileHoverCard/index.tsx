@@ -305,6 +305,8 @@ export default function UserProfileHoverCard({
       trigger={["hover"]}
       placement={placement}
       mouseEnterDelay={0.12}
+      getPopupContainer={() => document.body}
+      zIndex={1600}
       overlayClassName="user-profile-hover-card"
       content={content}
     >
