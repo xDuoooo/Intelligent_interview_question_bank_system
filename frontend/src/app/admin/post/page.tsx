@@ -4,7 +4,7 @@ import React, { useRef, useState } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Button, Input, message, Modal, Popconfirm, Radio, Space, Switch, Tag } from "antd";
 import Link from "next/link";
-import { CheckCheck, Edit3, FilePlus2, Sparkles, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCheck, Edit3, FilePlus2, Sparkles, Trash2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import PostEditorForm from "@/components/PostEditorForm";
 import {
@@ -12,7 +12,9 @@ import {
   deletePostUsingPost,
   editPostUsingPost,
   listPostVoByPageUsingPost,
+  listPostReportVoByPageUsingPost,
   operatePostUsingPost,
+  processPostReportUsingPost,
   reviewPostUsingPost,
 } from "@/api/postController";
 import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
@@ -28,6 +30,10 @@ const PostAdminPage: React.FC = () => {
   const [reviewMessage, setReviewMessage] = useState("");
   const [topValue, setTopValue] = useState(false);
   const [featuredValue, setFeaturedValue] = useState(false);
+  const [reportingPost, setReportingPost] = useState<API.PostVO | undefined>();
+  const [reportRecords, setReportRecords] = useState<API.PostReportVO[]>([]);
+  const [reportListLoading, setReportListLoading] = useState(false);
+  const [reportProcessingId, setReportProcessingId] = useState<number>();
 
   const handleDelete = async (id?: number) => {
     if (!id) {
@@ -55,6 +61,51 @@ const PostAdminPage: React.FC = () => {
     setOperatingPost(record);
     setTopValue(Number(record.isTop || 0) > 0);
     setFeaturedValue(Number(record.isFeatured || 0) > 0);
+  };
+
+  const loadPostReports = async (postId?: number) => {
+    if (!postId) {
+      setReportRecords([]);
+      return;
+    }
+    setReportListLoading(true);
+    try {
+      const res = await listPostReportVoByPageUsingPost({
+        current: 1,
+        pageSize: 20,
+        postId,
+      });
+      setReportRecords(res.data?.records || []);
+    } catch (error: any) {
+      message.error(error?.message || "获取举报列表失败");
+    } finally {
+      setReportListLoading(false);
+    }
+  };
+
+  const openReportModal = async (record: API.PostVO) => {
+    setReportingPost(record);
+    await loadPostReports(record.id);
+  };
+
+  const handleProcessReport = async (reportId?: number, status?: number) => {
+    if (!reportId || !status) {
+      return;
+    }
+    setReportProcessingId(reportId);
+    try {
+      await processPostReportUsingPost({
+        id: reportId,
+        status,
+      });
+      message.success(status === 2 ? "已采纳举报" : "已驳回举报");
+      await loadPostReports(reportingPost?.id);
+      actionRef.current?.reload();
+    } catch (error: any) {
+      message.error(error?.message || "处理举报失败");
+    } finally {
+      setReportProcessingId(undefined);
+    }
   };
 
   const columns: ProColumns<API.PostVO>[] = [
@@ -114,6 +165,28 @@ const PostAdminPage: React.FC = () => {
       valueType: "digit",
       width: 90,
       hideInSearch: true,
+    },
+    {
+      title: "举报",
+      dataIndex: "reportNum",
+      valueType: "digit",
+      width: 90,
+      hideInSearch: true,
+      render: (_, record) => {
+        const count = Number(record.reportNum || 0);
+        if (count <= 0) {
+          return <span className="text-slate-300">0</span>;
+        }
+        return (
+          <button
+            onClick={() => void openReportModal(record)}
+            className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 transition hover:bg-amber-100"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            {count}
+          </button>
+        );
+      },
     },
     {
       title: "审核状态",
@@ -187,6 +260,15 @@ const PostAdminPage: React.FC = () => {
             <Sparkles className="h-4 w-4" />
             运营
           </button>
+          {Number(record.reportNum || 0) > 0 ? (
+            <button
+              onClick={() => void openReportModal(record)}
+              className="flex items-center gap-1.5 text-amber-600 transition-colors hover:text-amber-700 font-bold"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              举报
+            </button>
+          ) : null}
           <Popconfirm
             title="确认删除帖子"
             description="删除后无法恢复，请谨慎操作。"
@@ -386,6 +468,89 @@ const PostAdminPage: React.FC = () => {
             maxLength={512}
             showCount
           />
+        </div>
+      </Modal>
+
+      <Modal
+        title={null}
+        open={!!reportingPost}
+        onCancel={() => {
+          setReportingPost(undefined);
+          setReportRecords([]);
+        }}
+        footer={null}
+        width={820}
+        destroyOnClose
+      >
+        <div className="space-y-6 pt-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-amber-600">Post Reports</div>
+            <h3 className="mt-2 text-2xl font-black text-slate-900">帖子举报处理</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              当前帖子：{reportingPost?.title || "未命名帖子"}。你可以查看举报原因，并逐条采纳或驳回。
+            </p>
+          </div>
+
+          {reportListLoading ? (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+              正在加载举报记录...
+            </div>
+          ) : reportRecords.length ? (
+            <div className="space-y-4">
+              {reportRecords.map((report) => {
+                const status = Number(report.status ?? 0);
+                const statusTag =
+                  status === 2 ? (
+                    <Tag color="red" className="m-0 rounded-full px-3 py-1 font-bold">已采纳</Tag>
+                  ) : status === 1 ? (
+                    <Tag color="default" className="m-0 rounded-full px-3 py-1 font-bold">已驳回</Tag>
+                  ) : (
+                    <Tag color="processing" className="m-0 rounded-full px-3 py-1 font-bold">待处理</Tag>
+                  );
+                return (
+                  <div key={report.id} className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="text-sm font-black text-slate-800">
+                          举报用户：{report.reporter?.userName || `用户 ${report.userId || "-"}`}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {report.createTime ? new Date(report.createTime).toLocaleString("zh-CN") : "刚刚"}
+                        </div>
+                      </div>
+                      {statusTag}
+                    </div>
+                    <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-sm leading-7 text-slate-600">
+                      {report.reason}
+                    </div>
+                    {status === 0 ? (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        <Button
+                          danger
+                          loading={reportProcessingId === report.id}
+                          onClick={() => handleProcessReport(report.id, 2)}
+                          className="rounded-2xl font-black"
+                        >
+                          采纳举报
+                        </Button>
+                        <Button
+                          loading={reportProcessingId === report.id}
+                          onClick={() => handleProcessReport(report.id, 1)}
+                          className="rounded-2xl font-black"
+                        >
+                          驳回举报
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-400">
+              暂无举报记录
+            </div>
+          )}
         </div>
       </Modal>
 

@@ -197,6 +197,36 @@ export async function reportPostUsingPost(
   });
 }
 
+/** listPostReportVOByPage POST /api/post/report/list/page */
+export async function listPostReportVoByPageUsingPost(
+  body: API.PostReportQueryRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponsePagePostReportVO_>('/api/post/report/list/page', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** processPostReport POST /api/post/report/process */
+export async function processPostReportUsingPost(
+  body: API.PostReportProcessRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/post/report/process', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** updatePost POST /api/post/update */
 export async function updatePostUsingPost(
   body: API.PostUpdateRequest,

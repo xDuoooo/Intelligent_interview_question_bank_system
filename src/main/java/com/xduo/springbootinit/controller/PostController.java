@@ -15,6 +15,8 @@ import com.xduo.springbootinit.model.dto.post.PostAddRequest;
 import com.xduo.springbootinit.model.dto.post.PostEditRequest;
 import com.xduo.springbootinit.model.dto.post.PostOperateRequest;
 import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
+import com.xduo.springbootinit.model.dto.post.PostReportProcessRequest;
+import com.xduo.springbootinit.model.dto.post.PostReportQueryRequest;
 import com.xduo.springbootinit.model.dto.post.PostReportRequest;
 import com.xduo.springbootinit.model.dto.post.PostReviewRequest;
 import com.xduo.springbootinit.model.dto.post.PostUpdateRequest;
@@ -22,6 +24,7 @@ import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.entity.PostReport;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.PostVO;
+import com.xduo.springbootinit.model.vo.PostReportVO;
 import com.xduo.springbootinit.mapper.PostReportMapper;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostService;
@@ -29,6 +32,9 @@ import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.manager.AiManager;
 import java.util.List;
 import java.util.Date;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -356,6 +362,81 @@ public class PostController {
         }
         boolean result = postService.updateById(updatePost);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 分页查看帖子举报（仅管理员）
+     */
+    @PostMapping("/report/list/page")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<PostReportVO>> listPostReportVOByPage(@RequestBody PostReportQueryRequest postReportQueryRequest) {
+        ThrowUtils.throwIf(postReportQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        long current = postReportQueryRequest.getCurrent();
+        long size = postReportQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 50, ErrorCode.PARAMS_ERROR, "分页参数不合法");
+
+        com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PostReport> queryWrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+        queryWrapper.eq(postReportQueryRequest.getPostId() != null, "postId", postReportQueryRequest.getPostId());
+        queryWrapper.eq(postReportQueryRequest.getStatus() != null, "status", postReportQueryRequest.getStatus());
+        queryWrapper.orderByAsc("status").orderByDesc("createTime");
+
+        Page<PostReport> reportPage = postReportMapper.selectPage(new Page<>(current, size), queryWrapper);
+        Page<PostReportVO> postReportVOPage = new Page<>(reportPage.getCurrent(), reportPage.getSize(), reportPage.getTotal());
+        List<PostReport> reportList = reportPage.getRecords();
+        if (reportList.isEmpty()) {
+            postReportVOPage.setRecords(List.of());
+            return ResultUtils.success(postReportVOPage);
+        }
+
+        Set<Long> userIdSet = reportList.stream().map(PostReport::getUserId).collect(Collectors.toSet());
+        Map<Long, User> userMap = userService.listByIds(userIdSet).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+        List<PostReportVO> postReportVOList = reportList.stream().map(report -> {
+            PostReportVO postReportVO = new PostReportVO();
+            BeanUtils.copyProperties(report, postReportVO);
+            postReportVO.setReporter(userService.getUserVO(userMap.get(report.getUserId())));
+            return postReportVO;
+        }).toList();
+        postReportVOPage.setRecords(postReportVOList);
+        return ResultUtils.success(postReportVOPage);
+    }
+
+    /**
+     * 处理帖子举报（仅管理员）
+     */
+    @PostMapping("/report/process")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> processPostReport(@RequestBody PostReportProcessRequest postReportProcessRequest) {
+        ThrowUtils.throwIf(postReportProcessRequest == null || postReportProcessRequest.getId() == null
+                        || postReportProcessRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        Integer status = postReportProcessRequest.getStatus();
+        ThrowUtils.throwIf(status == null || (status != 1 && status != 2), ErrorCode.PARAMS_ERROR, "处理状态不合法");
+        PostReport postReport = postReportMapper.selectById(postReportProcessRequest.getId());
+        ThrowUtils.throwIf(postReport == null, ErrorCode.NOT_FOUND_ERROR);
+
+        PostReport updateReport = new PostReport();
+        updateReport.setId(postReport.getId());
+        updateReport.setStatus(status);
+        int updated = postReportMapper.updateById(updateReport);
+        ThrowUtils.throwIf(updated <= 0, ErrorCode.OPERATION_ERROR);
+
+        long effectiveReportCount = postReportMapper.selectCount(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PostReport>()
+                .eq("postId", postReport.getPostId())
+                .ne("status", 1));
+        Post targetPost = postService.getById(postReport.getPostId());
+        if (targetPost != null) {
+            Post updatePost = new Post();
+            updatePost.setId(targetPost.getId());
+            updatePost.setReportNum((int) effectiveReportCount);
+            if (status == 2 && (targetPost.getReviewStatus() == null || PostConstant.REVIEW_STATUS_APPROVED == targetPost.getReviewStatus())) {
+                updatePost.setReviewStatus(PostConstant.REVIEW_STATUS_PENDING);
+                updatePost.setReviewMessage("管理员采纳举报，帖子进入人工复核");
+            }
+            postService.updateById(updatePost);
+        }
+        return ResultUtils.success(true);
     }
 
     /**
