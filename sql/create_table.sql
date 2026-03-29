@@ -162,6 +162,7 @@ create table if not exists post
     tags         varchar(1024)                     null comment '标签列表 json',
     thumbNum     int      default 0                not null comment '点赞数',
     favourNum    int      default 0                not null comment '收藏数',
+    reportNum    int      default 0                not null comment '举报数',
     userId       bigint                            not null comment '创建用户 id',
     reviewStatus tinyint  default 1                not null comment '审核状态：0-待审核 1-已通过 2-已驳回',
     reviewMessage varchar(512)                     null comment '审核意见',
@@ -177,6 +178,7 @@ create table if not exists post
     index idx_thumbNum (thumbNum),
     index idx_favourNum (favourNum),
     index idx_reviewStatus (reviewStatus),
+    index idx_reportNum (reportNum),
     index idx_top_featured_createTime (isTop, isFeatured, createTime)
 ) comment '帖子';
 
@@ -206,6 +208,20 @@ create table if not exists post_favour
     index idx_postId (postId),
     index idx_user_createTime (userId, createTime)
 ) comment '帖子收藏';
+
+-- 帖子举报
+create table if not exists post_report
+(
+    id         bigint auto_increment comment 'id' primary key,
+    postId     bigint                             not null comment '帖子 id',
+    userId     bigint                             not null comment '举报者 id',
+    reason     varchar(200)                       not null comment '举报原因',
+    status     tinyint  default 0                not null comment '处理状态：0待处理 1已驳回 2已采纳',
+    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    unique key uk_post_user (postId, userId),
+    index idx_postId (postId),
+    index idx_status_createTime (status, createTime)
+) comment '帖子举报';
 
 -- 题目评论表
 create table if not exists question_comment

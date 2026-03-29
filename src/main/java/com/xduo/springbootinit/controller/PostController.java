@@ -15,11 +15,14 @@ import com.xduo.springbootinit.model.dto.post.PostAddRequest;
 import com.xduo.springbootinit.model.dto.post.PostEditRequest;
 import com.xduo.springbootinit.model.dto.post.PostOperateRequest;
 import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
+import com.xduo.springbootinit.model.dto.post.PostReportRequest;
 import com.xduo.springbootinit.model.dto.post.PostReviewRequest;
 import com.xduo.springbootinit.model.dto.post.PostUpdateRequest;
 import com.xduo.springbootinit.model.entity.Post;
+import com.xduo.springbootinit.model.entity.PostReport;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.PostVO;
+import com.xduo.springbootinit.mapper.PostReportMapper;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostService;
 import com.xduo.springbootinit.service.UserService;
@@ -57,6 +60,9 @@ public class PostController {
 
     @Resource
     private AiManager aiManager;
+
+    @Resource
+    private PostReportMapper postReportMapper;
 
     // region 增删改查
 
@@ -171,6 +177,14 @@ public class PostController {
     @GetMapping("/hot/list")
     public BaseResponse<List<PostVO>> listHotPost(HttpServletRequest request) {
         return ResultUtils.success(postService.listHotPostVO(6, request));
+    }
+
+    /**
+     * 获取精选帖子
+     */
+    @GetMapping("/featured/list")
+    public BaseResponse<List<PostVO>> listFeaturedPost(HttpServletRequest request) {
+        return ResultUtils.success(postService.listFeaturedPostVO(4, request));
     }
 
     /**
@@ -306,6 +320,41 @@ public class PostController {
         }
         applyPostReviewPolicy(post, loginUser, false);
         boolean result = postService.updateById(post);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 举报帖子
+     */
+    @PostMapping("/report")
+    public BaseResponse<Boolean> reportPost(@RequestBody PostReportRequest postReportRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(postReportRequest == null || postReportRequest.getPostId() == null || postReportRequest.getPostId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(StringUtils.isBlank(postReportRequest.getReason()), ErrorCode.PARAMS_ERROR, "举报原因不能为空");
+        Post post = postService.getById(postReportRequest.getPostId());
+        ThrowUtils.throwIf(post == null, ErrorCode.NOT_FOUND_ERROR);
+        User loginUser = userService.getLoginUser(request);
+
+        PostReport existReport = postReportMapper.selectOne(new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<PostReport>()
+                .eq("postId", postReportRequest.getPostId())
+                .eq("userId", loginUser.getId()));
+        ThrowUtils.throwIf(existReport != null, ErrorCode.OPERATION_ERROR, "你已经举报过这篇帖子了");
+
+        PostReport report = new PostReport();
+        report.setPostId(postReportRequest.getPostId());
+        report.setUserId(loginUser.getId());
+        report.setReason(StringUtils.abbreviate(postReportRequest.getReason().trim(), 200));
+        report.setStatus(0);
+        postReportMapper.insert(report);
+
+        Post updatePost = new Post();
+        updatePost.setId(post.getId());
+        updatePost.setReportNum((post.getReportNum() == null ? 0 : post.getReportNum()) + 1);
+        if ((post.getReportNum() == null ? 0 : post.getReportNum()) + 1 >= 3) {
+            updatePost.setReviewStatus(PostConstant.REVIEW_STATUS_PENDING);
+            updatePost.setReviewMessage("社区举报触发人工复核");
+        }
+        boolean result = postService.updateById(updatePost);
         return ResultUtils.success(result);
     }
 

@@ -645,6 +645,7 @@ declare namespace API {
     isFeatured?: number;
     isDelete?: number;
     isTop?: number;
+    reportNum?: number;
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;
@@ -713,6 +714,11 @@ declare namespace API {
     reviewStatus?: number;
   };
 
+  type PostReportRequest = {
+    postId?: number;
+    reason?: string;
+  };
+
   type PostThumbAddRequest = {
     postId?: number;
   };
@@ -733,6 +739,7 @@ declare namespace API {
     id?: number;
     isFeatured?: number;
     isTop?: number;
+    reportNum?: number;
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;

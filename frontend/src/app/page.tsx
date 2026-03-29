@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import { getGlobalLeaderboardUsingGet } from "@/api/leaderboardController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
-import { listHotPostUsingGet } from "@/api/postController";
+import { listFeaturedPostUsingGet, listHotPostUsingGet } from "@/api/postController";
 import { headers } from "next/headers";
 import QuestionBankList from "@/components/QuestionBankList";
 import QuestionList from "@/components/QuestionList";
@@ -23,6 +23,7 @@ export default async function HomePage() {
   let questionBankList: API.QuestionBankVO[] = [];
   let questionList: API.QuestionVO[] = [];
   let leaderboard: API.GlobalLeaderboardVO | undefined = undefined;
+  let featuredPostList: API.PostVO[] = [];
   let hotPostList: API.PostVO[] = [];
   const cookie = headers().get("cookie") || "";
   const requestOptions = {
@@ -31,7 +32,7 @@ export default async function HomePage() {
     },
   };
 
-  const [questionBankResult, latestQuestionResult, leaderboardResult, hotPostResult] = await Promise.allSettled([
+  const [questionBankResult, latestQuestionResult, leaderboardResult, featuredPostResult, hotPostResult] = await Promise.allSettled([
     listQuestionBankVoByPageUsingPost(
       {
         pageSize: 8,
@@ -49,6 +50,7 @@ export default async function HomePage() {
       requestOptions,
     ),
     getGlobalLeaderboardUsingGet(requestOptions),
+    listFeaturedPostUsingGet(requestOptions),
     listHotPostUsingGet(requestOptions),
   ]);
 
@@ -71,6 +73,13 @@ export default async function HomePage() {
     leaderboard = leaderboardRes.data;
   } else {
     console.error("获取全站榜单失败", leaderboardResult.reason);
+  }
+
+  if (featuredPostResult.status === "fulfilled") {
+    const featuredPostRes = featuredPostResult.value as unknown as API.BaseResponseListPostVO_;
+    featuredPostList = featuredPostRes.data ?? [];
+  } else {
+    console.error("获取精选帖子失败", featuredPostResult.reason);
   }
 
   if (hotPostResult.status === "fulfilled") {
@@ -181,6 +190,25 @@ export default async function HomePage() {
 
         <QuestionList questionList={questionList} />
       </section>
+
+      {featuredPostList.length ? (
+        <section className="relative space-y-10">
+          <div className="flex items-end justify-between px-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-violet-500 font-black uppercase tracking-[0.2em] text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                <span>Editors Choice</span>
+              </div>
+              <h2 className="text-3xl font-black tracking-tighter text-slate-900 sm:text-5xl">精选经验帖</h2>
+            </div>
+            <Link href="/posts" className="group flex items-center gap-2 text-sm font-black text-slate-400 hover:text-primary transition-all">
+              VIEW ALL <ArrowRight className="h-5 w-5 bg-white p-1 rounded-full group-hover:bg-primary group-hover:text-white transition-all shadow-md" />
+            </Link>
+          </div>
+
+          <PostList postList={featuredPostList} />
+        </section>
+      ) : null}
 
       <section className="relative space-y-10">
         <div className="flex items-end justify-between px-4">
