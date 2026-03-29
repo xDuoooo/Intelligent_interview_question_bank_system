@@ -7,6 +7,12 @@ import java.util.Set;
  */
 public interface QuestionConstant {
 
+    String DIFFICULTY_EASY = "简单";
+
+    String DIFFICULTY_MEDIUM = "中等";
+
+    String DIFFICULTY_HARD = "困难";
+
     /**
      * 待审核
      */
@@ -37,5 +43,11 @@ public interface QuestionConstant {
     Set<Integer> ALLOWED_ADMIN_REVIEW_STATUS_SET = Set.of(
             REVIEW_STATUS_APPROVED,
             REVIEW_STATUS_REJECTED
+    );
+
+    Set<String> ALLOWED_DIFFICULTY_SET = Set.of(
+            DIFFICULTY_EASY,
+            DIFFICULTY_MEDIUM,
+            DIFFICULTY_HARD
     );
 }

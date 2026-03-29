@@ -173,7 +173,10 @@ const LearningDataDashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <Title level={5} style={{ marginBottom: 0 }}>成就进度</Title>
-                <Tag color="blue">数据驱动激励</Tag>
+                <Space>
+                  {stats.recommendedDifficulty ? <Tag color="processing">建议难度：{stats.recommendedDifficulty}</Tag> : null}
+                  <Tag color="blue">数据驱动激励</Tag>
+                </Space>
               </div>
               {achievementList.length === 0 ? (
                 <Empty description="还没有成就数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />

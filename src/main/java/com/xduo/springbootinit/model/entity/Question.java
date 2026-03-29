@@ -40,6 +40,11 @@ public class Question {
     private String answer;
 
     /**
+     * 题目难度：简单 / 中等 / 困难
+     */
+    private String difficulty;
+
+    /**
      * 创建用户 id
      */
     private Long userId;
@@ -153,6 +158,20 @@ public class Question {
      */
     public void setAnswer(String answer) {
         this.answer = answer;
+    }
+
+    /**
+     * 题目难度：简单 / 中等 / 困难
+     */
+    public String getDifficulty() {
+        return difficulty;
+    }
+
+    /**
+     * 题目难度：简单 / 中等 / 困难
+     */
+    public void setDifficulty(String difficulty) {
+        this.difficulty = difficulty;
     }
 
     /**

@@ -46,6 +46,16 @@ public class UserUpdateMyRequest implements Serializable {
     private String city;
 
     /**
+     * 就业方向
+     */
+    private String careerDirection;
+
+    /**
+     * 兴趣标签
+     */
+    private java.util.List<String> interestTags;
+
+    /**
      * GitHub 唯一标识
      */
     private String githubId;

@@ -35,6 +35,16 @@ public class UserUpdateRequest implements Serializable {
     private String city;
 
     /**
+     * 就业方向
+     */
+    private String careerDirection;
+
+    /**
+     * 兴趣标签
+     */
+    private java.util.List<String> interestTags;
+
+    /**
      * 用户角色：user/admin/ban
      */
     private String userRole;

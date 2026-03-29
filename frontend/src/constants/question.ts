@@ -27,3 +27,21 @@ export const QUESTION_REVIEW_STATUS_VALUE_ENUM = {
   [QUESTION_REVIEW_STATUS_ENUM.APPROVED]: { text: "已通过" },
   [QUESTION_REVIEW_STATUS_ENUM.REJECTED]: { text: "已驳回" },
 };
+
+export const QUESTION_DIFFICULTY_OPTIONS = [
+  { label: "简单", value: "简单" },
+  { label: "中等", value: "中等" },
+  { label: "困难", value: "困难" },
+];
+
+export const QUESTION_DIFFICULTY_VALUE_ENUM = {
+  简单: { text: "简单" },
+  中等: { text: "中等" },
+  困难: { text: "困难" },
+};
+
+export const QUESTION_DIFFICULTY_COLOR_MAP: Record<string, string> = {
+  简单: "green",
+  中等: "blue",
+  困难: "volcano",
+};

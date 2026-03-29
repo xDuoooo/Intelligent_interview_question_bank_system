@@ -3,6 +3,7 @@ package com.xduo.springbootinit.controller;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.json.JSONUtil;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
 import com.xduo.springbootinit.common.ErrorCode;
@@ -19,7 +20,9 @@ import com.xduo.springbootinit.model.dto.user.UserUpdateMyRequest;
 import com.xduo.springbootinit.model.dto.user.UserUpdateRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.entity.UserQuestionHistory;
 import com.xduo.springbootinit.model.vo.LoginUserVO;
+import com.xduo.springbootinit.model.vo.UserActivityVO;
 import com.xduo.springbootinit.model.vo.UserProfileVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionService;
@@ -29,6 +32,14 @@ import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.CityUtils;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
@@ -193,6 +204,8 @@ public class UserController {
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
         user.setCity(normalizeOptionalSupportedCity(userAddRequest.getCity(), false));
+        user.setCareerDirection(normalizeCareerDirection(userAddRequest.getCareerDirection()));
+        user.setInterestTags(normalizeInterestTags(userAddRequest.getInterestTags()));
         // 默认密码 12345678
         String defaultPassword = "12345678";
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + defaultPassword).getBytes());
@@ -246,6 +259,8 @@ public class UserController {
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
         user.setCity(normalizeOptionalSupportedCity(userUpdateRequest.getCity(), false));
+        user.setCareerDirection(normalizeCareerDirection(userUpdateRequest.getCareerDirection()));
+        user.setInterestTags(normalizeInterestTags(userUpdateRequest.getInterestTags()));
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
@@ -381,12 +396,19 @@ public class UserController {
             ThrowUtils.throwIf(userProfile.length() > 200, ErrorCode.PARAMS_ERROR, "个人简介最多 200 个字符");
             userUpdateMyRequest.setUserProfile(userProfile);
         }
+        if (userUpdateMyRequest.getCareerDirection() != null) {
+            userUpdateMyRequest.setCareerDirection(normalizeCareerDirection(userUpdateMyRequest.getCareerDirection()));
+        }
+        if (userUpdateMyRequest.getInterestTags() != null) {
+            userUpdateMyRequest.setInterestTags(parseInterestTagList(normalizeInterestTags(userUpdateMyRequest.getInterestTags())));
+        }
         // 校验昵称唯一性
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
         User user = new User();
         // 仅允许修改账号、昵称、头像、简介、城市
         BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "githubId", "giteeId", "googleId");
+        user.setInterestTags(normalizeInterestTags(userUpdateMyRequest.getInterestTags()));
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -403,6 +425,41 @@ public class UserController {
         }
         ThrowUtils.throwIf(!CityUtils.isSupportedCity(normalizedCity), ErrorCode.PARAMS_ERROR, "请选择系统支持的城市");
         return normalizedCity;
+    }
+
+    private String normalizeCareerDirection(String careerDirection) {
+        String normalizedDirection = StringUtils.trimToNull(careerDirection);
+        if (normalizedDirection == null) {
+            return null;
+        }
+        ThrowUtils.throwIf(normalizedDirection.length() > 30, ErrorCode.PARAMS_ERROR, "就业方向最多 30 个字符");
+        return normalizedDirection;
+    }
+
+    private String normalizeInterestTags(List<String> interestTagList) {
+        if (interestTagList == null) {
+            return null;
+        }
+        List<String> normalizedTagList = interestTagList.stream()
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .distinct()
+                .limit(8)
+                .collect(Collectors.toList());
+        ThrowUtils.throwIf(normalizedTagList.stream().anyMatch(tag -> tag.length() > 20),
+                ErrorCode.PARAMS_ERROR, "兴趣标签单项不能超过 20 个字符");
+        return normalizedTagList.isEmpty() ? null : JSONUtil.toJsonStr(normalizedTagList);
+    }
+
+    private List<String> parseInterestTagList(String interestTags) {
+        if (StringUtils.isBlank(interestTags)) {
+            return Collections.emptyList();
+        }
+        try {
+            return JSONUtil.toList(interestTags, String.class);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
     }
 
     /**
@@ -581,7 +638,71 @@ public class UserController {
         userProfileVO.setFollowerCount(userFollowService.getFollowerCount(user.getId()));
         userProfileVO.setFollowingCount(userFollowService.getFollowingCount(user.getId()));
         userProfileVO.setHasFollowed(userFollowService.hasFollowed(loginUser == null ? null : loginUser.getId(), user.getId()));
+        userProfileVO.setRecentActivityList(buildRecentActivityList(user.getId()));
         return userProfileVO;
+    }
+
+    private List<UserActivityVO> buildRecentActivityList(Long userId) {
+        if (userId == null || userId <= 0) {
+            return Collections.emptyList();
+        }
+        List<UserActivityVO> activityList = new ArrayList<>();
+
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.in("status", List.of(1, 2));
+        historyQueryWrapper.orderByDesc("updateTime");
+        historyQueryWrapper.last("limit 5");
+        List<UserQuestionHistory> historyList = userQuestionHistoryService.list(historyQueryWrapper);
+        Set<Long> questionIdSet = historyList.stream()
+                .map(UserQuestionHistory::getQuestionId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<Long, Question> historyQuestionMap = questionService.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
+        historyList.forEach(history -> {
+            Question question = historyQuestionMap.get(history.getQuestionId());
+            if (question == null) {
+                return;
+            }
+            UserActivityVO activityVO = new UserActivityVO();
+            activityVO.setType("practice");
+            activityVO.setBadge("刷题");
+            activityVO.setTargetId(question.getId());
+            activityVO.setTargetUrl("/question/" + question.getId());
+            activityVO.setActivityTime(history.getUpdateTime());
+            if (Integer.valueOf(1).equals(history.getStatus())) {
+                activityVO.setTitle("掌握了一道题目");
+                activityVO.setDescription("将《" + question.getTitle() + "》标记为已掌握");
+            } else {
+                activityVO.setTitle("记录了一道困难题");
+                activityVO.setDescription("把《" + question.getTitle() + "》标记为需要继续攻克");
+            }
+            activityList.add(activityVO);
+        });
+
+        QueryWrapper<Question> questionQueryWrapper = new QueryWrapper<>();
+        questionQueryWrapper.eq("userId", userId);
+        questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+        questionQueryWrapper.orderByDesc("reviewTime").orderByDesc("createTime");
+        questionQueryWrapper.last("limit 4");
+        List<Question> approvedQuestionList = questionService.list(questionQueryWrapper);
+        approvedQuestionList.forEach(question -> {
+            UserActivityVO activityVO = new UserActivityVO();
+            activityVO.setType("submission");
+            activityVO.setBadge("投稿");
+            activityVO.setTargetId(question.getId());
+            activityVO.setTargetUrl("/question/" + question.getId());
+            activityVO.setActivityTime(question.getReviewTime() != null ? question.getReviewTime() : question.getCreateTime());
+            activityVO.setTitle("发布了一道公开题目");
+            activityVO.setDescription("投稿《" + question.getTitle() + "》已通过审核并公开展示");
+            activityList.add(activityVO);
+        });
+
+        return activityList.stream()
+                .sorted(Comparator.comparing(UserActivityVO::getActivityTime, Comparator.nullsLast(Date::compareTo)).reversed())
+                .limit(8)
+                .collect(Collectors.toList());
     }
 
     private long getLongValue(Object value) {

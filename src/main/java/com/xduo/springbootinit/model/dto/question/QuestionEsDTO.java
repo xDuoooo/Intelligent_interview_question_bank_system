@@ -43,6 +43,11 @@ public class QuestionEsDTO implements Serializable {
     private String answer;
 
     /**
+     * 难度
+     */
+    private String difficulty;
+
+    /**
      * 标签列表
      */
     private List<String> tags;

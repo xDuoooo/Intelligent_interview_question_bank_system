@@ -111,6 +111,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         String title = question.getTitle();
         String content = question.getContent();
         String answer = question.getAnswer();
+        String difficulty = question.getDifficulty();
         // 创建数据时，参数不能为空
         if (add) {
             ThrowUtils.throwIf(StringUtils.isAnyBlank(title, content, answer), ErrorCode.PARAMS_ERROR, "题目标题、内容和题解不能为空");
@@ -124,6 +125,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         if (answer != null) {
             ThrowUtils.throwIf(StringUtils.isBlank(answer), ErrorCode.PARAMS_ERROR, "题解不能为空");
+        }
+        if (StringUtils.isNotBlank(difficulty)) {
+            ThrowUtils.throwIf(!QuestionConstant.ALLOWED_DIFFICULTY_SET.contains(difficulty), ErrorCode.PARAMS_ERROR, "题目难度不合法");
         }
     }
 
@@ -144,6 +148,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         String title = questionQueryRequest.getTitle();
         String content = questionQueryRequest.getContent();
         String answer = questionQueryRequest.getAnswer();
+        String difficulty = questionQueryRequest.getDifficulty();
         String searchText = questionQueryRequest.getSearchText();
         String sortField = questionQueryRequest.getSortField();
         String sortOrder = questionQueryRequest.getSortOrder();
@@ -158,6 +163,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
         queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
         queryWrapper.like(StringUtils.isNotBlank(answer), "answer", answer);
+        queryWrapper.eq(StringUtils.isNotBlank(difficulty), "difficulty", difficulty);
         // JSON 数组查询
         if (CollUtil.isNotEmpty(tagList)) {
             for (String tag : tagList) {
@@ -298,6 +304,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         String title = questionQueryRequest.getTitle();
         String content = questionQueryRequest.getContent();
         String answer = questionQueryRequest.getAnswer();
+        String difficulty = questionQueryRequest.getDifficulty();
         List<String> tags = questionQueryRequest.getTags();
         Long questionBankId = questionQueryRequest.getQuestionBankId();
         Long userId = questionQueryRequest.getUserId();
@@ -341,6 +348,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         if (StringUtils.isNotBlank(answer)) {
             boolQueryBuilder.must(m -> m.match(mm -> mm.field("answer").query(answer)));
+        }
+        if (StringUtils.isNotBlank(difficulty)) {
+            boolQueryBuilder.filter(f -> f.term(t -> t.field("difficulty").value(difficulty)));
         }
         // 必须包含所有标签
         if (CollUtil.isNotEmpty(tags)) {
@@ -505,6 +515,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 candidateQuestionList,
                 loadQuestionTitleMap(interactedQuestionWeightMap.keySet())
         );
+        String recommendedDifficulty = inferRecommendedDifficulty(userId);
 
         List<QuestionRecommendationScore> scoredList = candidateQuestionList.stream()
                 .filter(question -> currentQuestionId == null || !question.getId().equals(currentQuestionId))
@@ -512,10 +523,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .map(question -> {
                     QuestionRecommendationScore contentScore = buildRecommendationScore(question, tagWeightMap, "偏好标签");
                     CollaborativeRecommendationDetail collaborativeDetail = collaborativeScoreMap.get(question.getId());
-                    int finalScore = contentScore.getScore() + (collaborativeDetail == null ? 0 : collaborativeDetail.getScore());
+                    int finalScore = contentScore.getScore()
+                            + (collaborativeDetail == null ? 0 : collaborativeDetail.getScore())
+                            + buildDifficultyScore(question.getDifficulty(), recommendedDifficulty);
                     String finalReason = mergeRecommendationReason(
                             contentScore.getReason(),
-                            collaborativeDetail == null ? "" : collaborativeDetail.getReason()
+                            collaborativeDetail == null ? "" : collaborativeDetail.getReason(),
+                            buildDifficultyReason(question.getDifficulty(), recommendedDifficulty)
                     );
                     return new QuestionRecommendationScore(question, finalScore, finalReason);
                 })
@@ -637,11 +651,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Map<String, Integer> tagWeightMap = new HashMap<>();
         addTagWeights(tagWeightMap, profile.getExtractedTags(), 6);
         addBehaviorPreferenceWeights(userId, tagWeightMap);
+        String recommendedDifficulty = inferRecommendedDifficulty(userId);
         Set<Long> interactedQuestionIdSet = getInteractedQuestionIdSet(userId);
 
         List<QuestionRecommendationScore> scoredList = allQuestionList.stream()
                 .filter(question -> !interactedQuestionIdSet.contains(question.getId()))
-                .map(question -> buildResumeRecommendationScore(question, tagWeightMap, profile.getExtractedTags()))
+                .map(question -> buildResumeRecommendationScore(question, tagWeightMap, profile.getExtractedTags(), recommendedDifficulty))
                 .filter(item -> item.getScore() > 0)
                 .sorted(Comparator
                         .comparingInt(QuestionRecommendationScore::getScore).reversed()
@@ -746,7 +761,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         return new QuestionRecommendationScore(question, score, reason);
     }
 
-    private QuestionRecommendationScore buildResumeRecommendationScore(Question question, Map<String, Integer> tagWeightMap, List<String> extractedTags) {
+    private QuestionRecommendationScore buildResumeRecommendationScore(Question question,
+                                                                       Map<String, Integer> tagWeightMap,
+                                                                       List<String> extractedTags,
+                                                                       String recommendedDifficulty) {
         List<String> matchedTagList = new ArrayList<>();
         int score = 0;
         for (String tag : parseTagList(question.getTags())) {
@@ -767,7 +785,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 matchedKeywordList.add(tag);
             }
         }
-        String reason = buildResumeRecommendationReason(matchedTagList, matchedKeywordList);
+        score += buildDifficultyScore(question.getDifficulty(), recommendedDifficulty);
+        String reason = mergeRecommendationReason(
+                buildResumeRecommendationReason(matchedTagList, matchedKeywordList),
+                buildDifficultyReason(question.getDifficulty(), recommendedDifficulty)
+        );
         return new QuestionRecommendationScore(question, score, reason);
     }
 
@@ -1049,6 +1071,80 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .map(String::trim)
                 .distinct()
                 .collect(Collectors.joining("；"));
+    }
+
+    private int buildDifficultyScore(String questionDifficulty, String recommendedDifficulty) {
+        if (StringUtils.isBlank(questionDifficulty) || StringUtils.isBlank(recommendedDifficulty)) {
+            return 0;
+        }
+        if (StringUtils.equals(questionDifficulty, recommendedDifficulty)) {
+            return 8;
+        }
+        return Math.abs(convertDifficultyToLevel(questionDifficulty) - convertDifficultyToLevel(recommendedDifficulty)) == 1 ? 3 : -2;
+    }
+
+    private String buildDifficultyReason(String questionDifficulty, String recommendedDifficulty) {
+        if (StringUtils.isBlank(questionDifficulty) || StringUtils.isBlank(recommendedDifficulty)) {
+            return "";
+        }
+        if (StringUtils.equals(questionDifficulty, recommendedDifficulty)) {
+            return "当前更适合你的训练难度：" + recommendedDifficulty;
+        }
+        return "";
+    }
+
+    private String inferRecommendedDifficulty(long userId) {
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.orderByDesc("updateTime");
+        historyQueryWrapper.last("limit 40");
+        List<UserQuestionHistory> historyList = userQuestionHistoryMapper.selectList(historyQueryWrapper);
+        if (CollUtil.isEmpty(historyList)) {
+            return QuestionConstant.DIFFICULTY_MEDIUM;
+        }
+        Set<Long> questionIdSet = historyList.stream()
+                .map(UserQuestionHistory::getQuestionId)
+                .filter(ObjectUtils::isNotEmpty)
+                .collect(Collectors.toSet());
+        Map<Long, Question> questionMap = this.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
+        double totalLevel = 0D;
+        int sampleCount = 0;
+        long masteredCount = 0;
+        long difficultCount = 0;
+        for (UserQuestionHistory history : historyList) {
+            Question question = questionMap.get(history.getQuestionId());
+            totalLevel += convertDifficultyToLevel(question == null ? null : question.getDifficulty());
+            sampleCount++;
+            if (Integer.valueOf(1).equals(history.getStatus())) {
+                masteredCount++;
+            } else if (Integer.valueOf(2).equals(history.getStatus())) {
+                difficultCount++;
+            }
+        }
+        if (sampleCount == 0) {
+            return QuestionConstant.DIFFICULTY_MEDIUM;
+        }
+        double avgDifficulty = totalLevel / sampleCount;
+        double masteredRate = masteredCount * 1D / sampleCount;
+        double difficultRate = difficultCount * 1D / sampleCount;
+        if (masteredRate >= 0.55 && avgDifficulty >= 2.2) {
+            return QuestionConstant.DIFFICULTY_HARD;
+        }
+        if (difficultRate >= 0.4 && avgDifficulty <= 2.1) {
+            return QuestionConstant.DIFFICULTY_EASY;
+        }
+        return QuestionConstant.DIFFICULTY_MEDIUM;
+    }
+
+    private int convertDifficultyToLevel(String difficulty) {
+        if (QuestionConstant.DIFFICULTY_HARD.equals(difficulty)) {
+            return 3;
+        }
+        if (QuestionConstant.DIFFICULTY_EASY.equals(difficulty)) {
+            return 1;
+        }
+        return 2;
     }
 
     private ResumeAnalysisProfile buildResumeAnalysisProfile(String resumeText, Set<String> candidateTagSet) {

@@ -16,7 +16,9 @@ import {
   BookOpen,
   Flame,
   FilePenLine,
-  User as UserIcon
+  User as UserIcon,
+  NotebookPen,
+  BriefcaseBusiness
 } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
 
@@ -52,6 +54,10 @@ const ResumeRecommendPanel = dynamic(() => import("@/app/user/center/components/
 
 const MyQuestionSubmissionPanel = dynamic(() => import("@/app/user/center/components/MyQuestionSubmissionPanel"), {
   loading: () => <div className="py-8 text-center text-slate-400">正在加载投稿记录...</div>,
+});
+
+const MyQuestionNoteList = dynamic(() => import("@/app/user/center/components/MyQuestionNoteList"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载我的笔记...</div>,
 });
 
 const CalendarChart = dynamic(() => import("@/app/user/center/components/CalendarChart"), {
@@ -161,7 +167,22 @@ function UserCenterContent() {
                     城市: {user.city}
                   </Tag>
                 ) : null}
+                {user.careerDirection ? (
+                  <Tag className="rounded-full px-3 m-0 bg-violet-50 border-violet-100 text-violet-700">
+                    方向: {user.careerDirection}
+                  </Tag>
+                ) : null}
               </div>
+
+              {user.interestTagList?.length ? (
+                <div className="mb-6 flex flex-wrap gap-2">
+                  {user.interestTagList.slice(0, 6).map((tag) => (
+                    <Tag key={tag} className="rounded-full px-3 py-1 m-0 bg-slate-50 border-slate-200 text-slate-600">
+                      {tag}
+                    </Tag>
+                  ))}
+                </div>
+              ) : null}
 
               {/* 侧边栏快查数据 */}
               <div className="grid grid-cols-2 gap-3 pt-6 border-t border-slate-100">
@@ -176,6 +197,12 @@ function UserCenterContent() {
                     <Flame size={12} /> 已掌握
                   </div>
                   <div className="text-xl font-black text-orange-700">{stats.masteredCount || 0}</div>
+                </div>
+                <div className="col-span-2 p-3 rounded-2xl bg-violet-50/60 border border-violet-100/40">
+                  <div className="text-[10px] uppercase font-black text-violet-400 flex items-center gap-1.5 mb-1">
+                    <BriefcaseBusiness size={12} /> 当前建议训练难度
+                  </div>
+                  <div className="text-xl font-black text-violet-700">{stats.recommendedDifficulty || "中等"}</div>
                 </div>
               </div>
 
@@ -194,6 +221,7 @@ function UserCenterContent() {
               { key: "overview", label: <span className="flex items-center gap-2"><LayoutDashboard size={16} />个人概览</span> },
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
               { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的投稿</span> },
+              { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
               { key: "security", label: <span className="flex items-center gap-2"><ShieldCheck size={16} />账号安全</span> },
               { key: "favour", label: <span className="flex items-center gap-2"><Heart size={16} />收藏题目</span> },
               { key: "history", label: <span className="flex items-center gap-2"><History size={16} />刷题轨迹</span> },
@@ -220,6 +248,9 @@ function UserCenterContent() {
                         </Button>
                         <Button onClick={() => setActiveTabKey("submission")}>
                           我的投稿
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("notes")}>
+                          我的笔记
                         </Button>
                         <Button onClick={() => setActiveTabKey("favour")}>
                           查看收藏题目
@@ -276,6 +307,52 @@ function UserCenterContent() {
                     </Col>
                   </Row>
 
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} lg={10}>
+                      <Card bordered={false} className="stats-card h-full">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-violet-500">学习画像</div>
+                        <div className="mt-4 space-y-4">
+                          <div>
+                            <div className="text-sm font-bold text-slate-700">目标方向</div>
+                            <div className="mt-2 text-base font-semibold text-slate-900">
+                              {user.careerDirection || "还没有填写就业方向"}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-700">兴趣标签</div>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {user.interestTagList?.length ? (
+                                user.interestTagList.map((tag) => (
+                                  <Tag key={tag} className="m-0 rounded-full border-slate-200 bg-slate-50 px-3 py-1">
+                                    {tag}
+                                  </Tag>
+                                ))
+                              ) : (
+                                <Text type="secondary">添加兴趣标签后，推荐会更贴近你的学习方向。</Text>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} lg={14}>
+                      <Card bordered={false} className="stats-card h-full">
+                        <div className="text-[11px] uppercase font-black tracking-wider text-blue-500">动态难度建议</div>
+                        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <div className="text-3xl font-black text-slate-900">{stats.recommendedDifficulty || "中等"}</div>
+                            <div className="mt-2 text-sm text-slate-500">
+                              系统会结合你的掌握情况、困难题比例和刷题轨迹，为你推荐更适合继续训练的题目难度。
+                            </div>
+                          </div>
+                          <Tag color="processing" className="m-0 rounded-full px-4 py-2 text-sm">
+                            个性化推荐已联动
+                          </Tag>
+                        </div>
+                      </Card>
+                    </Col>
+                  </Row>
+
                 <div className="mb-8">
                   <ResumeRecommendPanel />
                 </div>
@@ -290,6 +367,11 @@ function UserCenterContent() {
             {activeTabKey === "submission" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <MyQuestionSubmissionPanel />
+              </div>
+            )}
+            {activeTabKey === "notes" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <MyQuestionNoteList />
               </div>
             )}
             {activeTabKey === "record" && (

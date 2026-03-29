@@ -80,6 +80,12 @@ const UserAdminPage: React.FC = () => {
       render: (text) => text || <span className="text-slate-300">未填写</span>,
     },
     {
+      title: "就业方向",
+      dataIndex: "careerDirection",
+      valueType: "text",
+      render: (text) => text || <span className="text-slate-300">未填写</span>,
+    },
+    {
       title: "头像",
       dataIndex: "userAvatar",
       valueType: "image",

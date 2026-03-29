@@ -29,6 +29,7 @@ import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 import com.xduo.springbootinit.service.NotificationService;
+import com.xduo.springbootinit.service.QuestionRecommendLogService;
 import com.xduo.springbootinit.service.QuestionSearchLogService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.SecurityAlertService;
@@ -89,6 +90,9 @@ public class QuestionController {
 
     @Resource
     private NotificationService notificationService;
+
+    @Resource
+    private QuestionRecommendLogService questionRecommendLogService;
 
     /**
      * 创建题目
@@ -212,7 +216,9 @@ public class QuestionController {
                                                                           @RequestParam(defaultValue = "6") Integer size,
                                                                           HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
-        return ResultUtils.success(questionService.listRecommendQuestionVOByUser(loginUser.getId(), questionId, size, request));
+        List<QuestionVO> questionVOList = questionService.listRecommendQuestionVOByUser(loginUser.getId(), questionId, size, request);
+        logRecommendationExposure(loginUser.getId(), "personal", questionVOList);
+        return ResultUtils.success(questionVOList);
     }
 
     /**
@@ -223,7 +229,10 @@ public class QuestionController {
                                                                 @RequestParam(defaultValue = "6") Integer size,
                                                                 HttpServletRequest request) {
         ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR);
-        return ResultUtils.success(questionService.listRelatedQuestionVO(questionId, size, request));
+        User loginUser = userService.getLoginUserPermitNull(request);
+        List<QuestionVO> questionVOList = questionService.listRelatedQuestionVO(questionId, size, request);
+        logRecommendationExposure(loginUser == null ? null : loginUser.getId(), "related", questionVOList);
+        return ResultUtils.success(questionVOList);
     }
 
     /**
@@ -241,6 +250,7 @@ public class QuestionController {
                 size,
                 request
         );
+        logRecommendationExposure(loginUser.getId(), "resume", result.getQuestionList());
         return ResultUtils.success(result);
     }
 
@@ -260,7 +270,18 @@ public class QuestionController {
                 size == null ? 6 : size,
                 request
         );
+        logRecommendationExposure(loginUser.getId(), "resume", result.getQuestionList());
         return ResultUtils.success(result);
+    }
+
+    @PostMapping("/recommend/click")
+    public BaseResponse<Boolean> logRecommendClick(@RequestBody QuestionRecommendClickRequest clickRequest,
+                                                   HttpServletRequest request) {
+        ThrowUtils.throwIf(clickRequest == null || clickRequest.getQuestionId() == null || clickRequest.getQuestionId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUserPermitNull(request);
+        questionRecommendLogService.logClick(loginUser == null ? null : loginUser.getId(), clickRequest.getSource(), clickRequest.getQuestionId());
+        return ResultUtils.success(true);
     }
 
     /**
@@ -671,6 +692,17 @@ public class QuestionController {
             contentBuilder.append(" 审核意见：").append(reviewMessage);
         }
         return contentBuilder.toString();
+    }
+
+    private void logRecommendationExposure(Long userId, String source, List<QuestionVO> questionVOList) {
+        if (questionVOList == null || questionVOList.isEmpty()) {
+            return;
+        }
+        List<Long> questionIdList = questionVOList.stream()
+                .map(QuestionVO::getId)
+                .filter(id -> id != null && id > 0)
+                .collect(java.util.stream.Collectors.toList());
+        questionRecommendLogService.logExposure(userId, source, questionIdList);
     }
 
     private List<AiGeneratedQuestion> parseAiGeneratedQuestions(String rawContent) {

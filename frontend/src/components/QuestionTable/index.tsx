@@ -6,6 +6,7 @@ import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import { ChevronLeft, ChevronRight, Filter, Loader2, Search, Sparkles } from "lucide-react";
 import { Button, Input, Select, Tag } from "antd";
+import { QUESTION_DIFFICULTY_COLOR_MAP, QUESTION_DIFFICULTY_OPTIONS } from "@/constants/question";
 
 interface Props {
   defaultQuestionList?: API.QuestionVO[];
@@ -54,6 +55,7 @@ const QuestionTable: React.FC<Props> = (props) => {
   const [contentKeyword, setContentKeyword] = useState(defaultSearchParams.content || "");
   const [answerKeyword, setAnswerKeyword] = useState(defaultSearchParams.answer || "");
   const [selectedTags, setSelectedTags] = useState<string[]>(defaultSearchParams.tags || []);
+  const [difficulty, setDifficulty] = useState(defaultSearchParams.difficulty);
   const [sortValue, setSortValue] = useState(
     getSortValue(defaultSearchParams.sortField, defaultSearchParams.sortOrder),
   );
@@ -67,6 +69,7 @@ const QuestionTable: React.FC<Props> = (props) => {
     content: defaultSearchParams.content,
     answer: defaultSearchParams.answer,
     tags: defaultSearchParams.tags,
+    difficulty: defaultSearchParams.difficulty,
   });
 
   const activeFilterCount = useMemo(() => {
@@ -76,9 +79,10 @@ const QuestionTable: React.FC<Props> = (props) => {
       cleanText(contentKeyword),
       cleanText(answerKeyword),
       selectedTags.length ? "tags" : "",
+      difficulty || "",
       sortValue !== "createTime_descend" ? sortValue : "",
     ].filter(Boolean).length;
-  }, [answerKeyword, contentKeyword, searchText, selectedTags, sortValue, titleKeyword]);
+  }, [answerKeyword, contentKeyword, difficulty, searchText, selectedTags, sortValue, titleKeyword]);
 
   const syncUrl = (nextParams: API.QuestionQueryRequest) => {
     const currentPathname = pathname || "/questions";
@@ -97,6 +101,9 @@ const QuestionTable: React.FC<Props> = (props) => {
     }
     if (nextParams.tags?.length) {
       searchParam.set("tags", nextParams.tags.join(","));
+    }
+    if (nextParams.difficulty) {
+      searchParam.set("difficulty", nextParams.difficulty);
     }
     if (nextParams.sortField && nextParams.sortField !== "createTime") {
       searchParam.set("sortField", nextParams.sortField);
@@ -120,6 +127,7 @@ const QuestionTable: React.FC<Props> = (props) => {
       title: cleanText(titleKeyword),
       content: cleanText(contentKeyword),
       answer: cleanText(answerKeyword),
+      difficulty,
       tags: selectedTags.length ? selectedTags : undefined,
       sortField: sortMeta.sortField,
       sortOrder: sortMeta.sortOrder,
@@ -154,6 +162,7 @@ const QuestionTable: React.FC<Props> = (props) => {
     setContentKeyword("");
     setAnswerKeyword("");
     setSelectedTags([]);
+    setDifficulty(undefined);
     setSortValue("createTime_descend");
     await fetchData({
       current: 1,
@@ -212,7 +221,7 @@ const QuestionTable: React.FC<Props> = (props) => {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <Input
               size="large"
               value={titleKeyword}
@@ -232,6 +241,14 @@ const QuestionTable: React.FC<Props> = (props) => {
               value={answerKeyword}
               onChange={(e) => setAnswerKeyword(e.target.value)}
               placeholder="题解关键词"
+              allowClear
+            />
+            <Select
+              size="large"
+              value={difficulty}
+              onChange={setDifficulty}
+              options={QUESTION_DIFFICULTY_OPTIONS}
+              placeholder="难度筛选"
               allowClear
             />
             <Select
@@ -285,11 +302,18 @@ const QuestionTable: React.FC<Props> = (props) => {
                   <h3 className="truncate text-xl font-black text-foreground transition-colors group-hover:text-primary sm:text-2xl">
                     {item.title}
                   </h3>
-                  {item.recommendReason ? (
-                    <Tag className="rounded-full border-primary/15 bg-primary/5 px-3 py-1 text-primary">
-                      {item.recommendReason}
-                    </Tag>
-                  ) : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {item.difficulty ? (
+                      <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[item.difficulty] || "default"} className="rounded-full">
+                        {item.difficulty}
+                      </Tag>
+                    ) : null}
+                    {item.recommendReason ? (
+                      <Tag className="rounded-full border-primary/15 bg-primary/5 px-3 py-1 text-primary">
+                        {item.recommendReason}
+                      </Tag>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="mt-3 scale-100 origin-left">
                   <TagList tagList={item.tagList} />

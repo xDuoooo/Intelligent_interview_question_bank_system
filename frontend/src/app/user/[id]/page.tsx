@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, BookOpen, CalendarClock, Flame, MapPin, PenSquare, Sparkles } from "lucide-react";
+import { ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame, MapPin, NotebookPen, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
@@ -156,11 +156,29 @@ export default async function PublicUserProfilePage({
                   <MapPin className="h-4 w-4 text-primary" />
                   {profile.user.city || "未公开城市"}
                 </span>
+                {profile.user.careerDirection ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-4 py-2 text-violet-700">
+                    <BriefcaseBusiness className="h-4 w-4" />
+                    {profile.user.careerDirection}
+                  </span>
+                ) : null}
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
                   <CalendarClock className="h-4 w-4 text-primary" />
                   加入于 {formatDate(profile.user.createTime)}
                 </span>
               </div>
+              {profile.user.interestTagList?.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {profile.user.interestTagList.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -198,6 +216,65 @@ export default async function PublicUserProfilePage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+              Recent Activity
+            </div>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
+              公开学习动态
+            </h2>
+          </div>
+          <div className="text-sm text-slate-400">
+            公开展示最近刷题与投稿动态
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4">
+          {profile.recentActivityList?.length ? (
+            profile.recentActivityList.map((activity, index) => (
+              <div
+                key={`${activity.type}-${activity.targetId || index}`}
+                className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 px-5 py-5"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-primary">
+                        {activity.badge || "动态"}
+                      </span>
+                      <div className="text-lg font-black text-slate-900 whitespace-normal break-words">
+                        {activity.title}
+                      </div>
+                    </div>
+                    <div className="mt-3 text-sm leading-7 text-slate-500">
+                      {activity.description}
+                    </div>
+                    {activity.targetUrl ? (
+                      <Link
+                        href={activity.targetUrl}
+                        className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary"
+                      >
+                        查看详情
+                        <NotebookPen className="h-4 w-4" />
+                      </Link>
+                    ) : null}
+                  </div>
+                  <div className="shrink-0 text-sm text-slate-400">
+                    {formatDate(activity.activityTime)}
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-[1.75rem] border border-dashed border-slate-200 px-6 py-12 text-center text-sm text-slate-400">
+              这位用户暂时还没有公开学习动态。
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
               Latest Contributions
             </div>
             <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
@@ -228,6 +305,21 @@ export default async function PublicUserProfilePage({
                     <div className="mt-4">
                       <TagList tagList={question.tagList} />
                     </div>
+                    {question.difficulty ? (
+                      <div className="mt-3">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                            question.difficulty === "简单"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : question.difficulty === "困难"
+                                ? "bg-orange-50 text-orange-700"
+                                : "bg-blue-50 text-blue-700"
+                          }`}
+                        >
+                          题目难度：{question.difficulty}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="shrink-0 text-sm text-slate-400">
                     发布于 {formatDate(question.createTime)}

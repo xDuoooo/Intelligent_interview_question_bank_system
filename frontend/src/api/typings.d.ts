@@ -348,10 +348,12 @@ declare namespace API {
   };
 
   type LoginUserVO = {
+    careerDirection?: string;
     city?: string;
     createTime?: string;
     email?: string;
     id?: number;
+    interestTagList?: string[];
     passwordConfigured?: number;
     phone?: string;
     updateTime?: string;
@@ -703,6 +705,7 @@ declare namespace API {
     answer?: string;
     content?: string;
     createTime?: string;
+    difficulty?: string;
     editTime?: string;
     id?: number;
     isDelete?: number;
@@ -719,6 +722,7 @@ declare namespace API {
   type QuestionAddRequest = {
     answer?: string;
     content?: string;
+    difficulty?: string;
     tags?: string[];
     title?: string;
   };
@@ -852,6 +856,7 @@ declare namespace API {
   type QuestionEditRequest = {
     answer?: string;
     content?: string;
+    difficulty?: string;
     id?: number;
     tags?: string[];
     title?: string;
@@ -861,6 +866,7 @@ declare namespace API {
     answer?: string;
     content?: string;
     current?: number;
+    difficulty?: string;
     id?: number;
     notId?: number;
     pageSize?: number;
@@ -897,6 +903,7 @@ declare namespace API {
   type QuestionUpdateRequest = {
     answer?: string;
     content?: string;
+    difficulty?: string;
     id?: number;
     tags?: string[];
     title?: string;
@@ -906,6 +913,7 @@ declare namespace API {
     answer?: string;
     content?: string;
     createTime?: string;
+    difficulty?: string;
     favourNum?: number;
     hasFavour?: boolean;
     id?: number;
@@ -939,11 +947,13 @@ declare namespace API {
   };
 
   type User = {
+    careerDirection?: string;
     city?: string;
     createTime?: string;
     editTime?: string;
     email?: string;
     id?: number;
+    interestTags?: string | string[];
     isDelete?: number;
     phone?: string;
     unionId?: string;
@@ -975,7 +985,9 @@ declare namespace API {
   };
 
   type UserAddRequest = {
+    careerDirection?: string;
     city?: string;
+    interestTags?: string[];
     userAccount?: string;
     userAvatar?: string;
     userName?: string;
@@ -1004,6 +1016,7 @@ declare namespace API {
   };
 
   type UserQueryRequest = {
+    careerDirection?: string;
     current?: number;
     id?: number;
     mpOpenId?: string;
@@ -1023,7 +1036,9 @@ declare namespace API {
   };
 
   type UserUpdateMyRequest = {
+    careerDirection?: string;
     city?: string;
+    interestTags?: string[];
     userAccount?: string;
     userAvatar?: string;
     userName?: string;
@@ -1048,8 +1063,10 @@ declare namespace API {
   };
 
   type UserUpdateRequest = {
+    careerDirection?: string;
     city?: string;
     id?: number;
+    interestTags?: string[];
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
@@ -1057,10 +1074,12 @@ declare namespace API {
   };
 
   type UserVO = {
+    careerDirection?: string;
     city?: string;
     createTime?: string;
     hasFollowed?: boolean;
     id?: number;
+    interestTagList?: string[];
     userAvatar?: string;
     userName?: string;
     userProfile?: string;
@@ -1075,8 +1094,69 @@ declare namespace API {
     followingCount?: number;
     hasFollowed?: boolean;
     masteredQuestionCount?: number;
+    recentActivityList?: UserActivityVO[];
     totalQuestionCount?: number;
     user?: UserVO;
+  };
+
+  type UserActivityVO = {
+    activityTime?: string;
+    badge?: string;
+    description?: string;
+    targetId?: number;
+    targetUrl?: string;
+    title?: string;
+    type?: string;
+  };
+
+  type UserQuestionNoteSaveRequest = {
+    content?: string;
+    questionId?: number;
+  };
+
+  type UserQuestionNoteQueryRequest = {
+    current?: number;
+    pageSize?: number;
+  };
+
+  type UserQuestionNoteVO = {
+    content?: string;
+    createTime?: string;
+    id?: number;
+    question?: QuestionVO;
+    questionId?: number;
+    updateTime?: string;
+    userId?: number;
+  };
+
+  type PageUserQuestionNoteVO_ = {
+    countId?: string;
+    current?: number;
+    maxLimit?: number;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: number;
+    records?: UserQuestionNoteVO[];
+    searchCount?: boolean;
+    size?: number;
+    total?: number;
+  };
+
+  type BaseResponseUserQuestionNoteVO_ = {
+    code?: number;
+    data?: UserQuestionNoteVO;
+    message?: string;
+  };
+
+  type BaseResponsePageUserQuestionNoteVO_ = {
+    code?: number;
+    data?: PageUserQuestionNoteVO_;
+    message?: string;
+  };
+
+  type QuestionRecommendClickRequest = {
+    questionId?: number;
+    source?: string;
   };
   type UserFollowRequest = {
     followUserId?: number;
