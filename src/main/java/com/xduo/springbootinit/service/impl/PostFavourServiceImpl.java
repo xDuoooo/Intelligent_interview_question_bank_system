@@ -87,6 +87,9 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
                         .gt("favourNum", 0)
                         .setSql("favourNum = favourNum - 1")
                         .update();
+                if (result) {
+                    postService.syncPostToEs(postService.getById(postId));
+                }
                 return result ? -1 : 0;
             } else {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR);
@@ -100,6 +103,9 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
                         .eq("id", postId)
                         .setSql("favourNum = favourNum + 1")
                         .update();
+                if (result) {
+                    postService.syncPostToEs(postService.getById(postId));
+                }
                 return result ? 1 : 0;
             } else {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR);
@@ -108,7 +114,6 @@ public class PostFavourServiceImpl extends ServiceImpl<PostFavourMapper, PostFav
     }
 
 }
-
 
 
 

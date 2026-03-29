@@ -12,6 +12,7 @@ import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.PostFavourMapper;
 import com.xduo.springbootinit.mapper.PostMapper;
 import com.xduo.springbootinit.mapper.PostThumbMapper;
+import com.xduo.springbootinit.esdao.PostEsDao;
 import com.xduo.springbootinit.model.dto.post.PostEsDTO;
 import com.xduo.springbootinit.model.dto.post.PostQueryRequest;
 import com.xduo.springbootinit.model.entity.*;
@@ -62,6 +63,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Resource
     private ElasticsearchOperations elasticsearchOperations;
+
+    @Resource
+    private PostEsDao postEsDao;
 
     @Override
     public void validPost(Post post, boolean add) {
@@ -266,6 +270,30 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
         page.setRecords(resourceList);
         return page;
+    }
+
+    @Override
+    public void syncPostToEs(Post post) {
+        if (post == null || post.getId() == null) {
+            return;
+        }
+        try {
+            postEsDao.save(PostEsDTO.objToDto(post));
+        } catch (Exception e) {
+            log.error("sync post to es error, postId={}", post.getId(), e);
+        }
+    }
+
+    @Override
+    public void deletePostFromEs(Long postId) {
+        if (postId == null || postId <= 0) {
+            return;
+        }
+        try {
+            postEsDao.deleteById(postId);
+        } catch (Exception e) {
+            log.error("delete post from es error, postId={}", postId, e);
+        }
     }
 
     @Override

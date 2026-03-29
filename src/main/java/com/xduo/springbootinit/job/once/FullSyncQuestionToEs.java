@@ -7,14 +7,15 @@ import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.service.QuestionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 
-// todo 取消注释开启任务
-//@Component
+@Component
+@ConditionalOnProperty(prefix = "app.es-sync.question", name = "full-sync-on-start", havingValue = "true")
 @Slf4j
 public class FullSyncQuestionToEs implements CommandLineRunner {
 

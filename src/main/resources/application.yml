@@ -101,3 +101,22 @@ app:
   ip-location:
     # 本地或内网开发时，可在 local 环境配置一个模拟城市用于测试自动识别
     dev-city: ${APP_IP_LOCATION_DEV_CITY:}
+  es-sync:
+    question:
+      # 题目实时同步已内置，增量任务仅作为“写 MySQL 成功但写 ES 失败”时的兜底修复，默认关闭
+      incremental-enabled: ${APP_ES_SYNC_QUESTION_INCREMENTAL_ENABLED:false}
+      # 启动时是否执行一次题目全量重建索引，默认关闭
+      full-sync-on-start: ${APP_ES_SYNC_QUESTION_FULL_SYNC_ON_START:false}
+      # 增量兜底任务执行频率（毫秒）
+      incremental-fixed-rate-ms: ${APP_ES_SYNC_QUESTION_INCREMENTAL_FIXED_RATE_MS:60000}
+      # 增量兜底任务回看最近多少分钟的数据
+      incremental-lookback-minutes: ${APP_ES_SYNC_QUESTION_INCREMENTAL_LOOKBACK_MINUTES:5}
+    post:
+      # 帖子实时同步已内置，增量任务仅作为兜底修复，默认关闭
+      incremental-enabled: ${APP_ES_SYNC_POST_INCREMENTAL_ENABLED:false}
+      # 启动时是否执行一次帖子全量重建索引，默认关闭
+      full-sync-on-start: ${APP_ES_SYNC_POST_FULL_SYNC_ON_START:false}
+      # 增量兜底任务执行频率（毫秒）
+      incremental-fixed-rate-ms: ${APP_ES_SYNC_POST_INCREMENTAL_FIXED_RATE_MS:60000}
+      # 增量兜底任务回看最近多少分钟的数据
+      incremental-lookback-minutes: ${APP_ES_SYNC_POST_INCREMENTAL_LOOKBACK_MINUTES:5}

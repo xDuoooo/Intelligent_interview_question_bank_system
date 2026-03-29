@@ -99,6 +99,7 @@ public class PostController {
         applyPostReviewPolicy(post, loginUser, true);
         boolean result = postService.save(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        postService.syncPostToEs(post);
         PostSubmitResultVO postSubmitResultVO = new PostSubmitResultVO();
         postSubmitResultVO.setId(post.getId());
         postSubmitResultVO.setReviewStatus(post.getReviewStatus());
@@ -128,6 +129,9 @@ public class PostController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean b = postService.removeById(id);
+        if (b) {
+            postService.deletePostFromEs(id);
+        }
         return ResultUtils.success(b);
     }
 
@@ -156,6 +160,10 @@ public class PostController {
         Post oldPost = postService.getById(id);
         ThrowUtils.throwIf(oldPost == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = postService.updateById(post);
+        if (result) {
+            Post latestPost = postService.getById(id);
+            postService.syncPostToEs(latestPost);
+        }
         return ResultUtils.success(result);
     }
 
@@ -349,6 +357,10 @@ public class PostController {
         }
         applyPostReviewPolicy(post, loginUser, false);
         boolean result = postService.updateById(post);
+        if (result) {
+            Post latestPost = postService.getById(id);
+            postService.syncPostToEs(latestPost);
+        }
         return ResultUtils.success(result);
     }
 
@@ -384,6 +396,10 @@ public class PostController {
             updatePost.setReviewMessage("社区举报触发人工复核");
         }
         boolean result = postService.updateById(updatePost);
+        if (result) {
+            Post latestPost = postService.getById(post.getId());
+            postService.syncPostToEs(latestPost);
+        }
         return ResultUtils.success(result);
     }
 
@@ -457,7 +473,11 @@ public class PostController {
                 updatePost.setReviewStatus(PostConstant.REVIEW_STATUS_PENDING);
                 updatePost.setReviewMessage("管理员采纳举报，帖子进入人工复核");
             }
-            postService.updateById(updatePost);
+            boolean postUpdated = postService.updateById(updatePost);
+            if (postUpdated) {
+                Post latestPost = postService.getById(targetPost.getId());
+                postService.syncPostToEs(latestPost);
+            }
         }
         return ResultUtils.success(true);
     }
@@ -491,6 +511,8 @@ public class PostController {
         updatePost.setReviewTime(new Date());
         boolean result = postService.updateById(updatePost);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        Post latestPost = postService.getById(oldPost.getId());
+        postService.syncPostToEs(latestPost);
 
         notificationService.sendNotification(
                 oldPost.getUserId(),
@@ -521,6 +543,10 @@ public class PostController {
             updatePost.setIsFeatured(postOperateRequest.getIsFeatured() > 0 ? 1 : 0);
         }
         boolean result = postService.updateById(updatePost);
+        if (result) {
+            Post latestPost = postService.getById(oldPost.getId());
+            postService.syncPostToEs(latestPost);
+        }
         return ResultUtils.success(result);
     }
 

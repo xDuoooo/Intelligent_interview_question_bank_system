@@ -39,6 +39,20 @@ public interface PostService extends IService<Post> {
     Page<Post> searchFromEs(PostQueryRequest postQueryRequest);
 
     /**
+     * 同步帖子到 ES
+     *
+     * @param post 帖子
+     */
+    void syncPostToEs(Post post);
+
+    /**
+     * 从 ES 删除帖子
+     *
+     * @param postId 帖子 id
+     */
+    void deletePostFromEs(Long postId);
+
+    /**
      * 获取帖子封装
      *
      * @param post

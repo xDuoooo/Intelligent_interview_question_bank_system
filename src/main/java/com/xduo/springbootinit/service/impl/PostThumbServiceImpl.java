@@ -87,6 +87,9 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
                         .gt("thumbNum", 0)
                         .setSql("thumbNum = thumbNum - 1")
                         .update();
+                if (result) {
+                    postService.syncPostToEs(postService.getById(postId));
+                }
                 return result ? -1 : 0;
             } else {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR);
@@ -100,6 +103,9 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
                         .eq("id", postId)
                         .setSql("thumbNum = thumbNum + 1")
                         .update();
+                if (result) {
+                    postService.syncPostToEs(postService.getById(postId));
+                }
                 return result ? 1 : 0;
             } else {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR);
@@ -108,6 +114,5 @@ public class PostThumbServiceImpl extends ServiceImpl<PostThumbMapper, PostThumb
     }
 
 }
-
 
 
