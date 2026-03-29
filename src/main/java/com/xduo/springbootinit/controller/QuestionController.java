@@ -26,6 +26,7 @@ import com.xduo.springbootinit.mapper.CounterManager;
 import com.xduo.springbootinit.model.dto.question.*;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.QuestionAnswerEvaluateVO;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 import com.xduo.springbootinit.service.NotificationService;
@@ -50,9 +51,14 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.xduo.springbootinit.manager.AiManager;
 
@@ -65,6 +71,7 @@ import com.xduo.springbootinit.manager.AiManager;
 public class QuestionController {
 
     private static final long MAX_RESUME_FILE_SIZE = 2 * 1024 * 1024L;
+    private static final int MAX_ANSWER_EVALUATE_LENGTH = 5000;
     private static final Set<String> SUPPORTED_RESUME_FILE_SUFFIX_SET = Set.of("txt", "md", "markdown", "docx");
 
     @Resource
@@ -272,6 +279,26 @@ public class QuestionController {
         );
         logRecommendationExposure(loginUser.getId(), "resume", result.getQuestionList());
         return ResultUtils.success(result);
+    }
+
+    /**
+     * AI 判题与答题反馈
+     */
+    @PostMapping("/ai/evaluate")
+    public BaseResponse<QuestionAnswerEvaluateVO> evaluateQuestionAnswer(@RequestBody QuestionAnswerEvaluateRequest evaluateRequest,
+                                                                         HttpServletRequest request) {
+        ThrowUtils.throwIf(evaluateRequest == null || evaluateRequest.getQuestionId() == null || evaluateRequest.getQuestionId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        String answerContent = StringUtils.trimToEmpty(evaluateRequest.getAnswerContent());
+        ThrowUtils.throwIf(answerContent.length() < 5, ErrorCode.PARAMS_ERROR, "回答内容至少需要 5 个字符");
+        ThrowUtils.throwIf(answerContent.length() > MAX_ANSWER_EVALUATE_LENGTH,
+                ErrorCode.PARAMS_ERROR,
+                "回答内容不能超过 5000 个字符");
+        User loginUser = userService.getLoginUser(request);
+        Question question = questionService.getById(evaluateRequest.getQuestionId());
+        ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
+        return ResultUtils.success(buildQuestionAnswerEvaluateVO(question, answerContent));
     }
 
     @PostMapping("/recommend/click")
@@ -692,6 +719,253 @@ public class QuestionController {
             contentBuilder.append(" 审核意见：").append(reviewMessage);
         }
         return contentBuilder.toString();
+    }
+
+    private QuestionAnswerEvaluateVO buildQuestionAnswerEvaluateVO(Question question, String answerContent) {
+        try {
+            String aiContent = aiManager.doChat(buildAnswerEvaluateSystemPrompt(), buildAnswerEvaluateUserPrompt(question, answerContent));
+            QuestionAnswerEvaluateVO aiEvaluateResult = parseQuestionAnswerEvaluate(aiContent);
+            aiEvaluateResult.setAnalysisSource("ai");
+            return aiEvaluateResult;
+        } catch (Exception e) {
+            log.warn("AI 判题失败，已自动切换到本地兜底分析，questionId={}", question.getId(), e);
+            return buildHeuristicEvaluateResult(question, answerContent);
+        }
+    }
+
+    private String buildAnswerEvaluateSystemPrompt() {
+        return "你是一位严格但鼓励式的技术面试官，请对候选人的单题作答做结构化评估。"
+                + "请严格输出 JSON 对象，不要输出 Markdown 代码块，不要输出额外解释。"
+                + "JSON 必须包含 score、level、summary、strengthList、improvementList、missedPointList、followUpQuestionList、referenceSuggestion 八个字段。"
+                + "score 为 0 到 100 的整数；level 只能是“优秀”“良好”“合格”“待加强”之一；"
+                + "strengthList、improvementList、missedPointList、followUpQuestionList 都必须是字符串数组，每个数组给出 2 到 4 条内容。"
+                + "请重点对比标准答案与用户回答之间的覆盖度、结构性、表达清晰度和技术深度。";
+    }
+
+    private String buildAnswerEvaluateUserPrompt(Question question, String answerContent) {
+        List<String> tagList = JSONUtil.toList(StringUtils.defaultIfBlank(question.getTags(), "[]"), String.class);
+        return "题目标题：\n" + StringUtils.defaultString(question.getTitle())
+                + "\n\n题目难度：\n" + StringUtils.defaultIfBlank(question.getDifficulty(), "未设置")
+                + "\n\n题目标签：\n" + String.join("、", tagList)
+                + "\n\n题目内容：\n" + safeAiText(question.getContent(), 2500)
+                + "\n\n参考答案：\n" + safeAiText(question.getAnswer(), 2500)
+                + "\n\n用户回答：\n" + safeAiText(answerContent, 2500);
+    }
+
+    private String safeAiText(String text, int maxLength) {
+        return StringUtils.abbreviate(StringUtils.trimToEmpty(text), maxLength);
+    }
+
+    private QuestionAnswerEvaluateVO parseQuestionAnswerEvaluate(String rawContent) {
+        String jsonText = normalizeAiJson(rawContent);
+        JSONObject jsonObject = JSONUtil.parseObj(jsonText);
+        QuestionAnswerEvaluateVO evaluateVO = new QuestionAnswerEvaluateVO();
+        Integer score = jsonObject.getInt("score");
+        ThrowUtils.throwIf(score == null, ErrorCode.SYSTEM_ERROR, "AI 判题未返回分数");
+        evaluateVO.setScore(Math.max(0, Math.min(100, score)));
+        evaluateVO.setLevel(normalizeEvaluateLevel(jsonObject.getStr("level"), evaluateVO.getScore()));
+        evaluateVO.setSummary(StringUtils.defaultIfBlank(
+                jsonObject.getStr("summary"),
+                "这次回答已经覆盖部分重点，但还可以继续提升结构化表达和关键细节。"
+        ));
+        evaluateVO.setStrengthList(limitStringList(readStringList(jsonObject, "strengthList", "strengths"), 4));
+        evaluateVO.setImprovementList(limitStringList(readStringList(jsonObject, "improvementList", "improvements"), 4));
+        evaluateVO.setMissedPointList(limitStringList(readStringList(jsonObject, "missedPointList", "missedPoints"), 4));
+        evaluateVO.setFollowUpQuestionList(limitStringList(readStringList(jsonObject, "followUpQuestionList", "followUps"), 4));
+        evaluateVO.setReferenceSuggestion(StringUtils.defaultIfBlank(
+                firstNonBlank(jsonObject.getStr("referenceSuggestion"), jsonObject.getStr("referenceAdvice")),
+                "建议结合参考答案，对照补充缺失知识点并重新组织表达。"
+        ));
+        if (evaluateVO.getStrengthList().isEmpty()) {
+            evaluateVO.setStrengthList(List.of("回答已经体现出一定的作答思路，建议继续保留结构化表达。"));
+        }
+        if (evaluateVO.getImprovementList().isEmpty()) {
+            evaluateVO.setImprovementList(List.of("建议围绕核心原理、关键步骤和场景取舍再补充 2 到 3 个关键点。"));
+        }
+        if (evaluateVO.getMissedPointList().isEmpty()) {
+            evaluateVO.setMissedPointList(List.of("建议对照参考答案，自查是否遗漏了关键原理、边界场景和性能取舍。"));
+        }
+        if (evaluateVO.getFollowUpQuestionList().isEmpty()) {
+            evaluateVO.setFollowUpQuestionList(List.of("如果面试官继续追问，请你补充为什么这样设计以及有哪些替代方案。"));
+        }
+        return evaluateVO;
+    }
+
+    private List<String> readStringList(JSONObject jsonObject, String... keyCandidates) {
+        for (String key : keyCandidates) {
+            JSONArray jsonArray = jsonObject.getJSONArray(key);
+            if (jsonArray != null && !jsonArray.isEmpty()) {
+                return JSONUtil.toList(jsonArray, String.class).stream()
+                        .map(StringUtils::trimToEmpty)
+                        .filter(StringUtils::isNotBlank)
+                        .collect(Collectors.toList());
+            }
+        }
+        return new ArrayList<>();
+    }
+
+    private List<String> limitStringList(List<String> source, int limit) {
+        return source.stream()
+                .map(StringUtils::trimToEmpty)
+                .filter(StringUtils::isNotBlank)
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    private String normalizeEvaluateLevel(String level, int score) {
+        String normalizedLevel = StringUtils.trimToEmpty(level);
+        if (Set.of("优秀", "良好", "合格", "待加强").contains(normalizedLevel)) {
+            return normalizedLevel;
+        }
+        if (score >= 85) {
+            return "优秀";
+        }
+        if (score >= 70) {
+            return "良好";
+        }
+        if (score >= 55) {
+            return "合格";
+        }
+        return "待加强";
+    }
+
+    private QuestionAnswerEvaluateVO buildHeuristicEvaluateResult(Question question, String answerContent) {
+        String normalizedAnswer = StringUtils.trimToEmpty(answerContent);
+        String lowerCaseAnswer = normalizedAnswer.toLowerCase(Locale.ROOT);
+        int answerLength = normalizedAnswer.length();
+        List<String> referenceKeywordList = buildReferenceKeywordList(question);
+        List<String> hitKeywordList = referenceKeywordList.stream()
+                .filter(lowerCaseAnswer::contains)
+                .collect(Collectors.toList());
+        List<String> missedKeywordList = referenceKeywordList.stream()
+                .filter(keyword -> !lowerCaseAnswer.contains(keyword))
+                .limit(4)
+                .collect(Collectors.toList());
+        boolean hasStructure = containsAnyIgnoreCase(normalizedAnswer, "首先", "然后", "最后", "一是", "二是", "三是", "1.", "2.", "3.");
+        boolean hasScenario = containsAnyIgnoreCase(normalizedAnswer, "例如", "比如", "场景", "案例", "实践", "线上");
+        boolean hasTradeOff = containsAnyIgnoreCase(normalizedAnswer, "优点", "缺点", "权衡", "取舍", "成本", "风险");
+        int baseScore = answerLength >= 240 ? 62 : answerLength >= 120 ? 52 : answerLength >= 60 ? 42 : 30;
+        int keywordScore = referenceKeywordList.isEmpty()
+                ? 12
+                : Math.min(26, (int) Math.round(hitKeywordList.size() * 26.0 / referenceKeywordList.size()));
+        int structureScore = hasStructure ? 6 : 0;
+        int sceneScore = hasScenario ? 4 : 0;
+        int tradeOffScore = hasTradeOff ? 4 : 0;
+        int score = Math.max(25, Math.min(95, baseScore + keywordScore + structureScore + sceneScore + tradeOffScore));
+
+        List<String> strengthList = new ArrayList<>();
+        if (answerLength >= 120) {
+            strengthList.add("回答篇幅比较充实，已经具备继续展开细节的基础。");
+        }
+        if (!hitKeywordList.isEmpty()) {
+            strengthList.add("命中了 " + hitKeywordList.size() + " 个核心关键词，例如：" + String.join("、", hitKeywordList.stream().limit(3).collect(Collectors.toList())) + "。");
+        }
+        if (hasStructure) {
+            strengthList.add("回答中带有结构化表达痕迹，便于面试官快速理解你的思路。");
+        }
+        if (hasScenario || hasTradeOff) {
+            strengthList.add("已经开始补充场景或取舍分析，这会让回答更贴近真实面试。");
+        }
+        if (strengthList.isEmpty()) {
+            strengthList.add("已经尝试直接作答，这本身就是很好的训练起点。");
+        }
+
+        List<String> improvementList = new ArrayList<>();
+        if (answerLength < 120) {
+            improvementList.add("当前回答偏短，建议至少补齐“原理 + 步骤 + 适用场景”三部分。");
+        }
+        if (!hasStructure) {
+            improvementList.add("建议用“首先 / 然后 / 最后”或分点形式组织答案，避免想到哪里答到哪里。");
+        }
+        if (!hasScenario) {
+            improvementList.add("可以加入一个具体场景或例子，说明这道题在工程实践中怎么落地。");
+        }
+        if (!hasTradeOff) {
+            improvementList.add("建议补充方案的优缺点、边界条件或性能取舍，这通常是面试追问重点。");
+        }
+        if (!missedKeywordList.isEmpty()) {
+            improvementList.add("可以重点补充这些知识点：" + String.join("、", missedKeywordList));
+        }
+        improvementList = limitStringList(improvementList, 4);
+
+        List<String> followUpQuestionList = new ArrayList<>();
+        String title = StringUtils.defaultIfBlank(question.getTitle(), "这道题");
+        followUpQuestionList.add("如果把“" + title + "”放到真实项目里，你会优先关注哪些风险或边界场景？");
+        if (!missedKeywordList.isEmpty()) {
+            followUpQuestionList.add("请继续展开说明“" + missedKeywordList.get(0) + "”在这道题里的作用和实现细节。");
+        }
+        followUpQuestionList.add("如果面试官要求你比较两种可选方案，你会怎么做技术取舍？");
+        followUpQuestionList = limitStringList(followUpQuestionList, 4);
+
+        QuestionAnswerEvaluateVO evaluateVO = new QuestionAnswerEvaluateVO();
+        evaluateVO.setScore(score);
+        evaluateVO.setLevel(normalizeEvaluateLevel(null, score));
+        evaluateVO.setSummary(buildHeuristicSummary(score, answerLength, hitKeywordList.size(), referenceKeywordList.size()));
+        evaluateVO.setStrengthList(strengthList);
+        evaluateVO.setImprovementList(improvementList);
+        evaluateVO.setMissedPointList(missedKeywordList.isEmpty()
+                ? List.of("建议对照参考答案进一步补充关键原理、步骤拆解和工程场景。")
+                : missedKeywordList);
+        evaluateVO.setFollowUpQuestionList(followUpQuestionList);
+        evaluateVO.setReferenceSuggestion("建议先补齐漏答点，再对照推荐答案检查是否覆盖了核心原理、实现步骤和适用场景。");
+        evaluateVO.setAnalysisSource("heuristic");
+        return evaluateVO;
+    }
+
+    private String buildHeuristicSummary(int score, int answerLength, int hitCount, int keywordCount) {
+        if (score >= 80) {
+            return "你的回答已经比较接近面试中的合格表达，核心要点覆盖较好，下一步重点是把细节和取舍讲得更扎实。";
+        }
+        if (score >= 65) {
+            return "你的回答已经具备一定基础，但还可以进一步补齐关键知识点，并把结构和场景表达得更清楚。";
+        }
+        String keywordHint = keywordCount > 0
+                ? " 当前回答长度约 " + answerLength + " 字，命中核心关键词 " + hitCount + "/" + keywordCount + "。"
+                : " 当前回答长度约 " + answerLength + " 字，建议重点补充关键原理、步骤和场景。";
+        return "当前回答还处于初步作答阶段，建议先补充核心原理、实现步骤和应用场景，再重新组织一遍答案。"
+                + keywordHint;
+    }
+
+    private List<String> buildReferenceKeywordList(Question question) {
+        LinkedHashSet<String> keywordSet = new LinkedHashSet<>();
+        List<String> tagList = JSONUtil.toList(StringUtils.defaultIfBlank(question.getTags(), "[]"), String.class);
+        tagList.stream()
+                .map(StringUtils::trimToEmpty)
+                .filter(tag -> tag.length() >= 2)
+                .forEach(keywordSet::add);
+        tokenizeText(question.getTitle()).stream().limit(4).forEach(keywordSet::add);
+        tokenizeText(question.getAnswer()).stream().limit(10).forEach(keywordSet::add);
+        return new ArrayList<>(keywordSet).stream().limit(12).collect(Collectors.toList());
+    }
+
+    private List<String> tokenizeText(String text) {
+        if (StringUtils.isBlank(text)) {
+            return new ArrayList<>();
+        }
+        return java.util.Arrays.stream(text.split("[\\s,，。；;：:\\n\\r\\t()（）【】\\[\\]、/]+"))
+                .map(StringUtils::trimToEmpty)
+                .filter(token -> token.length() >= 2 && token.length() <= 24)
+                .filter(token -> !StringUtils.isNumeric(token))
+                .map(token -> token.toLowerCase(Locale.ROOT))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private boolean containsAnyIgnoreCase(String text, String... candidates) {
+        String normalizedText = StringUtils.defaultString(text).toLowerCase(Locale.ROOT);
+        return java.util.Arrays.stream(candidates)
+                .filter(Objects::nonNull)
+                .map(candidate -> candidate.toLowerCase(Locale.ROOT))
+                .anyMatch(normalizedText::contains);
+    }
+
+    private String firstNonBlank(String... candidates) {
+        for (String candidate : candidates) {
+            if (StringUtils.isNotBlank(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private void logRecommendationExposure(Long userId, String source, List<QuestionVO> questionVOList) {
