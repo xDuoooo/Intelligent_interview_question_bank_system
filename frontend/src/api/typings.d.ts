@@ -47,6 +47,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponsePostSubmitResultVO_ = {
+    code?: number;
+    data?: PostSubmitResultVO;
+    message?: string;
+  };
+
   type BaseResponseListQuestionVO_ = {
     code?: number;
     data?: QuestionVO[];
@@ -792,6 +798,12 @@ declare namespace API {
     reporter?: UserVO;
     status?: number;
     userId?: number;
+  };
+
+  type PostSubmitResultVO = {
+    id?: number;
+    reviewMessage?: string;
+    reviewStatus?: number;
   };
 
   type Question = {

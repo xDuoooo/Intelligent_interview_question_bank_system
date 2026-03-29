@@ -75,7 +75,7 @@ export const menus = [
       },
       {
         path: "/admin/post",
-        name: "帖子管理",
+        name: "社区管理",
         access: ACCESS_ENUM.ADMIN,
       },
       {
