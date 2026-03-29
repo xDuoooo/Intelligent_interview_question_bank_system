@@ -2,6 +2,21 @@
 /* eslint-disable */
 import request from '@/libs/request';
 
+/** listAlertByPage POST /api/security_alert/admin/list/page */
+export async function listAlertByPageUsingPost(
+  body: API.SecurityAlertQueryRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponsePageSecurityAlert_>('/api/security_alert/admin/list/page', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** banUserByAlert POST /api/security_alert/admin/ban */
 export async function banUserByAlertUsingPost(
   body: API.SecurityAlertHandleRequest,
