@@ -144,11 +144,11 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                         {getBoardSummary(board)}
                       </div>
                     </div>
-                    <div className="rounded-2xl bg-white/80 px-3 py-2 shadow-sm sm:min-w-[144px] sm:text-right">
+                    <div className="sm:min-w-[144px] sm:text-right">
                       <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                         冠军
                       </div>
-                      <div className="mt-1 text-sm font-black leading-tight text-slate-900 whitespace-normal">
+                      <div className="mt-1 text-sm font-black leading-tight text-slate-900 break-keep whitespace-normal">
                         {board.rankingList?.[0]?.userName || "待上榜"}
                       </div>
                     </div>
@@ -193,7 +193,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                     </p>
                   </div>
 
-                  <div className={`inline-flex items-center gap-2 self-start rounded-full border bg-white/85 px-3 py-2 text-xs font-black ${theme.badge}`}>
+                  <div className={`inline-flex items-center gap-2 self-start rounded-full border bg-white/85 px-3 py-2 text-xs font-black whitespace-nowrap ${theme.badge}`}>
                     <ShieldCheck className="h-3.5 w-3.5" />
                     动态更新
                   </div>
