@@ -1,17 +1,24 @@
 package com.xduo.springbootinit.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
+import com.xduo.springbootinit.constant.RedisConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.mapper.SystemConfigMapper;
 import com.xduo.springbootinit.model.dto.systemconfig.SystemConfigUpdateRequest;
 import com.xduo.springbootinit.model.entity.SystemConfig;
 import com.xduo.springbootinit.model.vo.SystemConfigVO;
 import com.xduo.springbootinit.service.SystemConfigService;
+import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
 
 /**
  * 系统配置服务实现
@@ -27,17 +34,27 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
     private static final String DEFAULT_ANNOUNCEMENT = "欢迎来到智面 1.0 版本，体验 AI 智能面经！";
 
+    private static final Duration SYSTEM_CONFIG_CACHE_TTL = Duration.ofMinutes(30);
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
     @Override
     public SystemConfig getCurrentConfig() {
-        QueryWrapper<SystemConfig> queryWrapper = new QueryWrapper<>();
-        queryWrapper.orderByAsc("id").last("limit 1");
+        SystemConfig cachedConfig = getCachedSystemConfig();
+        if (cachedConfig != null) {
+            return cachedConfig;
+        }
+        QueryWrapper<SystemConfig> queryWrapper = buildSingleConfigQueryWrapper();
         SystemConfig systemConfig = this.getOne(queryWrapper, false);
         if (systemConfig != null) {
+            cacheSystemConfig(systemConfig);
             return systemConfig;
         }
         synchronized (INIT_LOCK) {
             SystemConfig latestConfig = this.getOne(queryWrapper, false);
             if (latestConfig != null) {
+                cacheSystemConfig(latestConfig);
                 return latestConfig;
             }
             SystemConfig defaultConfig = buildDefaultConfig();
@@ -45,6 +62,7 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
             if (!saved) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "初始化系统配置失败");
             }
+            cacheSystemConfig(defaultConfig);
             return defaultConfig;
         }
     }
@@ -95,7 +113,16 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         updateConfig.setEnableSiteNotification(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableSiteNotification()) ? 1 : 0);
         updateConfig.setEnableEmailNotification(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableEmailNotification()) ? 1 : 0);
         updateConfig.setEnableLearningGoalReminder(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableLearningGoalReminder()) ? 1 : 0);
-        return this.updateById(updateConfig);
+        boolean updated = this.updateById(updateConfig);
+        if (updated) {
+            SystemConfig latestConfig = this.getById(currentConfig.getId());
+            if (latestConfig != null) {
+                cacheSystemConfig(latestConfig);
+            } else {
+                evictSystemConfigCache();
+            }
+        }
+        return updated;
     }
 
     @Override
@@ -152,5 +179,40 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         systemConfigVO.setEnableEmailNotification(Integer.valueOf(1).equals(systemConfig.getEnableEmailNotification()));
         systemConfigVO.setEnableLearningGoalReminder(Integer.valueOf(1).equals(systemConfig.getEnableLearningGoalReminder()));
         return systemConfigVO;
+    }
+
+    private QueryWrapper<SystemConfig> buildSingleConfigQueryWrapper() {
+        QueryWrapper<SystemConfig> queryWrapper = Wrappers.query();
+        queryWrapper.orderByAsc("id").last("limit 1");
+        return queryWrapper;
+    }
+
+    private SystemConfig getCachedSystemConfig() {
+        String cacheKey = RedisConstant.getSystemConfigCacheKey();
+        String cacheValue = stringRedisTemplate.opsForValue().get(cacheKey);
+        if (StringUtils.isBlank(cacheValue)) {
+            return null;
+        }
+        try {
+            return JSONUtil.toBean(cacheValue, SystemConfig.class);
+        } catch (Exception e) {
+            stringRedisTemplate.delete(cacheKey);
+            return null;
+        }
+    }
+
+    private void cacheSystemConfig(SystemConfig systemConfig) {
+        if (systemConfig == null) {
+            return;
+        }
+        stringRedisTemplate.opsForValue().set(
+                RedisConstant.getSystemConfigCacheKey(),
+                JSONUtil.toJsonStr(systemConfig),
+                SYSTEM_CONFIG_CACHE_TTL
+        );
+    }
+
+    private void evictSystemConfigCache() {
+        stringRedisTemplate.delete(RedisConstant.getSystemConfigCacheKey());
     }
 }
