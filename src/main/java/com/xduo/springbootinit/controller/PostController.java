@@ -182,6 +182,25 @@ public class PostController {
     }
 
     /**
+     * 获取当前用户自己的帖子详情（支持查看未公开帖子）
+     */
+    @GetMapping("/get/my/vo")
+    public BaseResponse<PostVO> getMyPostVOById(long id, HttpServletRequest request) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Post post = postService.getById(id);
+        if (post == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        if (!loginUser.getId().equals(post.getUserId()) && !userService.isAdmin(loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权查看该帖子");
+        }
+        return ResultUtils.success(postService.getPostVO(post, request));
+    }
+
+    /**
      * 获取热门帖子
      */
     @GetMapping("/hot/list")

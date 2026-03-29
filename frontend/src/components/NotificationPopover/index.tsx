@@ -10,6 +10,7 @@ import {
   readNotificationUsingPost 
 } from "@/api/notificationController";
 import dayjs from "dayjs";
+import { getNotificationTargetUrl } from "@/lib/notification";
 
 const { Text } = Typography;
 
@@ -84,21 +85,19 @@ const NotificationPopover: React.FC = () => {
 
   // 标记单条已读并跳转
   const handleRead = async (item: API.NotificationVO) => {
-    const { id, targetId } = item;
+    const { id } = item;
     if (!id) return;
+    const targetUrl = getNotificationTargetUrl(item);
     try {
       const res = await readNotificationUsingPost({ id });
       if (res.data) {
         fetchNotifications();
         fetchUnreadCount();
-        // 如果有 targetId，根据类型跳转
-        if (targetId) {
-          router.push(`/question/${targetId}`);
-        }
       }
     } catch (e) {
-      message.error("操作失败");
+      message.error("已为你打开对应内容，通知状态稍后会自动同步");
     }
+    router.push(targetUrl);
   };
 
   const popoverContent = (

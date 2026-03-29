@@ -528,7 +528,7 @@ export default function CommentSection({ questionId }: Props) {
   ];
 
   return (
-    <section className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sm:p-12 space-y-10">
+    <section id="comment-section" className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 p-8 sm:p-12 space-y-10">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-100 pb-8">
         <div className="flex items-center gap-3">
