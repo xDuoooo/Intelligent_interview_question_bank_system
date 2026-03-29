@@ -58,7 +58,10 @@ public class GithubController {
     }
 
     @GetMapping("/callback")
-    public void callback(@RequestParam String code, @RequestParam(required = false) String state, HttpServletResponse response) throws IOException {
+    public void callback(@RequestParam String code,
+                         @RequestParam(required = false) String state,
+                         jakarta.servlet.http.HttpServletRequest request,
+                         HttpServletResponse response) throws IOException {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "GitHub 授权码为空");
         }
@@ -108,7 +111,7 @@ public class GithubController {
                 // 重定向回中心页
                 response.sendRedirect(frontendUrl + "/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
             } else {
-                userService.githubLogin(githubId, userName, userAvatar);
+                userService.githubLogin(githubId, userName, userAvatar, request);
                 // 登录成功重定向首页
                 response.sendRedirect(frontendUrl + "/");
             }

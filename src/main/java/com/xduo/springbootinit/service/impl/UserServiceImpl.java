@@ -518,7 +518,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public User githubLogin(String githubId, String userName, String userAvatar) {
+    public User githubLogin(String githubId, String userName, String userAvatar, HttpServletRequest request) {
         // 1. 检查是否存在该 GitHub ID
         User user = this.getOne(new QueryWrapper<User>().eq("githubId", githubId));
         if (user == null) {
@@ -546,13 +546,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         // 3. 建立登录态
-        StpUtil.login(user.getId());
+        StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
 
     @Override
-    public User giteeLogin(String giteeId, String userName, String userAvatar) {
+    public User giteeLogin(String giteeId, String userName, String userAvatar, HttpServletRequest request) {
         // 1. 检查是否存在该 Gitee ID
         User user = this.getOne(new QueryWrapper<User>().eq("giteeId", giteeId));
         if (user == null) {
@@ -580,13 +580,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         // 3. 建立登录态
-        StpUtil.login(user.getId());
+        StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
 
     @Override
-    public User googleLogin(String googleId, String userName, String userAvatar) {
+    public User googleLogin(String googleId, String userName, String userAvatar, HttpServletRequest request) {
         // 1. 检查是否存在该 Google ID
         User user = this.getOne(new QueryWrapper<User>().eq("googleId", googleId));
         if (user == null) {
@@ -614,7 +614,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         // 3. 建立登录态
-        StpUtil.login(user.getId());
+        StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }

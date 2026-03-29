@@ -19,6 +19,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DuplicateKeyException;
 
 import jakarta.annotation.Resource;
 import java.util.Collections;
@@ -55,7 +56,12 @@ public class UserFollowServiceImpl extends ServiceImpl<UserFollowMapper, UserFol
             UserFollow userFollow = new UserFollow();
             userFollow.setUserId(userId);
             userFollow.setFollowUserId(followUserId);
-            boolean result = this.save(userFollow);
+            boolean result;
+            try {
+                result = this.save(userFollow);
+            } catch (DuplicateKeyException duplicateKeyException) {
+                return true;
+            }
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
 
             User currentUser = userMapper.selectById(userId);
