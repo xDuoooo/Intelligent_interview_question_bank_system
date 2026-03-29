@@ -194,6 +194,9 @@ declare namespace API {
   type SystemConfigUpdateRequest = {
     allowRegister?: boolean;
     announcement?: string;
+    enableEmailNotification?: boolean;
+    enableLearningGoalReminder?: boolean;
+    enableSiteNotification?: boolean;
     maintenanceMode?: boolean;
     requireCaptcha?: boolean;
     seoKeywords?: string;
@@ -204,6 +207,9 @@ declare namespace API {
     allowRegister?: boolean;
     announcement?: string;
     createTime?: string;
+    enableEmailNotification?: boolean;
+    enableLearningGoalReminder?: boolean;
+    enableSiteNotification?: boolean;
     id?: number;
     maintenanceMode?: boolean;
     requireCaptcha?: boolean;

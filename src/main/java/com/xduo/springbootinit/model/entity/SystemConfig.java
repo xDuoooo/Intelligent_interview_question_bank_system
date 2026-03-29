@@ -49,6 +49,21 @@ public class SystemConfig implements Serializable {
     private Integer maintenanceMode;
 
     /**
+     * 是否开启站内通知
+     */
+    private Integer enableSiteNotification;
+
+    /**
+     * 是否开启邮件提醒
+     */
+    private Integer enableEmailNotification;
+
+    /**
+     * 是否开启学习目标提醒任务
+     */
+    private Integer enableLearningGoalReminder;
+
+    /**
      * 创建时间
      */
     private Date createTime;

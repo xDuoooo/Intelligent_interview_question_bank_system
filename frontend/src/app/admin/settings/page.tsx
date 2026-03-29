@@ -47,6 +47,9 @@ export default function AdminSettingsPage() {
         allowRegister: data?.allowRegister ?? true,
         requireCaptcha: data?.requireCaptcha ?? true,
         maintenanceMode: data?.maintenanceMode ?? false,
+        enableSiteNotification: data?.enableSiteNotification ?? true,
+        enableEmailNotification: data?.enableEmailNotification ?? true,
+        enableLearningGoalReminder: data?.enableLearningGoalReminder ?? true,
       });
     } catch (e: any) {
       message.error(e.message || "系统设置加载失败");
@@ -124,6 +127,40 @@ export default function AdminSettingsPage() {
     </div>
   );
 
+  const notificationSettings = (
+    <div className="space-y-8 animate-in slide-in-from-left-4 duration-500 pt-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <Text className="font-bold text-slate-800 block text-lg">站内通知</Text>
+          <Text type="secondary">控制评论、关注、审核结果等站内通知是否入库并展示给用户。</Text>
+        </div>
+        <Form.Item name="enableSiteNotification" valuePropName="checked" noStyle>
+          <Switch className="bg-slate-200" />
+        </Form.Item>
+      </div>
+      <Divider className="my-0 border-slate-100" />
+      <div className="flex items-center justify-between">
+        <div>
+          <Text className="font-bold text-slate-800 block text-lg">邮件提醒</Text>
+          <Text type="secondary">控制学习目标提醒邮件是否发送，不影响验证码和事务性邮件。</Text>
+        </div>
+        <Form.Item name="enableEmailNotification" valuePropName="checked" noStyle>
+          <Switch className="bg-slate-200" />
+        </Form.Item>
+      </div>
+      <Divider className="my-0 border-slate-100" />
+      <div className="flex items-center justify-between">
+        <div>
+          <Text className="font-bold text-slate-800 block text-lg">学习目标提醒任务</Text>
+          <Text type="secondary">关闭后，晚 8 点的刷题目标提醒任务将整体停用。</Text>
+        </div>
+        <Form.Item name="enableLearningGoalReminder" valuePropName="checked" noStyle>
+          <Switch className="bg-slate-200" />
+        </Form.Item>
+      </div>
+    </div>
+  );
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Hero Header */}
@@ -180,7 +217,7 @@ export default function AdminSettingsPage() {
               {
                 key: '3',
                 label: <span className="flex items-center gap-2 px-4 py-2 font-bold"><Bell className="h-4 w-4" /> 消息推送</span>,
-                children: <div className="p-8 pb-12"><Alert message="通知推送系统正在联调中，暂不开放配置。" type="info" showIcon className="rounded-xl py-6" /></div>,
+                children: <div className="p-8 pb-12">{initializing ? <Skeleton active paragraph={{ rows: 5 }} /> : notificationSettings}</div>,
               },
             ]}
           />

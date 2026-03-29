@@ -40,5 +40,20 @@ public class SystemConfigUpdateRequest implements Serializable {
      */
     private Boolean maintenanceMode;
 
+    /**
+     * 是否开启站内通知
+     */
+    private Boolean enableSiteNotification;
+
+    /**
+     * 是否开启邮件提醒
+     */
+    private Boolean enableEmailNotification;
+
+    /**
+     * 是否开启学习目标提醒
+     */
+    private Boolean enableLearningGoalReminder;
+
     private static final long serialVersionUID = 1L;
 }

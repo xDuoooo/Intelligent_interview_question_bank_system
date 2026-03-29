@@ -56,7 +56,11 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
 
     @Override
     public SystemConfigVO getPublicSystemConfigVO() {
-        return toVO(getCurrentConfig());
+        SystemConfigVO systemConfigVO = toVO(getCurrentConfig());
+        systemConfigVO.setEnableSiteNotification(null);
+        systemConfigVO.setEnableEmailNotification(null);
+        systemConfigVO.setEnableLearningGoalReminder(null);
+        return systemConfigVO;
     }
 
     @Override
@@ -88,6 +92,9 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         updateConfig.setAllowRegister(Boolean.TRUE.equals(systemConfigUpdateRequest.getAllowRegister()) ? 1 : 0);
         updateConfig.setRequireCaptcha(Boolean.TRUE.equals(systemConfigUpdateRequest.getRequireCaptcha()) ? 1 : 0);
         updateConfig.setMaintenanceMode(Boolean.TRUE.equals(systemConfigUpdateRequest.getMaintenanceMode()) ? 1 : 0);
+        updateConfig.setEnableSiteNotification(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableSiteNotification()) ? 1 : 0);
+        updateConfig.setEnableEmailNotification(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableEmailNotification()) ? 1 : 0);
+        updateConfig.setEnableLearningGoalReminder(Boolean.TRUE.equals(systemConfigUpdateRequest.getEnableLearningGoalReminder()) ? 1 : 0);
         return this.updateById(updateConfig);
     }
 
@@ -106,6 +113,21 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         return Integer.valueOf(1).equals(getCurrentConfig().getMaintenanceMode());
     }
 
+    @Override
+    public boolean isEnableSiteNotification() {
+        return Integer.valueOf(1).equals(getCurrentConfig().getEnableSiteNotification());
+    }
+
+    @Override
+    public boolean isEnableEmailNotification() {
+        return Integer.valueOf(1).equals(getCurrentConfig().getEnableEmailNotification());
+    }
+
+    @Override
+    public boolean isEnableLearningGoalReminder() {
+        return Integer.valueOf(1).equals(getCurrentConfig().getEnableLearningGoalReminder());
+    }
+
     private SystemConfig buildDefaultConfig() {
         SystemConfig systemConfig = new SystemConfig();
         systemConfig.setSiteName(DEFAULT_SITE_NAME);
@@ -114,6 +136,9 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         systemConfig.setAllowRegister(1);
         systemConfig.setRequireCaptcha(1);
         systemConfig.setMaintenanceMode(0);
+        systemConfig.setEnableSiteNotification(1);
+        systemConfig.setEnableEmailNotification(1);
+        systemConfig.setEnableLearningGoalReminder(1);
         return systemConfig;
     }
 
@@ -123,6 +148,9 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
         systemConfigVO.setAllowRegister(Integer.valueOf(1).equals(systemConfig.getAllowRegister()));
         systemConfigVO.setRequireCaptcha(Integer.valueOf(1).equals(systemConfig.getRequireCaptcha()));
         systemConfigVO.setMaintenanceMode(Integer.valueOf(1).equals(systemConfig.getMaintenanceMode()));
+        systemConfigVO.setEnableSiteNotification(Integer.valueOf(1).equals(systemConfig.getEnableSiteNotification()));
+        systemConfigVO.setEnableEmailNotification(Integer.valueOf(1).equals(systemConfig.getEnableEmailNotification()));
+        systemConfigVO.setEnableLearningGoalReminder(Integer.valueOf(1).equals(systemConfig.getEnableLearningGoalReminder()));
         return systemConfigVO;
     }
 }
