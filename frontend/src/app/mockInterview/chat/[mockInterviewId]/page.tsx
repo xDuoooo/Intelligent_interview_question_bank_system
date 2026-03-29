@@ -13,6 +13,7 @@ import {
   Mic,
   MicOff,
   Radar,
+  Square,
   Sparkles,
   Volume2,
   VolumeX,
@@ -188,6 +189,8 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const [voiceStatus, setVoiceStatus] = useState("");
 
   const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const streamAbortControllerRef = useRef<AbortController | null>(null);
+  const refreshAfterAbortTimerRef = useRef<number | null>(null);
   const voiceBaseInputRef = useRef("");
   const lastSpokenKeyRef = useRef("");
 
@@ -230,6 +233,11 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     return () => {
       speechRecognitionRef.current?.abort();
       speechRecognitionRef.current = null;
+      streamAbortControllerRef.current?.abort();
+      streamAbortControllerRef.current = null;
+      if (refreshAfterAbortTimerRef.current) {
+        window.clearTimeout(refreshAfterAbortTimerRef.current);
+      }
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -289,6 +297,12 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     return () => window.clearInterval(timer);
   }, [isEnded, isStarted, latestQuestionMessage?.timestamp]);
 
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
+
   const speakText = useCallback((content?: string) => {
     if (!content || typeof window === "undefined" || !("speechSynthesis" in window)) {
       return;
@@ -297,9 +311,9 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     utterance.lang = "zh-CN";
     utterance.rate = 1;
     utterance.pitch = 1;
-    window.speechSynthesis.cancel();
+    stopSpeaking();
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [stopSpeaking]);
 
   useEffect(() => {
     if (!autoSpeakEnabled || !speechSynthesisSupported || !latestSpeakableMessage?.content) {
@@ -315,12 +329,36 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
 
   useEffect(() => {
     if (!autoSpeakEnabled && typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+      stopSpeaking();
     }
-  }, [autoSpeakEnabled]);
+  }, [autoSpeakEnabled, stopSpeaking]);
+
+  const cancelStreaming = useCallback((reason = "已停止当前实时输出，稍后会刷新面试结果。") => {
+    if (streamAbortControllerRef.current) {
+      streamAbortControllerRef.current.abort();
+      streamAbortControllerRef.current = null;
+    }
+    setStreamingReply(null);
+    setSubmitting(false);
+    setStreamStatus(reason);
+    if (typeof window !== "undefined") {
+      if (refreshAfterAbortTimerRef.current) {
+        window.clearTimeout(refreshAfterAbortTimerRef.current);
+      }
+      refreshAfterAbortTimerRef.current = window.setTimeout(() => {
+        void loadInterview(true);
+        setStreamStatus("");
+        refreshAfterAbortTimerRef.current = null;
+      }, 1200);
+    }
+  }, [loadInterview]);
 
   const stopVoiceInput = useCallback(() => {
-    speechRecognitionRef.current?.stop();
+    if (!speechRecognitionRef.current) {
+      setIsListening(false);
+      return;
+    }
+    speechRecognitionRef.current.stop();
     speechRecognitionRef.current = null;
     setIsListening(false);
     setVoiceStatus("已停止语音输入");
@@ -331,6 +369,10 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     if (!SpeechRecognition) {
       message.warning("当前浏览器不支持语音输入");
       return;
+    }
+    stopSpeaking();
+    if (submitting && streamAbortControllerRef.current) {
+      cancelStreaming("检测到你开始作答，已停止面试官实时输出。");
     }
     speechRecognitionRef.current?.abort();
     const recognition = new SpeechRecognition();
@@ -377,16 +419,23 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     speechRecognitionRef.current = recognition;
     setIsListening(true);
     setVoiceStatus("正在听你说话...");
-  }, [inputMessage]);
+  }, [cancelStreaming, inputMessage, stopSpeaking, submitting]);
 
   const handleEvent = useCallback(
     async (eventType: "start" | "chat" | "end", msg?: string) => {
       if (!interview?.id) {
         return false;
       }
+      if (refreshAfterAbortTimerRef.current && typeof window !== "undefined") {
+        window.clearTimeout(refreshAfterAbortTimerRef.current);
+        refreshAfterAbortTimerRef.current = null;
+      }
       setSubmitting(true);
       setStreamStatus(eventType === "chat" ? "面试官正在组织下一轮问题..." : "正在更新面试状态...");
       setStreamingReply(null);
+      stopSpeaking();
+      const abortController = new AbortController();
+      streamAbortControllerRef.current = abortController;
 
       let hasStreamed = false;
       try {
@@ -417,6 +466,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               } else {
                 await loadInterview(true);
               }
+              streamAbortControllerRef.current = null;
               setStreamingReply(null);
               setStreamStatus("");
               return;
@@ -425,6 +475,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               throw new Error(payload?.message || "流式面试处理失败");
             }
           },
+          abortController.signal,
         );
 
         if (eventType === "start") {
@@ -435,6 +486,9 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
         }
         return true;
       } catch (error: any) {
+        if (abortController.signal.aborted) {
+          return false;
+        }
         setStreamingReply(null);
         setStreamStatus("");
         if (hasStreamed) {
@@ -461,10 +515,13 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
           return false;
         }
       } finally {
+        if (streamAbortControllerRef.current === abortController) {
+          streamAbortControllerRef.current = null;
+        }
         setSubmitting(false);
       }
     },
-    [applyInterviewData, interview?.id, loadInterview],
+    [applyInterviewData, interview?.id, loadInterview, stopSpeaking],
   );
 
   const sendMessage = async () => {
@@ -527,6 +584,8 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
   const currentFocus = report?.currentFocus || latestRoundRecord?.focus || "开始面试后这里会显示当前考察重点";
   const currentQuestionStyle = report?.currentQuestionStyle || latestRoundRecord?.questionStyle || "真实面试追问";
   const currentActionHint = report?.nextActionHint || "建议用背景、方案、结果和复盘的结构组织回答。";
+  const canAnswer = isStarted && !isEnded;
+  const isStreaming = submitting && Boolean(streamAbortControllerRef.current);
 
   if (loading) {
     return (
@@ -674,10 +733,16 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
             <div className="input-area">
               <Input.TextArea
                 value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
+                onChange={(e) => {
+                  stopSpeaking();
+                  setInputMessage(e.target.value);
+                }}
                 placeholder="输入你的回答。建议尽量具体，给出业务背景、技术方案、结果指标和复盘。"
-                disabled={!isStarted || isEnded}
+                disabled={!canAnswer}
                 rows={4}
+                onFocus={() => {
+                  stopSpeaking();
+                }}
                 onPressEnter={(e) => {
                   if (!e.shiftKey) {
                     e.preventDefault();
@@ -689,11 +754,40 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                 <div className="tool-group">
                   <Button
                     onClick={isListening ? stopVoiceInput : startVoiceInput}
-                    disabled={!speechRecognitionSupported || !isStarted || isEnded}
+                    disabled={!speechRecognitionSupported || !canAnswer}
                     className="tool-button"
                   >
                     {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                     {isListening ? "停止收音" : "语音输入"}
+                  </Button>
+                  <Button
+                    disabled={!speechRecognitionSupported || !canAnswer}
+                    className={`tool-button ${isListening ? "active" : ""}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      if (!isListening) {
+                        startVoiceInput();
+                      }
+                    }}
+                    onMouseUp={stopVoiceInput}
+                    onMouseLeave={() => {
+                      if (isListening) {
+                        stopVoiceInput();
+                      }
+                    }}
+                    onTouchStart={(e) => {
+                      e.preventDefault();
+                      if (!isListening) {
+                        startVoiceInput();
+                      }
+                    }}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      stopVoiceInput();
+                    }}
+                  >
+                    <Mic size={16} />
+                    按住说话
                   </Button>
                   <Button
                     onClick={() => {
@@ -713,12 +807,24 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                     <Volume2 size={16} />
                     播报当前题目
                   </Button>
+                  {isStreaming ? (
+                    <Button
+                      danger
+                      onClick={() => {
+                        cancelStreaming();
+                      }}
+                      className="tool-button"
+                    >
+                      <Square size={16} />
+                      停止实时输出
+                    </Button>
+                  ) : null}
                 </div>
                 <Button
                   type="primary"
                   onClick={() => void sendMessage()}
                   loading={submitting}
-                  disabled={!isStarted || isEnded}
+                  disabled={!canAnswer}
                   className="send-button"
                 >
                   发送回答
