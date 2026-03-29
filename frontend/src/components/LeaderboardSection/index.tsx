@@ -136,8 +136,8 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                     </div>
                   </div>
                   <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400">
+                    <div className="min-w-[110px] shrink-0">
+                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                         当前榜首
                       </div>
                       <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
@@ -145,7 +145,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </div>
                     <div className="rounded-2xl bg-white/80 px-3 py-2 shadow-sm sm:min-w-[144px] sm:text-right">
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400">
+                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
                         冠军
                       </div>
                       <div className="mt-1 text-sm font-black leading-tight text-slate-900 whitespace-normal">
@@ -219,7 +219,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                     </UserProfileHoverCard>
 
                     <div className="rounded-[1.35rem] bg-slate-950 px-4 py-4 text-white shadow-lg shadow-slate-200/60 xl:text-right">
-                      <div className="text-[11px] font-bold tracking-[0.16em] leading-tight text-white/55 whitespace-normal">
+                      <div className="text-[11px] font-bold tracking-[0.16em] leading-tight text-white/55 break-keep whitespace-nowrap">
                         {champion.metricText || board.metricLabel}
                       </div>
                       <div className="mt-2 text-3xl font-black tracking-tight">
@@ -263,14 +263,14 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </UserProfileHoverCard>
 
                       <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">排名</div>
+                      <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 whitespace-nowrap">排名</div>
                         <div className="mt-1 text-xl font-black text-slate-900">
                           #{board.currentUserItem.rank || "-"}
                         </div>
                       </div>
 
                       <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                        <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 whitespace-normal">
+                        <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
                           {board.currentUserItem.metricText || board.metricLabel}
                         </div>
                         <div className="mt-1 text-xl font-black text-slate-900">
@@ -312,7 +312,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                         </UserProfileHoverCard>
 
                         <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[150px] xl:justify-end">
-                          <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 whitespace-normal">
+                          <div className="text-xs font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
                             {item.metricText || board.metricLabel}
                           </div>
                           <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">
