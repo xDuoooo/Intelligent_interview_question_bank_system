@@ -114,7 +114,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-2 2xl:min-w-[760px] 2xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 2xl:min-w-[760px] 2xl:grid-cols-3">
             {boardList.map((board) => {
               const theme = getBoardTheme(board.key);
               return (
@@ -136,20 +136,18 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                     </div>
                   </div>
                   {board.rankingList?.[0]?.userName ? (
-                    <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(120px,auto)] xl:items-end">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                          当前榜首
-                        </div>
-                        <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-                          {getBoardSummary(board)}
-                        </div>
+                    <div className="mt-5 space-y-3">
+                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
+                        当前榜首
                       </div>
-                      <div className="min-w-0 xl:text-right">
+                      <div className="text-3xl font-black tracking-tight text-slate-900">
+                        {getBoardSummary(board)}
+                      </div>
+                      <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
                         <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                          冠军
+                          冠军用户
                         </div>
-                        <div className="mt-1 break-keep text-sm font-black leading-tight text-slate-900">
+                        <div className="mt-1 text-sm font-black leading-6 text-slate-900 break-all">
                           {board.rankingList[0].userName}
                         </div>
                       </div>
@@ -189,7 +187,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
               <div className={`absolute -right-10 top-10 h-40 w-40 rounded-full blur-3xl ${theme.glow}`} />
 
               <div className={`relative overflow-hidden rounded-[2.1rem] border bg-gradient-to-br p-5 ${theme.panel} ${theme.accentSoft}`}>
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="flex flex-col gap-4">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <span className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.accent} text-white shadow-lg`}>
@@ -214,7 +212,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                 </div>
 
                 {champion ? (
-                  <div className="mt-6 grid gap-4 rounded-[1.8rem] border border-white/80 bg-white/85 p-4 shadow-lg shadow-white/50 xl:grid-cols-[minmax(0,1fr)_160px] xl:items-center">
+                  <div className="mt-6 space-y-4 rounded-[1.8rem] border border-white/80 bg-white/85 p-4 shadow-lg shadow-white/50">
                     <UserProfileHoverCard user={champion} placement="topLeft">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] ${theme.champion}`}>
@@ -232,7 +230,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </UserProfileHoverCard>
 
-                    <div className={`rounded-[1.35rem] border bg-gradient-to-br px-4 py-4 shadow-lg xl:text-right ${theme.panel} ${theme.accentSoft}`}>
+                    <div className={`rounded-[1.35rem] border bg-gradient-to-br px-4 py-4 shadow-lg ${theme.panel} ${theme.accentSoft}`}>
                       <div className={`text-[11px] font-bold tracking-[0.14em] leading-tight whitespace-nowrap ${theme.accentText}`}>
                         {champion.metricText || board.metricLabel}
                       </div>
@@ -257,8 +255,12 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       </div>
                     </div>
 
-                    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_104px_144px] xl:items-center">
-                      <UserProfileHoverCard user={board.currentUserItem} placement="topLeft">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <UserProfileHoverCard
+                        user={board.currentUserItem}
+                        placement="topLeft"
+                        triggerClassName="sm:col-span-2"
+                      >
                         <div className="flex min-w-0 items-center gap-3">
                           <UserAvatar
                             src={board.currentUserItem.userAvatar}
@@ -305,7 +307,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                       key={`${board.key}-${item.userId}`}
                       className="rounded-[1.6rem] border border-slate-100 bg-slate-50/75 px-4 py-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-slate-200/40"
                     >
-                      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex flex-col gap-3">
                         <UserProfileHoverCard user={item} placement="topLeft">
                           <div className="min-w-0 flex items-center gap-3">
                             <div
@@ -325,11 +327,11 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                           </div>
                         </UserProfileHoverCard>
 
-                        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[172px] xl:justify-end">
-                          <div className="text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
+                        <div className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
+                          <div className="min-w-0 text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 break-all">
                             {item.metricText || board.metricLabel}
                           </div>
-                          <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">
+                          <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-slate-50 px-4 py-2 text-lg font-black text-slate-900">
                             {item.metricValue || 0}
                           </div>
                         </div>
