@@ -18,3 +18,48 @@ export function validateImageSrc(src?: string, fallback: string = "/assets/logo.
   }
   return fallback;
 }
+
+function parseDateValue(value?: string | number | Date | null) {
+  if (!value) {
+    return null;
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * 统一格式化日期时间
+ */
+export function formatDateTime(value?: string | number | Date | null, fallback = "-") {
+  const date = parseDateValue(value);
+  if (!date) {
+    return fallback;
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  })
+    .format(date)
+    .replace(/\//g, "-");
+}
+
+/**
+ * 统一格式化日期
+ */
+export function formatDate(value?: string | number | Date | null, fallback = "-") {
+  const date = parseDateValue(value);
+  if (!date) {
+    return fallback;
+  }
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(date)
+    .replace(/\//g, "-");
+}

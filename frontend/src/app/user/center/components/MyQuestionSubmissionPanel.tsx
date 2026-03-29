@@ -10,6 +10,7 @@ import {
   QUESTION_REVIEW_STATUS_ENUM,
   QUESTION_REVIEW_STATUS_TEXT_MAP,
 } from "@/constants/question";
+import { formatDateTime } from "@/lib/utils";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -227,9 +228,9 @@ const MyQuestionSubmissionPanel: React.FC = () => {
                           </div>
                           <TagList tagList={item.tagList || []} />
                           <div className="flex flex-wrap gap-4 text-sm text-slate-500">
-                            <Text type="secondary">提交时间：{item.createTime || "-"}</Text>
-                            <Text type="secondary">最近更新：{item.updateTime || "-"}</Text>
-                            {item.reviewTime ? <Text type="secondary">审核时间：{item.reviewTime}</Text> : null}
+                            <Text type="secondary">提交时间：{formatDateTime(item.createTime)}</Text>
+                            <Text type="secondary">最近更新：{formatDateTime(item.updateTime)}</Text>
+                            {item.reviewTime ? <Text type="secondary">审核时间：{formatDateTime(item.reviewTime)}</Text> : null}
                           </div>
                         </div>
                         <Space wrap>
