@@ -454,63 +454,48 @@ export default function AdminDashboardPage() {
               ))}
             </div>
 
-            <div className="flex flex-wrap gap-4 pt-2">
-              <Button type="primary" size="large" shape="round" onClick={fetchDashboard} className="h-12 px-8 font-bold">
-                刷新驾驶舱
-              </Button>
-              <Link href="/admin/post">
-                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                  <MessageSquareText className="h-4 w-4" />
-                  社区管理
-                </Button>
-              </Link>
-              <Link href="/admin/security">
-                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" />
-                  风控面板
-                </Button>
-              </Link>
-              <Link href="/admin/mockInterview">
-                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                  <BrainCircuit className="h-4 w-4" />
-                  面试管理
-                </Button>
-              </Link>
-              <Link href="/admin/question/ai">
-                <Button size="large" shape="round" className="h-12 px-8 font-bold flex items-center gap-2">
-                  <Wand2 className="h-4 w-4" />
-                  AI 智能增题
-                </Button>
-              </Link>
+            <div className="flex flex-wrap items-center gap-3 pt-2 text-sm text-slate-400">
+              <span className="inline-flex items-center gap-2 rounded-full bg-slate-100/80 px-4 py-2 font-semibold text-slate-500">
+                <ShieldCheck className="h-4 w-4 text-slate-400" />
+                后台入口已收纳到左侧导航
+              </span>
+              <button
+                type="button"
+                onClick={fetchDashboard}
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 font-semibold text-slate-500 transition hover:border-primary/30 hover:text-primary"
+              >
+                <Sparkles className="h-4 w-4" />
+                刷新数据
+              </button>
             </div>
           </div>
 
-          <div className="rounded-[2.25rem] border border-slate-200/70 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 p-6 text-white shadow-2xl shadow-slate-300/40">
-            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-white/55">
+          <div className="rounded-[2.25rem] border border-slate-200/70 bg-gradient-to-br from-slate-50 via-white to-sky-50 p-6 text-slate-900 shadow-xl shadow-slate-200/50">
+            <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-slate-400">
               <BarChart3 className="h-4 w-4" />
               今日速览
             </div>
             <div className="mt-4 space-y-4">
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-sm font-bold text-white/70">新增注册与活跃</div>
+              <div className="rounded-[1.5rem] border border-slate-200/80 bg-white/85 px-4 py-4 shadow-sm shadow-slate-100">
+                <div className="text-sm font-bold text-slate-600">新增注册与活跃</div>
                 <div className="mt-2 flex items-end justify-between gap-4">
                   <div>
                     <div className="text-3xl font-black tracking-tight">{todayStats.todayRegisterCount || 0}</div>
-                    <div className="text-xs text-white/45">今日新增用户</div>
+                    <div className="text-xs text-slate-400">今日新增用户</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-black">{todayStats.todayActiveUserCount || 0}</div>
-                    <div className="text-xs text-white/45">今日活跃用户</div>
+                    <div className="text-xs text-slate-400">今日活跃用户</div>
                   </div>
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">推荐掌握转化</div>
+                <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/80 px-4 py-4 shadow-sm shadow-slate-100">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">推荐掌握转化</div>
                   <div className="mt-2 text-2xl font-black">{recommendationAnalytics.masteredConversionRate || 0}%</div>
                 </div>
-                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-4">
-                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-white/45">今日搜索量</div>
+                <div className="rounded-[1.4rem] border border-slate-200/80 bg-white/80 px-4 py-4 shadow-sm shadow-slate-100">
+                  <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">今日搜索量</div>
                   <div className="mt-2 text-2xl font-black">{searchAnalytics.todaySearchCount || 0}</div>
                 </div>
               </div>
