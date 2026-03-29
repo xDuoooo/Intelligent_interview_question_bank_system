@@ -38,6 +38,9 @@ import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.NetUtils;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
 import org.apache.poi.xwpf.extractor.XWPFWordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.commons.lang3.StringUtils;
@@ -72,7 +75,7 @@ public class QuestionController {
 
     private static final long MAX_RESUME_FILE_SIZE = 2 * 1024 * 1024L;
     private static final int MAX_ANSWER_EVALUATE_LENGTH = 5000;
-    private static final Set<String> SUPPORTED_RESUME_FILE_SUFFIX_SET = Set.of("txt", "md", "markdown", "docx");
+    private static final Set<String> SUPPORTED_RESUME_FILE_SUFFIX_SET = Set.of("txt", "md", "markdown", "docx", "pdf");
 
     @Resource
     private AiManager aiManager;
@@ -656,7 +659,7 @@ public class QuestionController {
         String fileSuffix = StringUtils.lowerCase(FileUtil.getSuffix(multipartFile.getOriginalFilename()));
         ThrowUtils.throwIf(StringUtils.isBlank(fileSuffix) || !SUPPORTED_RESUME_FILE_SUFFIX_SET.contains(fileSuffix),
                 ErrorCode.PARAMS_ERROR,
-                "目前仅支持 txt、md、docx 简历文件");
+                "目前仅支持 txt、md、docx、pdf 简历文件");
         String resumeText;
         switch (fileSuffix) {
             case "txt":
@@ -666,6 +669,9 @@ public class QuestionController {
                 break;
             case "docx":
                 resumeText = extractDocxText(multipartFile);
+                break;
+            case "pdf":
+                resumeText = extractPdfText(multipartFile);
                 break;
             default:
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "暂不支持该文件类型");
@@ -690,6 +696,17 @@ public class QuestionController {
         } catch (IOException e) {
             log.error("解析 docx 简历失败", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "解析 docx 简历失败");
+        }
+    }
+
+    private String extractPdfText(MultipartFile multipartFile) {
+        try (PDDocument document = Loader.loadPDF(multipartFile.getBytes())) {
+            PDFTextStripper textStripper = new PDFTextStripper();
+            textStripper.setSortByPosition(true);
+            return textStripper.getText(document);
+        } catch (IOException e) {
+            log.error("解析 pdf 简历失败", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "解析 pdf 简历失败");
         }
     }
 
