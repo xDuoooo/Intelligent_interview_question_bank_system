@@ -84,13 +84,15 @@ function UserCenterContent() {
   const validTabKeySet = useRef(
     new Set([
       "overview",
-      "achievement",
       "record",
       "favourite",
+      "submission",
       "submissions",
+      "security",
       "notes",
       "posts",
-      "security",
+      "history",
+      "achievement",
     ]),
   );
 
@@ -120,8 +122,9 @@ function UserCenterContent() {
     const tab = currentSearchParams.get("tab");
     const error = currentSearchParams.get("error");
     const msg = currentSearchParams.get("msg");
-    if (tab && validTabKeySet.current.has(tab)) {
-      setActiveTabKey(tab);
+    const normalizedTab = tab === "submissions" ? "submission" : tab === "achievement" ? "record" : tab;
+    if (normalizedTab && validTabKeySet.current.has(normalizedTab)) {
+      setActiveTabKey(normalizedTab);
     }
     if ((error || msg) && !hasShownMessage.current) {
       if (error) message.error(error);

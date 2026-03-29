@@ -1360,6 +1360,7 @@ declare namespace API {
     type?: string;
     status?: number;
     targetId?: number;
+    targetUrl?: string;
     createTime?: string;
     updateTime?: string;
   };

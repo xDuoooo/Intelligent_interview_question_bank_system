@@ -34,6 +34,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
     public NotificationVO getNotificationVO(Notification notification, HttpServletRequest request) {
         NotificationVO notificationVO = new NotificationVO();
         BeanUtils.copyProperties(notification, notificationVO);
+        notificationVO.setTargetUrl(resolveNotificationTargetUrl(notification));
         return notificationVO;
     }
 
@@ -100,5 +101,46 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         notification.setTargetId(targetId);
         notification.setStatus(0);
         this.save(notification);
+    }
+
+    private String resolveNotificationTargetUrl(Notification notification) {
+        if (notification == null) {
+            return "/user/notifications";
+        }
+        String type = StringUtils.defaultString(notification.getType());
+        String title = StringUtils.defaultString(notification.getTitle());
+        String content = StringUtils.defaultString(notification.getContent());
+        Long targetId = notification.getTargetId();
+
+        switch (type) {
+            case "post_review":
+                if (title.contains("未通过") || content.contains("未通过")) {
+                    return "/user/center?tab=posts";
+                }
+                return targetId != null && targetId > 0 ? "/post/" + targetId : "/user/center?tab=posts";
+            case "question_review":
+                if (title.contains("未通过") || content.contains("未通过")) {
+                    return "/user/center?tab=submission";
+                }
+                return targetId != null && targetId > 0 ? "/question/" + targetId : "/user/center?tab=submission";
+            case "reply":
+            case "like":
+            case "comment_review":
+                return targetId != null && targetId > 0 ? "/question/" + targetId + "#comment-section" : "/user/notifications";
+            case "user_follow":
+                return targetId != null && targetId > 0 ? "/user/" + targetId : "/user/notifications";
+            case "learning_goal_reminder":
+                return "/user/center?tab=record";
+            default:
+                if (targetId != null && targetId > 0) {
+                    if (type.startsWith("post")) {
+                        return "/post/" + targetId;
+                    }
+                    if (type.startsWith("question")) {
+                        return "/question/" + targetId;
+                    }
+                }
+                return "/user/notifications";
+        }
     }
 }

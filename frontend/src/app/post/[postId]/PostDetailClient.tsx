@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPostVoByIdUsingGet, listRelatedPostUsingGet } from "@/api/postController";
+import { getMyPostVoByIdUsingGet, getPostVoByIdUsingGet, listRelatedPostUsingGet } from "@/api/postController";
 import PostDetailContent from "@/components/PostDetailContent";
 
 interface Props {
@@ -25,18 +25,24 @@ export default function PostDetailClient({
     }
     let mounted = true;
     setLoading(true);
-    Promise.allSettled([
-      getPostVoByIdUsingGet({ id: postId }),
-      listRelatedPostUsingGet({ postId, size: 4 }),
-    ])
-      .then(([postResult, relatedResult]) => {
+    Promise.allSettled([getPostVoByIdUsingGet({ id: postId }), listRelatedPostUsingGet({ postId, size: 4 })])
+      .then(async ([postResult, relatedResult]) => {
         if (!mounted) {
           return;
         }
         if (postResult.status === "fulfilled") {
           setPost(postResult.value.data);
         } else {
-          setPost(undefined);
+          try {
+            const myPostResult = await getMyPostVoByIdUsingGet({ id: postId });
+            if (mounted) {
+              setPost(myPostResult.data);
+            }
+          } catch {
+            if (mounted) {
+              setPost(undefined);
+            }
+          }
         }
         if (relatedResult.status === "fulfilled") {
           setRelatedPostList(relatedResult.value.data || []);

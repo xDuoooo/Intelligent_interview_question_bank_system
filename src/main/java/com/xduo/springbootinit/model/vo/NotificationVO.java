@@ -47,6 +47,11 @@ public class NotificationVO implements Serializable {
     private Long targetId;
 
     /**
+     * 前端跳转地址
+     */
+    private String targetUrl;
+
+    /**
      * 创建时间
      */
     private Date createTime;

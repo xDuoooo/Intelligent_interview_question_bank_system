@@ -10,6 +10,7 @@ import {
   readNotificationUsingPost,
 } from "@/api/notificationController";
 import dayjs from "dayjs";
+import { getNotificationTargetUrl } from "@/lib/notification";
 
 const { Title, Text } = Typography;
 
@@ -53,7 +54,7 @@ const UserNotificationsPage: React.FC = () => {
 
   // 标记单条已读并跳转
   const handleRead = async (item: API.NotificationVO) => {
-    const { id, targetId, status } = item;
+    const { id, status } = item;
     if (!id) return;
     
     // 如果未读，先标已读
@@ -66,10 +67,7 @@ const UserNotificationsPage: React.FC = () => {
       }
     }
 
-    // 跳转
-    if (targetId) {
-      router.push(`/question/${targetId}`);
-    }
+    router.push(getNotificationTargetUrl(item));
   };
 
   // 全部标记已读

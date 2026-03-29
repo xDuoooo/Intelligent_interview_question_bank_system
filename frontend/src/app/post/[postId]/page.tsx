@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { getPostVoByIdUsingGet, listRelatedPostUsingGet } from "@/api/postController";
+import { getMyPostVoByIdUsingGet, getPostVoByIdUsingGet, listRelatedPostUsingGet } from "@/api/postController";
 import PostDetailClient from "./PostDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,17 @@ export default async function PostDetailPage({ params }: { params: { postId: str
     post = postResult.value.data;
   } else {
     console.error("获取帖子详情失败", postResult.reason);
+    if (cookie) {
+      try {
+        const myPostResult = await getMyPostVoByIdUsingGet(
+          { id: postId },
+          { headers: { cookie } },
+        );
+        post = myPostResult.data;
+      } catch (error) {
+        console.error("获取我的帖子详情失败", error);
+      }
+    }
   }
 
   if (relatedResult.status === "fulfilled") {

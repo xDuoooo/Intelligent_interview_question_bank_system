@@ -59,6 +59,20 @@ export async function getPostVoByIdUsingGet(
   });
 }
 
+/** getMyPostVOById GET /api/post/get/my/vo */
+export async function getMyPostVoByIdUsingGet(
+  params: API.getPostVOByIdUsingGETParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponsePostVO_>('/api/post/get/my/vo', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** listHotPost GET /api/post/hot/list */
 export async function listHotPostUsingGet(options?: { [key: string]: any }) {
   return request<API.BaseResponseListPostVO_>('/api/post/hot/list', {
