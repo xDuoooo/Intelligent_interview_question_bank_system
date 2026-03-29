@@ -9,6 +9,21 @@ interface Props {
   suggestedTags?: string[];
 }
 
+const SORT_OPTIONS = [
+  {
+    label: "最新发布",
+    value: "createTime",
+  },
+  {
+    label: "点赞最多",
+    value: "thumbNum",
+  },
+  {
+    label: "收藏最多",
+    value: "favourNum",
+  },
+];
+
 function buildQueryString(params: URLSearchParams) {
   const queryString = params.toString();
   return queryString ? `?${queryString}` : "";
@@ -25,7 +40,8 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
 
   const activeTag = searchParams?.get("tag") || "";
   const activeFeatured = searchParams?.get("featured") === "1";
-  const hasFilter = Boolean(keyword.trim() || activeTag || activeFeatured);
+  const activeSortField = searchParams?.get("sortField") || "createTime";
+  const hasFilter = Boolean(keyword.trim() || activeTag || activeFeatured || activeSortField !== "createTime");
 
   const normalizedSuggestedTags = useMemo(
     () => Array.from(new Set(suggestedTags.filter(Boolean))).slice(0, 8),
@@ -72,6 +88,17 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
     router.push(pathname);
   };
 
+  const handleChangeSort = (sortField: string) => {
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    if (sortField === "createTime") {
+      params.delete("sortField");
+    } else {
+      params.set("sortField", sortField);
+    }
+    params.delete("page");
+    router.push(`${pathname}${buildQueryString(params)}`);
+  };
+
   return (
     <div className="space-y-4 rounded-[2.25rem] border border-slate-100 bg-white/80 p-5 shadow-xl shadow-slate-200/30 backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -114,6 +141,7 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={handleToggleFeatured}
+          type="button"
           className={cn(
             "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
             activeFeatured
@@ -128,6 +156,7 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
         {normalizedSuggestedTags.map((tag) => (
           <button
             key={tag}
+            type="button"
             onClick={() => handleToggleTag(tag)}
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
@@ -135,8 +164,29 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
                 ? "border-primary bg-primary/10 text-primary"
                 : "border-slate-200 bg-white text-slate-500 hover:border-primary hover:text-primary",
             )}
+            >
+              #{tag}
+            </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+          排序方式
+        </div>
+        {SORT_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => handleChangeSort(option.value)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-xs font-bold transition-all",
+              activeSortField === option.value
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-slate-200 bg-white text-slate-500 hover:border-primary hover:text-primary",
+            )}
           >
-            #{tag}
+            {option.label}
           </button>
         ))}
       </div>
