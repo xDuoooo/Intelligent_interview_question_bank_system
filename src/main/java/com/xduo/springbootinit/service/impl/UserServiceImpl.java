@@ -16,6 +16,7 @@ import com.xduo.springbootinit.model.enums.UserRoleEnum;
 import com.xduo.springbootinit.model.vo.LoginUserVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.satoken.DeviceUtils;
+import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.AliyunSmsUtils;
 import com.xduo.springbootinit.utils.NetUtils;
@@ -72,9 +73,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Resource
     private AliyunSmsUtils aliyunSmsUtils;
 
+    @Resource
+    private SystemConfigService systemConfigService;
+
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword,
             HttpServletRequest request) {
+        ensureRegisterAllowed();
         userAccount = StringUtils.trim(userAccount);
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -123,10 +128,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码错误");
         }
         ensureUserAvailable(user);
+        clearPasswordLoginFailure(loginIdentifier);
+        ensureMaintenanceLoginAllowed(user);
         if (!hasUsablePasswordLogin(user)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未设置可用密码，请使用验证码或第三方方式登录");
         }
-        clearPasswordLoginFailure(loginIdentifier);
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
@@ -161,17 +167,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String captcha = userSendCodeRequest.getCaptcha();
         String captchaUuid = userSendCodeRequest.getCaptchaUuid();
 
-        ThrowUtils.throwIf(StringUtils.isAnyBlank(target, captcha, captchaUuid), ErrorCode.PARAMS_ERROR,
-                "参数不全，请完成图形码验证");
+        ThrowUtils.throwIf(StringUtils.isBlank(target) || type == null, ErrorCode.PARAMS_ERROR, "参数不全");
+        validateLoginTargetType(type);
+        validateCodeLoginEntrance(target, type);
 
         // 1. 图形码校验
-        String captchaKey = RedisConstant.getUserCaptchaRedisKey(captchaUuid);
-        String savedCaptcha = stringRedisTemplate.opsForValue().get(captchaKey);
-        if (savedCaptcha == null || !savedCaptcha.equalsIgnoreCase(captcha)) {
-            log.warn("图形验证码匹配失败: target={}, input={}, saved={}", target, captcha, savedCaptcha);
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "图形验证码错误或已过期");
+        if (systemConfigService.isRequireCaptcha()) {
+            ThrowUtils.throwIf(StringUtils.isAnyBlank(captcha, captchaUuid), ErrorCode.PARAMS_ERROR,
+                    "参数不全，请完成图形码验证");
+            String captchaKey = RedisConstant.getUserCaptchaRedisKey(captchaUuid);
+            String savedCaptcha = stringRedisTemplate.opsForValue().get(captchaKey);
+            if (savedCaptcha == null || !savedCaptcha.equalsIgnoreCase(captcha)) {
+                log.warn("图形验证码匹配失败: target={}, input={}, saved={}", target, captcha, savedCaptcha);
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "图形验证码错误或已过期");
+            }
+            stringRedisTemplate.delete(captchaKey);
         }
-        stringRedisTemplate.delete(captchaKey);
 
         // 2. 格式校验
         if (type == 1) {
@@ -236,6 +247,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String target = userCodeLoginRequest.getTarget();
         String code = userCodeLoginRequest.getCode();
         Integer type = userCodeLoginRequest.getType();
+        ThrowUtils.throwIf(StringUtils.isAnyBlank(target, code) || type == null, ErrorCode.PARAMS_ERROR, "参数不全");
+        validateLoginTargetType(type);
 
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
@@ -247,6 +260,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         synchronized (target.intern()) {
             User user = this.getOne(new QueryWrapper<User>().eq(type == 1 ? "email" : "phone", target));
             if (user == null) {
+                ensureRegisterAllowed();
                 user = new User();
                 if (type == 1)
                     user.setEmail(target);
@@ -260,6 +274,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 this.save(user);
             }
             ensureUserAvailable(user);
+            ensureMaintenanceLoginAllowed(user);
             StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
             StpUtil.getSession().set(USER_LOGIN_STATE, user);
             return this.getLoginUserVO(user);
@@ -522,6 +537,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 检查是否存在该 GitHub ID
         User user = this.getOne(new QueryWrapper<User>().eq("githubId", githubId));
         if (user == null) {
+            ensureRegisterAllowed();
             // 2. 静默注册
             synchronized (githubId.intern()) {
                 // 再查一遍防止并发冲突
@@ -545,6 +561,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
         }
         ensureUserAvailable(user);
+        ensureMaintenanceLoginAllowed(user);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -556,6 +573,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 检查是否存在该 Gitee ID
         User user = this.getOne(new QueryWrapper<User>().eq("giteeId", giteeId));
         if (user == null) {
+            ensureRegisterAllowed();
             // 2. 静默注册
             synchronized (giteeId.intern()) {
                 // 再查一遍防止并发冲突
@@ -579,6 +597,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
         }
         ensureUserAvailable(user);
+        ensureMaintenanceLoginAllowed(user);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -590,6 +609,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 检查是否存在该 Google ID
         User user = this.getOne(new QueryWrapper<User>().eq("googleId", googleId));
         if (user == null) {
+            ensureRegisterAllowed();
             // 2. 静默注册
             synchronized (googleId.intern()) {
                 // 再查一遍防止并发冲突
@@ -613,6 +633,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
         }
         ensureUserAvailable(user);
+        ensureMaintenanceLoginAllowed(user);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -836,6 +857,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return StringUtils.lowerCase(StringUtils.trimToEmpty(loginIdentifier));
     }
 
+    private void validateLoginTargetType(Integer type) {
+        if (!Objects.equals(type, 1) && !Objects.equals(type, 2)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码登录类型不合法");
+        }
+    }
+
     private void refreshLoginSession(long userId) {
         if (StpUtil.isLogin() && Objects.equals(StpUtil.getLoginIdAsLong(), userId)) {
             User latestUser = this.getById(userId);
@@ -852,6 +879,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 StpUtil.logout();
             }
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "当前账号已被封禁");
+        }
+    }
+
+    private void ensureRegisterAllowed() {
+        if (systemConfigService.isMaintenanceMode()) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "系统维护中，仅管理员可登录");
+        }
+        if (!systemConfigService.isAllowRegister()) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前未开放注册");
+        }
+    }
+
+    private void ensureMaintenanceLoginAllowed(User user) {
+        if (systemConfigService.isMaintenanceMode() && !isAdmin(user)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "系统维护中，仅管理员可登录");
+        }
+    }
+
+    private void validateCodeLoginEntrance(String target, Integer type) {
+        boolean maintenanceMode = systemConfigService.isMaintenanceMode();
+        boolean allowRegister = systemConfigService.isAllowRegister();
+        User targetUser = this.getOne(new QueryWrapper<User>().eq(type == 1 ? "email" : "phone", target));
+        if (targetUser != null) {
+            ensureUserAvailable(targetUser);
+            if (maintenanceMode && !isAdmin(targetUser)) {
+                throw new BusinessException(ErrorCode.OPERATION_ERROR, "系统维护中，仅管理员可登录");
+            }
+            return;
+        }
+        if (maintenanceMode) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "系统维护中，仅管理员可登录");
+        }
+        if (!allowRegister) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前未开放注册，仅已绑定邮箱或手机号的账号可使用验证码登录");
         }
     }
 }

@@ -223,6 +223,20 @@ create table if not exists user_learning_goal
     unique key uk_userId (userId)
 ) comment '用户学习目标';
 
+-- 系统配置表
+create table if not exists system_config
+(
+    id              bigint auto_increment comment 'id' primary key,
+    siteName        varchar(256)                       not null comment '站点名称',
+    seoKeywords     varchar(512)                       null comment 'SEO 关键词',
+    announcement    varchar(1024)                      null comment '系统公告',
+    allowRegister   tinyint  default 1                 not null comment '是否开放注册',
+    requireCaptcha  tinyint  default 1                 not null comment '是否强制图形验证码',
+    maintenanceMode tinyint  default 0                 not null comment '是否开启维护模式',
+    createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
+) comment '系统配置';
+
 -- 通知表
 create table if not exists notification
 (

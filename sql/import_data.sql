@@ -10,6 +10,17 @@ where not exists (
     select 1 from user where userAccount = 'admin'
 );
 
+-- 初始化系统配置
+insert into system_config (id, siteName, seoKeywords, announcement, allowRegister, requireCaptcha, maintenanceMode)
+values (1, 'IntelliFace 智面', '面试, 刷题, Java, 互联网', '欢迎来到智面 1.0 版本，体验 AI 智能面经！', 1, 1, 0)
+on duplicate key update
+    siteName = values(siteName),
+    seoKeywords = values(seoKeywords),
+    announcement = values(announcement),
+    allowRegister = values(allowRegister),
+    requireCaptcha = values(requireCaptcha),
+    maintenanceMode = values(maintenanceMode);
+
 set @seed_user_id = (
     select id
     from user
