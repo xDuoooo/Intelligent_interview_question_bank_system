@@ -26,6 +26,7 @@ import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.UserFollowService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.CityUtils;
 
 import java.util.List;
 
@@ -191,6 +192,7 @@ public class UserController {
         }
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
+        user.setCity(normalizeOptionalSupportedCity(userAddRequest.getCity(), false));
         // 默认密码 12345678
         String defaultPassword = "12345678";
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + defaultPassword).getBytes());
@@ -243,6 +245,7 @@ public class UserController {
         }
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
+        user.setCity(normalizeOptionalSupportedCity(userUpdateRequest.getCity(), false));
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
@@ -364,14 +367,12 @@ public class UserController {
         }
         if (StringUtils.isNotBlank(loginUser.getCity())) {
             if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())
-                    && !StringUtils.equals(loginUser.getCity(), userUpdateMyRequest.getCity().trim())) {
+                    && !StringUtils.equals(loginUser.getCity(), CityUtils.normalizeCity(userUpdateMyRequest.getCity()))) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "城市信息已锁定，如需修改请联系管理员");
             }
             userUpdateMyRequest.setCity(loginUser.getCity());
         } else if (StringUtils.isNotBlank(userUpdateMyRequest.getCity())) {
-            String city = userUpdateMyRequest.getCity().trim();
-            ThrowUtils.throwIf(city.length() > 20, ErrorCode.PARAMS_ERROR, "城市最多 20 个字符");
-            userUpdateMyRequest.setCity(city);
+            userUpdateMyRequest.setCity(normalizeOptionalSupportedCity(userUpdateMyRequest.getCity(), true));
         }
         if (userUpdateMyRequest.getUserProfile() != null) {
             String userProfile = StringUtils.trimToEmpty(userUpdateMyRequest.getUserProfile());
@@ -388,6 +389,18 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    private String normalizeOptionalSupportedCity(String city, boolean allowEmpty) {
+        String normalizedCity = CityUtils.normalizeCity(city);
+        if (normalizedCity == null) {
+            if (allowEmpty) {
+                return null;
+            }
+            return null;
+        }
+        ThrowUtils.throwIf(!CityUtils.isSupportedCity(normalizedCity), ErrorCode.PARAMS_ERROR, "请选择系统支持的城市");
+        return normalizedCity;
     }
 
     /**

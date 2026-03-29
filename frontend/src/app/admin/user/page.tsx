@@ -9,6 +9,7 @@ import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { message, Space, Tag, Avatar, Popconfirm } from "antd";
 import { useSelector } from "react-redux";
 import { RootState } from "@/stores";
+import { CITY_GROUP_OPTIONS, CITY_VALUE_ENUM } from "@/config/cityOptions";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
@@ -68,7 +69,14 @@ const UserAdminPage: React.FC = () => {
     {
       title: "城市",
       dataIndex: "city",
-      valueType: "text",
+      valueType: "select",
+      valueEnum: CITY_VALUE_ENUM,
+      fieldProps: {
+        options: CITY_GROUP_OPTIONS,
+        showSearch: true,
+        optionFilterProp: "label",
+        popupMatchSelectWidth: false,
+      },
       render: (text) => text || <span className="text-slate-300">未填写</span>,
     },
     {

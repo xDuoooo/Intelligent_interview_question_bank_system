@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Button, Form, Input, message, Typography, Upload } from "antd";
+import { Button, Form, Input, Select, message, Typography, Upload } from "antd";
 import { 
   updateMyUserUsingPost, 
   getLoginUserUsingGet
@@ -11,6 +11,7 @@ import { setLoginUser } from "@/stores/loginUser";
 import { User, FileText, ArrowRight, Camera, Loader2, MapPin } from "lucide-react";
 import { validateImageSrc } from "@/lib/utils";
 import { buildApiUrl } from "@/libs/request";
+import { CITY_GROUP_OPTIONS } from "@/config/cityOptions";
 
 const { Text } = Typography;
 
@@ -173,17 +174,20 @@ const UserInfoEditForm = (props: Props) => {
               </span>
             }
             name="city"
-            rules={[
-              { max: 20, message: '城市最多 20 个字符' }
-            ]}
-            extra={user.city ? "城市信息已用于地理热度统计，当前不支持用户自行修改。" : "城市首次填写后会锁定，用于后台地理热度统计。"}
+            extra={
+              user.city
+                ? "城市信息已用于地理热度统计，当前仅支持展示，不支持用户自行修改。"
+                : "城市改为固定选项，首次选择后会锁定，用于后台地理热度统计。"
+            }
           >
-            <Input
-              placeholder="例如：沈阳 / 北京 / 杭州"
-              showCount
-              maxLength={20}
+            <Select
+              placeholder="请选择所在城市"
               disabled={Boolean(user.city)}
-              className="h-12 rounded-2xl bg-slate-50 border-slate-100 hover:border-primary focus:border-primary transition-all shadow-sm"
+              options={CITY_GROUP_OPTIONS}
+              showSearch
+              size="large"
+              optionFilterProp="label"
+              popupMatchSelectWidth={false}
             />
           </Form.Item>
 
