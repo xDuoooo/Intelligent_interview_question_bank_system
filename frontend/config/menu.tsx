@@ -94,6 +94,11 @@ export const menus = [
         access: ACCESS_ENUM.ADMIN,
       },
       {
+        path: "/admin/mockInterview",
+        name: "面试管理",
+        access: ACCESS_ENUM.ADMIN,
+      },
+      {
         path: "/admin/logs",
         name: "日志中心",
         access: ACCESS_ENUM.ADMIN,
