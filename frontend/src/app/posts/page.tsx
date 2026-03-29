@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import Link from "next/link";
-import { listPostVoByPageUsingPost } from "@/api/postController";
+import { listMyPostVoByPageUsingPost, listPostVoByPageUsingPost } from "@/api/postController";
 import PostList from "@/components/PostList";
 import { FilePlus2 } from "lucide-react";
 
@@ -9,8 +9,10 @@ export const dynamic = "force-dynamic";
 export default async function PostsPage() {
   const cookie = headers().get("cookie") || "";
   let postList: API.PostVO[] = [];
-  try {
-    const res = await listPostVoByPageUsingPost(
+  let myPostList: API.PostVO[] = [];
+
+  const [postListResult, myPostListResult] = await Promise.allSettled([
+    listPostVoByPageUsingPost(
       {
         current: 1,
         pageSize: 12,
@@ -22,10 +24,32 @@ export default async function PostsPage() {
           cookie,
         },
       },
-    );
-    postList = res.data?.records || [];
-  } catch (error) {
-    console.error("获取帖子列表失败", error);
+    ),
+    listMyPostVoByPageUsingPost(
+      {
+        current: 1,
+        pageSize: 6,
+        sortField: "createTime",
+        sortOrder: "descend",
+      },
+      {
+        headers: {
+          cookie,
+        },
+      },
+    ),
+  ]);
+
+  if (postListResult.status === "fulfilled") {
+    postList = postListResult.value.data?.records || [];
+  } else {
+    console.error("获取帖子列表失败", postListResult.reason);
+  }
+
+  if (myPostListResult.status === "fulfilled") {
+    myPostList = myPostListResult.value.data?.records || [];
+  } else {
+    console.error("获取我的帖子失败", myPostListResult.reason);
   }
 
   return (
@@ -48,6 +72,25 @@ export default async function PostsPage() {
           </Link>
         </div>
       </section>
+
+      {myPostList.length ? (
+        <section className="space-y-6">
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">My Community</div>
+              <h2 className="mt-2 text-3xl font-black tracking-tight text-slate-900">我的社区投稿</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-500">
+                这里会展示你最近发布的帖子，包括待审核和已驳回内容，方便你直接回看和修改。
+              </p>
+            </div>
+            <Link href="/user/center?tab=posts" className="text-sm font-black text-slate-400 transition-colors hover:text-primary">
+              去个人中心查看全部
+            </Link>
+          </div>
+          <PostList postList={myPostList} />
+        </section>
+      ) : null}
+
       <PostList postList={postList} />
     </div>
   );

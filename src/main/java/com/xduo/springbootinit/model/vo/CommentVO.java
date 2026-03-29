@@ -39,6 +39,9 @@ public class CommentVO implements Serializable {
     /** 状态：0正常 1待审核 2已隐藏 */
     private Integer status;
 
+    /** 审核意见 */
+    private String reviewMessage;
+
     /** 创建时间 */
     private Date createTime;
 

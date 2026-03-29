@@ -125,6 +125,9 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
 
   const isAdmin = loginUser?.userRole === "admin";
   const isOwner = loginUser?.id === comment.user?.id;
+  const isApproved = comment.status === 0;
+  const isPending = comment.status === 1;
+  const isRejected = comment.status === 2;
 
   const REPORT_REASONS = ["广告或垃圾内容", "辱骂或骚扰", "与话题无关", "违法违规内容", "其他"];
 
@@ -176,6 +179,16 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
             {comment.user?.userRole === "admin" && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">ADMIN</span>
             )}
+            {isPending && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-600">
+                待审核
+              </span>
+            )}
+            {isRejected && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-red-100 text-red-600">
+                已驳回
+              </span>
+            )}
             {comment.isOfficial === 1 && (
               <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-green-100 text-green-600 flex items-center gap-1">
                 <ShieldCheck className="h-3 w-3" /> 官方解答
@@ -192,6 +205,8 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
           {/* Content */}
           <div className={cn(
             "text-sm text-slate-700 leading-relaxed rounded-2xl p-4 mb-3",
+            isRejected ? "bg-red-50/70 border border-red-100" :
+            isPending ? "bg-amber-50/70 border border-amber-100" :
             comment.isOfficial === 1 ? "bg-green-50/60 border border-green-100" :
             comment.isPinned === 1 ? "bg-amber-50/60 border border-amber-100" :
             "bg-slate-50/60 border border-slate-100"
@@ -204,35 +219,52 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
               </UserProfileHoverCard>
             )}
             {comment.content}
+            {!isApproved && comment.reviewMessage ? (
+              <div className={cn(
+                "mt-3 rounded-xl px-3 py-2 text-xs leading-5",
+                isRejected ? "bg-white/80 text-red-600" : "bg-white/80 text-amber-700"
+              )}>
+                {comment.reviewMessage}
+              </div>
+            ) : null}
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => onLike(comment.id)}
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all",
-                comment.hasLiked
-                  ? "text-primary bg-primary/10 hover:bg-primary/20"
-                  : "text-slate-400 hover:text-primary hover:bg-slate-100"
-              )}
-            >
-              <ThumbsUp className={cn("h-3.5 w-3.5", comment.hasLiked && "fill-current")} />
-              {comment.likeNum > 0 ? comment.likeNum : "点赞"}
-            </button>
+            {isApproved ? (
+              <>
+                <button
+                  onClick={() => onLike(comment.id)}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl transition-all",
+                    comment.hasLiked
+                      ? "text-primary bg-primary/10 hover:bg-primary/20"
+                      : "text-slate-400 hover:text-primary hover:bg-slate-100"
+                  )}
+                >
+                  <ThumbsUp className={cn("h-3.5 w-3.5", comment.hasLiked && "fill-current")} />
+                  {comment.likeNum > 0 ? comment.likeNum : "点赞"}
+                </button>
 
-            {loginUser?.id && (
-              <button
-                onClick={() => onReply(
-                  depth === 0 ? comment.id : (comment.parentId ?? comment.id),
-                  comment.id,
-                  comment.user?.userName || "匿名"
+                {loginUser?.id && (
+                  <button
+                    onClick={() => onReply(
+                      depth === 0 ? comment.id : (comment.parentId ?? comment.id),
+                      comment.id,
+                      comment.user?.userName || "匿名"
+                    )}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-slate-400 hover:text-primary hover:bg-slate-100 transition-all"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    回复
+                  </button>
                 )}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-slate-400 hover:text-primary hover:bg-slate-100 transition-all"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                回复
-              </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {isRejected ? "这条内容当前仅你和管理员可见" : "审核通过后会对其他用户可见"}
+              </div>
             )}
 
             {/* More menu */}
@@ -394,21 +426,31 @@ export default function CommentSection({ questionId }: Props) {
 
   // ---- 发表顶级评论 ----
   const handleAddComment = async (content: string) => {
-    await addComment({ questionId, content });
-    await fetchComments(1, sortField, false);
+    const result = await addComment({ questionId, content });
+    if (result.status === 0) {
+      message.success("评论发布成功");
+      await fetchComments(1, sortField, false);
+    } else {
+      message.success(`评论已提交审核${result.reviewMessage ? `：${result.reviewMessage}` : ""}`);
+    }
   };
 
   // ---- 发表回复 ----
   const handleAddReply = async (content: string) => {
     if (!replyState) return;
-    await addComment({
+    const result = await addComment({
       questionId,
       parentId: replyState.parentId,
       replyToId: replyState.replyToId,
       content,
     });
     setReplyState(null);
-    await fetchComments(1, sortField, false);
+    if (result.status === 0) {
+      message.success("回复发布成功");
+      await fetchComments(1, sortField, false);
+    } else {
+      message.success(`回复已提交审核${result.reviewMessage ? `：${result.reviewMessage}` : ""}`);
+    }
   };
 
   // ---- 点赞（乐观更新） ----

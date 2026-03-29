@@ -12,12 +12,16 @@ import com.xduo.springbootinit.mapper.QuestionCommentLikeMapper;
 import com.xduo.springbootinit.mapper.QuestionCommentMapper;
 import com.xduo.springbootinit.mapper.QuestionCommentReportMapper;
 import com.xduo.springbootinit.mapper.QuestionMapper;
+import com.xduo.springbootinit.model.dto.comment.CommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
+import com.xduo.springbootinit.model.dto.comment.CommentReviewRequest;
 import com.xduo.springbootinit.model.entity.*;
 import com.xduo.springbootinit.model.vo.CommentVO;
+import com.xduo.springbootinit.model.vo.CommentSubmitResultVO;
 import com.xduo.springbootinit.model.vo.UserVO;
+import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.UserService;
@@ -47,6 +51,15 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
     /** 自动隐藏的举报次数阈值 */
     private static final int AUTO_HIDE_REPORT_NUM = 3;
 
+    /** 审核通过 */
+    private static final int COMMENT_STATUS_APPROVED = 0;
+
+    /** 待审核 */
+    private static final int COMMENT_STATUS_PENDING = 1;
+
+    /** 已驳回 / 已隐藏 */
+    private static final int COMMENT_STATUS_REJECTED = 2;
+
     @Resource
     private QuestionCommentLikeMapper commentLikeMapper;
 
@@ -62,12 +75,15 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
     @Resource
     private NotificationService notificationService;
 
+    @Resource
+    private AiManager aiManager;
+
     // ----------------------------------------------------------------
     //  1. 发表评论
     // ----------------------------------------------------------------
 
     @Override
-    public Long addComment(CommentAddRequest request, User loginUser) {
+    public CommentSubmitResultVO addComment(CommentAddRequest request, User loginUser) {
         // 参数校验
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         Long questionId = request.getQuestionId();
@@ -110,39 +126,24 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         comment.setReportNum(0);
         comment.setIsPinned(0);
         comment.setIsOfficial(0);
-        comment.setStatus(0);
+        CommentAutoReviewResult autoReviewResult = autoReviewComment(request.getContent());
+        comment.setStatus(autoReviewResult.status());
+        comment.setReviewMessage(autoReviewResult.reviewMessage());
+        comment.setReviewUserId(null);
+        comment.setReviewTime(autoReviewResult.status() == COMMENT_STATUS_APPROVED ? new Date() : null);
 
         boolean saved = save(comment);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR);
 
-        // 发送通知
-        // 1. 如果是回复某人
-        if (request.getReplyToId() != null) {
-            QuestionComment replyToComment = getById(request.getReplyToId());
-            if (replyToComment != null && !replyToComment.getUserId().equals(loginUser.getId())) {
-                notificationService.sendNotification(
-                    replyToComment.getUserId(),
-                    "有人回复了你的评论",
-                    loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20),
-                    "reply",
-                    questionId
-                );
-            }
-        } else if (parentId != null) {
-            // 2. 如果是回复主评论
-            QuestionComment parentComment = getById(parentId);
-            if (parentComment != null && !parentComment.getUserId().equals(loginUser.getId())) {
-                notificationService.sendNotification(
-                    parentComment.getUserId(),
-                    "你的评论有了新回复",
-                    loginUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(content, 20),
-                    "reply",
-                    questionId
-                );
-            }
+        if (autoReviewResult.status() == COMMENT_STATUS_APPROVED) {
+            sendReplyNotificationIfNeeded(comment, loginUser);
         }
 
-        return comment.getId();
+        CommentSubmitResultVO resultVO = new CommentSubmitResultVO();
+        resultVO.setId(comment.getId());
+        resultVO.setStatus(comment.getStatus());
+        resultVO.setReviewMessage(comment.getReviewMessage());
+        return resultVO;
     }
 
     // ----------------------------------------------------------------
@@ -187,12 +188,20 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         long pageSize = Math.min(request.getPageSize(), 50);
         String sortField = StringUtils.isNotBlank(request.getSortField()) ? request.getSortField() : "createTime";
         String sortOrder = StringUtils.isNotBlank(request.getSortOrder()) ? request.getSortOrder() : CommonConstant.SORT_ORDER_DESC;
+        // 获取当前登录用户（可为 null）
+        User loginUser = userService.getLoginUserPermitNull(httpRequest);
 
         // 查顶级评论（parentId IS NULL，status=0 正常）
         LambdaQueryWrapper<QuestionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QuestionComment::getQuestionId, request.getQuestionId())
                .isNull(QuestionComment::getParentId)
-               .eq(QuestionComment::getStatus, 0)
+               .and(qw -> {
+                   qw.eq(QuestionComment::getStatus, COMMENT_STATUS_APPROVED);
+                   if (loginUser != null) {
+                       qw.or(inner -> inner.eq(QuestionComment::getUserId, loginUser.getId())
+                               .in(QuestionComment::getStatus, COMMENT_STATUS_PENDING, COMMENT_STATUS_REJECTED));
+                   }
+               })
                // 置顶评论优先
                .orderByDesc(QuestionComment::getIsPinned);
 
@@ -211,9 +220,6 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         }
 
         Page<QuestionComment> commentPage = page(new Page<>(current, pageSize), wrapper);
-
-        // 获取当前登录用户（可为 null）
-        User loginUser = userService.getLoginUserPermitNull(httpRequest);
 
         // 转 VO
         List<CommentVO> voList = buildCommentVOTree(commentPage.getRecords(), loginUser);
@@ -329,7 +335,8 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         // 若举报次数达到阈值，自动进入待审核
         int newReportNum = comment.getReportNum() + 1;
         if (newReportNum >= AUTO_HIDE_REPORT_NUM) {
-            updateWrapper.set(QuestionComment::getStatus, 1);
+            updateWrapper.set(QuestionComment::getStatus, COMMENT_STATUS_PENDING);
+            updateWrapper.set(QuestionComment::getReviewMessage, "社区举报触发人工复核");
         }
         update(updateWrapper);
         return true;
@@ -387,7 +394,13 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         // 批量查询子评论（第一层，最多前 50 条）
         LambdaQueryWrapper<QuestionComment> childWrapper = new LambdaQueryWrapper<>();
         childWrapper.in(QuestionComment::getParentId, parentIds)
-                    .eq(QuestionComment::getStatus, 0)
+                    .and(qw -> {
+                        qw.eq(QuestionComment::getStatus, COMMENT_STATUS_APPROVED);
+                        if (loginUser != null) {
+                            qw.or(inner -> inner.eq(QuestionComment::getUserId, loginUser.getId())
+                                    .in(QuestionComment::getStatus, COMMENT_STATUS_PENDING, COMMENT_STATUS_REJECTED));
+                        }
+                    })
                     .orderByAsc(QuestionComment::getCreateTime);
         List<QuestionComment> childComments = list(childWrapper);
 
@@ -454,6 +467,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         vo.setIsPinned(comment.getIsPinned());
         vo.setIsOfficial(comment.getIsOfficial());
         vo.setStatus(comment.getStatus());
+        vo.setReviewMessage(comment.getReviewMessage());
         vo.setCreateTime(comment.getCreateTime());
         vo.setDeleted(false);
         vo.setUser(userService.getUserVO(userMap.get(comment.getUserId())));
@@ -481,6 +495,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     childVO.setIsPinned(child.getIsPinned());
                     childVO.setIsOfficial(child.getIsOfficial());
                     childVO.setStatus(child.getStatus());
+                    childVO.setReviewMessage(child.getReviewMessage());
                     childVO.setCreateTime(child.getCreateTime());
                     childVO.setDeleted(false);
                     childVO.setUser(userService.getUserVO(userMap.get(child.getUserId())));
@@ -500,5 +515,192 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                 .collect(Collectors.toList());
         vo.setReplies(replyVOs);
         return vo;
+    }
+
+    @Override
+    public Page<CommentVO> listAdminCommentVOByPage(CommentAdminQueryRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        long current = request.getCurrent();
+        long pageSize = Math.min(request.getPageSize(), 50);
+
+        LambdaQueryWrapper<QuestionComment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(request.getQuestionId() != null, QuestionComment::getQuestionId, request.getQuestionId())
+                .eq(request.getUserId() != null, QuestionComment::getUserId, request.getUserId())
+                .eq(request.getStatus() != null, QuestionComment::getStatus, request.getStatus())
+                .like(StringUtils.isNotBlank(request.getContent()), QuestionComment::getContent, request.getContent())
+                .orderByAsc(QuestionComment::getStatus)
+                .orderByDesc(QuestionComment::getCreateTime);
+
+        Page<QuestionComment> commentPage = page(new Page<>(current, pageSize), wrapper);
+        List<QuestionComment> records = commentPage.getRecords();
+        Set<Long> userIds = records.stream().map(QuestionComment::getUserId).collect(Collectors.toSet());
+        Set<Long> replyToCommentIds = records.stream()
+                .map(QuestionComment::getReplyToId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Long> commentToUserMap = new HashMap<>();
+        if (!replyToCommentIds.isEmpty()) {
+            List<QuestionComment> replyComments = listByIds(replyToCommentIds);
+            replyComments.forEach(replyComment -> {
+                userIds.add(replyComment.getUserId());
+                commentToUserMap.put(replyComment.getId(), replyComment.getUserId());
+            });
+        }
+        records.forEach(record -> commentToUserMap.put(record.getId(), record.getUserId()));
+        Map<Long, User> userMap = userService.listByIds(userIds).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+
+        List<CommentVO> commentVOList = records.stream().map(comment -> {
+            CommentVO commentVO = new CommentVO();
+            commentVO.setId(comment.getId());
+            commentVO.setQuestionId(comment.getQuestionId());
+            commentVO.setParentId(comment.getParentId());
+            commentVO.setReplyToId(comment.getReplyToId());
+            commentVO.setContent(comment.getContent());
+            commentVO.setLikeNum(comment.getLikeNum());
+            commentVO.setIsPinned(comment.getIsPinned());
+            commentVO.setIsOfficial(comment.getIsOfficial());
+            commentVO.setStatus(comment.getStatus());
+            commentVO.setReviewMessage(comment.getReviewMessage());
+            commentVO.setCreateTime(comment.getCreateTime());
+            commentVO.setDeleted(comment.getIsDelete() != null && comment.getIsDelete() == 1);
+            commentVO.setUser(userService.getUserVO(userMap.get(comment.getUserId())));
+            if (comment.getReplyToId() != null) {
+                Long replyToUserId = commentToUserMap.get(comment.getReplyToId());
+                if (replyToUserId != null) {
+                    commentVO.setReplyToUser(userService.getUserVO(userMap.get(replyToUserId)));
+                }
+            }
+            commentVO.setHasLiked(false);
+            commentVO.setReplies(Collections.emptyList());
+            return commentVO;
+        }).toList();
+
+        Page<CommentVO> commentVOPage = new Page<>(current, pageSize, commentPage.getTotal());
+        commentVOPage.setRecords(commentVOList);
+        return commentVOPage;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean reviewComment(CommentReviewRequest request, User adminUser) {
+        ThrowUtils.throwIf(request == null || request.getId() == null || request.getId() <= 0, ErrorCode.PARAMS_ERROR);
+        Integer status = request.getStatus();
+        ThrowUtils.throwIf(status == null || (status != COMMENT_STATUS_APPROVED && status != COMMENT_STATUS_REJECTED),
+                ErrorCode.PARAMS_ERROR, "审核状态不合法");
+        String reviewMessage = StringUtils.trimToNull(request.getReviewMessage());
+        if (status == COMMENT_STATUS_REJECTED) {
+            ThrowUtils.throwIf(StringUtils.isBlank(reviewMessage), ErrorCode.PARAMS_ERROR, "驳回时请填写审核意见");
+        }
+        ThrowUtils.throwIf(StringUtils.length(reviewMessage) > 512, ErrorCode.PARAMS_ERROR, "审核意见过长");
+
+        QuestionComment comment = getById(request.getId());
+        ThrowUtils.throwIf(comment == null, ErrorCode.NOT_FOUND_ERROR);
+
+        QuestionComment updateComment = new QuestionComment();
+        updateComment.setId(comment.getId());
+        updateComment.setStatus(status);
+        updateComment.setReviewMessage(reviewMessage);
+        updateComment.setReviewUserId(adminUser.getId());
+        updateComment.setReviewTime(new Date());
+        boolean updated = updateById(updateComment);
+        ThrowUtils.throwIf(!updated, ErrorCode.OPERATION_ERROR);
+
+        User author = userService.getById(comment.getUserId());
+        if (status == COMMENT_STATUS_APPROVED && author != null) {
+            sendReplyNotificationIfNeeded(comment, author);
+        }
+        if (status == COMMENT_STATUS_REJECTED) {
+            notificationService.sendNotification(
+                    comment.getUserId(),
+                    "你的评论未通过审核",
+                    "你在题目下发布的评论未通过审核。" + (StringUtils.isNotBlank(reviewMessage) ? " 审核意见：" + reviewMessage : ""),
+                    "comment_review",
+                    comment.getQuestionId()
+            );
+        }
+        return true;
+    }
+
+    private CommentAutoReviewResult autoReviewComment(String content) {
+        String lowerCaseText = StringUtils.defaultString(content).toLowerCase();
+        if (containsAny(lowerCaseText, "赌博", "色情", "外挂", "vpn", "代考", "作弊器", "刷单", "telegram", "qq群", "vx:", "微信:", "联系方式")) {
+            return new CommentAutoReviewResult(COMMENT_STATUS_PENDING, "内容触发风险规则，已进入人工复核");
+        }
+        try {
+            String aiResult = aiManager.doChat(
+                    "你是评论审核助手。请仅输出一行 JSON，格式为 {\"decision\":\"approve|pending|reject\",\"reason\":\"...\"}。"
+                            + "如果内容存在违规、广告导流、人身攻击、联系方式引流等风险，decision 输出 pending 或 reject；"
+                            + "正常交流输出 approve。",
+                    "请审核以下评论内容：\n" + content
+            );
+            String normalized = StringUtils.defaultString(aiResult).toLowerCase();
+            if (normalized.contains("pending") || normalized.contains("reject")) {
+                return new CommentAutoReviewResult(COMMENT_STATUS_PENDING, extractReviewMessage(aiResult, "评论已进入人工复核"));
+            }
+        } catch (Exception e) {
+            log.warn("comment auto review fallback, reason={}", e.getMessage());
+        }
+        return new CommentAutoReviewResult(COMMENT_STATUS_APPROVED, "系统自动审核通过");
+    }
+
+    private String extractReviewMessage(String aiResult, String defaultMessage) {
+        if (StringUtils.isBlank(aiResult)) {
+            return defaultMessage;
+        }
+        int reasonIndex = aiResult.indexOf("\"reason\"");
+        if (reasonIndex < 0) {
+            return defaultMessage;
+        }
+        String text = aiResult.substring(reasonIndex);
+        int colonIndex = text.indexOf(':');
+        if (colonIndex < 0) {
+            return defaultMessage;
+        }
+        String value = text.substring(colonIndex + 1).replaceAll("[\"{}]", "").trim();
+        return StringUtils.isBlank(value) ? defaultMessage : StringUtils.abbreviate(value, 120);
+    }
+
+    private boolean containsAny(String text, String... keywords) {
+        if (StringUtils.isBlank(text) || keywords == null) {
+            return false;
+        }
+        for (String keyword : keywords) {
+            if (StringUtils.isNotBlank(keyword) && text.contains(keyword.toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void sendReplyNotificationIfNeeded(QuestionComment comment, User authorUser) {
+        if (comment.getReplyToId() != null) {
+            QuestionComment replyToComment = getById(comment.getReplyToId());
+            if (replyToComment != null && !replyToComment.getUserId().equals(comment.getUserId())) {
+                notificationService.sendNotification(
+                        replyToComment.getUserId(),
+                        "有人回复了你的评论",
+                        authorUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(comment.getContent(), 20),
+                        "reply",
+                        comment.getQuestionId()
+                );
+                return;
+            }
+        }
+        if (comment.getParentId() != null) {
+            QuestionComment parentComment = getById(comment.getParentId());
+            if (parentComment != null && !parentComment.getUserId().equals(comment.getUserId())) {
+                notificationService.sendNotification(
+                        parentComment.getUserId(),
+                        "你的评论有了新回复",
+                        authorUser.getUserName() + " 回复了你：" + StringUtils.abbreviate(comment.getContent(), 20),
+                        "reply",
+                        comment.getQuestionId()
+                );
+            }
+        }
+    }
+
+    private record CommentAutoReviewResult(int status, String reviewMessage) {
     }
 }

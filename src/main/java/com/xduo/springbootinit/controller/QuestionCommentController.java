@@ -9,11 +9,14 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.dto.comment.CommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentAddRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentQueryRequest;
 import com.xduo.springbootinit.model.dto.comment.CommentReportRequest;
+import com.xduo.springbootinit.model.dto.comment.CommentReviewRequest;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.CommentVO;
+import com.xduo.springbootinit.model.vo.CommentSubmitResultVO;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.UserService;
 import jakarta.annotation.Resource;
@@ -41,12 +44,12 @@ public class QuestionCommentController {
      * 发表评论（含回复）
      */
     @PostMapping("/add")
-    public BaseResponse<Long> addComment(@RequestBody CommentAddRequest request,
-                                         HttpServletRequest httpRequest) {
+    public BaseResponse<CommentSubmitResultVO> addComment(@RequestBody CommentAddRequest request,
+                                                          HttpServletRequest httpRequest) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(httpRequest);
-        Long commentId = questionCommentService.addComment(request, loginUser);
-        return ResultUtils.success(commentId);
+        CommentSubmitResultVO result = questionCommentService.addComment(request, loginUser);
+        return ResultUtils.success(result);
     }
 
     /**
@@ -122,5 +125,28 @@ public class QuestionCommentController {
         ThrowUtils.throwIf(commentId == null || commentId <= 0, ErrorCode.PARAMS_ERROR);
         boolean result = questionCommentService.setOfficialAnswer(commentId, official);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 后台分页获取评论
+     */
+    @PostMapping("/admin/list/page/vo")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<CommentVO>> listAdminCommentVOByPage(@RequestBody CommentAdminQueryRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getPageSize() > 50, ErrorCode.PARAMS_ERROR, "每页最多 50 条");
+        return ResultUtils.success(questionCommentService.listAdminCommentVOByPage(request));
+    }
+
+    /**
+     * 审核评论（仅管理员）
+     */
+    @PostMapping("/review")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> reviewComment(@RequestBody CommentReviewRequest request,
+                                               HttpServletRequest httpRequest) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        User adminUser = userService.getLoginUser(httpRequest);
+        return ResultUtils.success(questionCommentService.reviewComment(request, adminUser));
     }
 }
