@@ -156,20 +156,28 @@ create table if not exists user_question_study_session
 -- 帖子
 create table if not exists post
 (
-    id         bigint                             not null comment 'id' primary key,
-    title      varchar(80)                       not null comment '标题',
-    content    text                              not null comment '内容',
-    tags       varchar(1024)                     null comment '标签列表 json',
-    thumbNum   int      default 0                not null comment '点赞数',
-    favourNum  int      default 0                not null comment '收藏数',
-    userId     bigint                            not null comment '创建用户 id',
-    createTime datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    isDelete   tinyint  default 0                not null comment '是否删除',
+    id           bigint                             not null comment 'id' primary key,
+    title        varchar(80)                       not null comment '标题',
+    content      text                              not null comment '内容',
+    tags         varchar(1024)                     null comment '标签列表 json',
+    thumbNum     int      default 0                not null comment '点赞数',
+    favourNum    int      default 0                not null comment '收藏数',
+    userId       bigint                            not null comment '创建用户 id',
+    reviewStatus tinyint  default 1                not null comment '审核状态：0-待审核 1-已通过 2-已驳回',
+    reviewMessage varchar(512)                     null comment '审核意见',
+    reviewUserId bigint                            null comment '审核人 id',
+    reviewTime   datetime                          null comment '审核时间',
+    isTop        tinyint  default 0                not null comment '是否置顶',
+    isFeatured   tinyint  default 0                not null comment '是否精选',
+    createTime   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    isDelete     tinyint  default 0                not null comment '是否删除',
     index idx_userId (userId),
     index idx_createTime (createTime),
     index idx_thumbNum (thumbNum),
-    index idx_favourNum (favourNum)
+    index idx_favourNum (favourNum),
+    index idx_reviewStatus (reviewStatus),
+    index idx_top_featured_createTime (isTop, isFeatured, createTime)
 ) comment '帖子';
 
 -- 帖子点赞

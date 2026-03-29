@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Tag } from "antd";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
 import { CalendarClock, ChevronRight, Heart, ThumbsUp } from "lucide-react";
@@ -20,6 +21,18 @@ export default function PostList({ postList = [] }: Props) {
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {Number(item.isTop || 0) > 0 ? (
+                  <Tag color="gold" className="m-0 rounded-full px-3 py-1 font-bold">
+                    置顶
+                  </Tag>
+                ) : null}
+                {Number(item.isFeatured || 0) > 0 ? (
+                  <Tag color="purple" className="m-0 rounded-full px-3 py-1 font-bold">
+                    精选
+                  </Tag>
+                ) : null}
+              </div>
               <div className="line-clamp-2 text-xl font-black text-slate-900 transition-colors group-hover:text-primary">
                 {item.title}
               </div>

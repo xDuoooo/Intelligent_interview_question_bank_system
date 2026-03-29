@@ -59,6 +59,12 @@ export default async function PostDetailPage({ params }: { params: { postId: str
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               <Tag color="blue" className="rounded-full px-3 py-1">经验帖</Tag>
+              {Number(post.isTop || 0) > 0 ? (
+                <Tag color="gold" className="rounded-full px-3 py-1">置顶</Tag>
+              ) : null}
+              {Number(post.isFeatured || 0) > 0 ? (
+                <Tag color="purple" className="rounded-full px-3 py-1">精选</Tag>
+              ) : null}
               {post.tagList?.map((tag) => (
                 <Tag key={tag} className="rounded-full px-3 py-1">{tag}</Tag>
               ))}

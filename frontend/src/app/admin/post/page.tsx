@@ -2,9 +2,9 @@
 
 import React, { useRef, useState } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Modal, Popconfirm, Space, Tag } from "antd";
+import { Button, Input, message, Modal, Popconfirm, Radio, Space, Switch, Tag } from "antd";
 import Link from "next/link";
-import { Edit3, FilePlus2, Trash2 } from "lucide-react";
+import { CheckCheck, Edit3, FilePlus2, Sparkles, Trash2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import PostEditorForm from "@/components/PostEditorForm";
 import {
@@ -12,13 +12,22 @@ import {
   deletePostUsingPost,
   editPostUsingPost,
   listPostVoByPageUsingPost,
+  operatePostUsingPost,
+  reviewPostUsingPost,
 } from "@/api/postController";
+import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
 
 const PostAdminPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const [editingPost, setEditingPost] = useState<API.PostVO | undefined>();
   const [createVisible, setCreateVisible] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [reviewingPost, setReviewingPost] = useState<API.PostVO | undefined>();
+  const [operatingPost, setOperatingPost] = useState<API.PostVO | undefined>();
+  const [reviewStatus, setReviewStatus] = useState<number>(1);
+  const [reviewMessage, setReviewMessage] = useState("");
+  const [topValue, setTopValue] = useState(false);
+  const [featuredValue, setFeaturedValue] = useState(false);
 
   const handleDelete = async (id?: number) => {
     if (!id) {
@@ -34,6 +43,18 @@ const PostAdminPage: React.FC = () => {
       hide();
       message.error(error?.message || "删除失败");
     }
+  };
+
+  const openReviewModal = (record: API.PostVO) => {
+    setReviewingPost(record);
+    setReviewStatus(Number(record.reviewStatus ?? 1) === 2 ? 2 : 1);
+    setReviewMessage(record.reviewMessage || "");
+  };
+
+  const openOperateModal = (record: API.PostVO) => {
+    setOperatingPost(record);
+    setTopValue(Number(record.isTop || 0) > 0);
+    setFeaturedValue(Number(record.isFeatured || 0) > 0);
   };
 
   const columns: ProColumns<API.PostVO>[] = [
@@ -95,6 +116,43 @@ const PostAdminPage: React.FC = () => {
       hideInSearch: true,
     },
     {
+      title: "审核状态",
+      dataIndex: "reviewStatus",
+      valueType: "select",
+      width: 110,
+      valueEnum: {
+        0: { text: "待审核" },
+        1: { text: "已通过" },
+        2: { text: "已驳回" },
+      },
+      render: (_, record) => (
+        <Tag color={POST_REVIEW_STATUS_COLOR_MAP[Number(record.reviewStatus ?? 1)] || "default"} className="rounded-full px-3 py-1 font-bold">
+          {POST_REVIEW_STATUS_TEXT_MAP[Number(record.reviewStatus ?? 1)] || "未知状态"}
+        </Tag>
+      ),
+    },
+    {
+      title: "运营标签",
+      dataIndex: "operation",
+      hideInSearch: true,
+      render: (_, record) => (
+        <div className="flex flex-wrap gap-2">
+          {Number(record.isTop || 0) > 0 ? <Tag color="gold" className="m-0 rounded-full px-3 py-1 font-bold">置顶</Tag> : null}
+          {Number(record.isFeatured || 0) > 0 ? <Tag color="purple" className="m-0 rounded-full px-3 py-1 font-bold">精选</Tag> : null}
+          {Number(record.isTop || 0) === 0 && Number(record.isFeatured || 0) === 0 ? (
+            <span className="text-slate-300">-</span>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      title: "审核意见",
+      dataIndex: "reviewMessage",
+      hideInSearch: true,
+      ellipsis: true,
+      render: (text) => text || <span className="text-slate-300">-</span>,
+    },
+    {
       title: "创建时间",
       dataIndex: "createTime",
       valueType: "dateTime",
@@ -105,7 +163,7 @@ const PostAdminPage: React.FC = () => {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
-      width: 180,
+      width: 260,
       render: (_, record) => (
         <Space size="middle">
           <button
@@ -114,6 +172,20 @@ const PostAdminPage: React.FC = () => {
           >
             <Edit3 className="h-4 w-4" />
             编辑
+          </button>
+          <button
+            onClick={() => openReviewModal(record)}
+            className="flex items-center gap-1.5 text-emerald-600 transition-colors hover:text-emerald-700 font-bold"
+          >
+            <CheckCheck className="h-4 w-4" />
+            审核
+          </button>
+          <button
+            onClick={() => openOperateModal(record)}
+            className="flex items-center gap-1.5 text-violet-600 transition-colors hover:text-violet-700 font-bold"
+          >
+            <Sparkles className="h-4 w-4" />
+            运营
           </button>
           <Popconfirm
             title="确认删除帖子"
@@ -176,6 +248,7 @@ const PostAdminPage: React.FC = () => {
               pageSize: params.pageSize,
               title: params.title,
               userId: params.userId,
+              reviewStatus: params.reviewStatus,
               sortField,
               sortOrder,
             } as API.PostQueryRequest);
@@ -265,6 +338,104 @@ const PostAdminPage: React.FC = () => {
               }
             }}
           />
+        </div>
+      </Modal>
+
+      <Modal
+        title={null}
+        open={!!reviewingPost}
+        onCancel={() => setReviewingPost(undefined)}
+        onOk={async () => {
+          if (!reviewingPost?.id) {
+            return;
+          }
+          setSaving(true);
+          try {
+            await reviewPostUsingPost({
+              id: reviewingPost.id,
+              reviewStatus,
+              reviewMessage,
+            });
+            message.success("帖子审核结果已更新");
+            setReviewingPost(undefined);
+            actionRef.current?.reload();
+          } catch (error: any) {
+            message.error(error?.message || "审核失败");
+          } finally {
+            setSaving(false);
+          }
+        }}
+        confirmLoading={saving}
+        okText="提交审核"
+        cancelText="取消"
+      >
+        <div className="space-y-6 pt-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">Review Post</div>
+            <h3 className="mt-2 text-2xl font-black text-slate-900">审核帖子</h3>
+          </div>
+          <Radio.Group value={reviewStatus} onChange={(e) => setReviewStatus(e.target.value)} className="flex gap-4">
+            <Radio.Button value={1}>审核通过</Radio.Button>
+            <Radio.Button value={2}>驳回</Radio.Button>
+          </Radio.Group>
+          <Input.TextArea
+            rows={4}
+            value={reviewMessage}
+            onChange={(e) => setReviewMessage(e.target.value)}
+            placeholder={reviewStatus === 2 ? "驳回时请填写审核意见" : "可以填写审核备注，留空则使用系统默认说明"}
+            maxLength={512}
+            showCount
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        title={null}
+        open={!!operatingPost}
+        onCancel={() => setOperatingPost(undefined)}
+        onOk={async () => {
+          if (!operatingPost?.id) {
+            return;
+          }
+          setSaving(true);
+          try {
+            await operatePostUsingPost({
+              id: operatingPost.id,
+              isTop: topValue ? 1 : 0,
+              isFeatured: featuredValue ? 1 : 0,
+            });
+            message.success("帖子运营状态已更新");
+            setOperatingPost(undefined);
+            actionRef.current?.reload();
+          } catch (error: any) {
+            message.error(error?.message || "更新失败");
+          } finally {
+            setSaving(false);
+          }
+        }}
+        confirmLoading={saving}
+        okText="保存运营设置"
+        cancelText="取消"
+      >
+        <div className="space-y-6 pt-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">Operate Post</div>
+            <h3 className="mt-2 text-2xl font-black text-slate-900">精选 / 置顶设置</h3>
+          </div>
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4">
+            <div>
+              <div className="font-black text-slate-800">置顶帖子</div>
+              <div className="mt-1 text-sm text-slate-500">置顶内容会优先出现在社区列表前面。</div>
+            </div>
+            <Switch checked={topValue} onChange={setTopValue} />
+          </div>
+          <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4">
+            <div>
+              <div className="font-black text-slate-800">设为精选</div>
+              <div className="mt-1 text-sm text-slate-500">精选内容会获得更明显的展示标签。</div>
+            </div>
+            <Switch checked={featuredValue} onChange={setFeaturedValue} />
+          </div>
         </div>
       </Modal>
     </div>
