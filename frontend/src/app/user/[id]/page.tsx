@@ -154,7 +154,7 @@ export default async function PublicUserProfilePage({
               <div className="mt-5 flex flex-wrap gap-3 text-sm font-medium text-slate-500">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
                   <MapPin className="h-4 w-4 text-primary" />
-                  {profile.user.city || "未公开城市"}
+                  最近登录城市：{profile.user.city || "暂未识别"}
                 </span>
                 {profile.user.careerDirection ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-4 py-2 text-violet-700">

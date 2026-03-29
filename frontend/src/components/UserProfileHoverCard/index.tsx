@@ -212,7 +212,7 @@ export default function UserProfileHoverCard({
           <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />
-              {displayUser?.city || "未公开城市"}
+              最近登录城市：{displayUser?.city || "暂未识别"}
             </span>
             <span>加入于 {formatJoinDate(displayUser?.createTime)}</span>
           </div>

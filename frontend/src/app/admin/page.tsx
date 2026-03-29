@@ -378,6 +378,22 @@ export default function AdminDashboardPage() {
         lineStyle: { width: 3, color: "#14b8a6" },
         itemStyle: { color: "#14b8a6" },
       },
+      {
+        name: "练习",
+        data: recommendationTrend.practiceTrend || [],
+        type: "line",
+        smooth: true,
+        lineStyle: { width: 3, color: "#8b5cf6" },
+        itemStyle: { color: "#8b5cf6" },
+      },
+      {
+        name: "掌握",
+        data: recommendationTrend.masteredTrend || [],
+        type: "line",
+        smooth: true,
+        lineStyle: { width: 3, color: "#f97316" },
+        itemStyle: { color: "#f97316" },
+      },
     ],
   };
 
@@ -565,8 +581,8 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[
                       { label: "覆盖城市数", value: geoDistribution.cityCount || 0, color: "bg-sky-50 text-sky-700" },
-                      { label: "已完善城市用户", value: geoDistribution.filledUserCount || 0, color: "bg-emerald-50 text-emerald-700" },
-                      { label: "资料覆盖率", value: `${geoDistribution.coverageRate || 0}%`, color: "bg-amber-50 text-amber-700" },
+                      { label: "已识别城市用户", value: geoDistribution.filledUserCount || 0, color: "bg-emerald-50 text-emerald-700" },
+                      { label: "识别覆盖率", value: `${geoDistribution.coverageRate || 0}%`, color: "bg-amber-50 text-amber-700" },
                     ].map((item) => (
                       <div key={item.label} className={`rounded-2xl border border-slate-100 px-5 py-4 ${item.color}`}>
                         <div className="text-xs font-black uppercase tracking-wider opacity-70">{item.label}</div>
@@ -628,7 +644,7 @@ export default function AdminDashboardPage() {
             <Card
               className="rounded-[3rem] border-slate-100 shadow-xl shadow-slate-200/50 p-6 sm:p-10 h-full"
               title={<div className="flex items-center gap-2 font-black text-lg"><MousePointerClick className="h-5 w-5 text-cyan-600" /> 推荐效果分析</div>}
-              extra={<Tag color="cyan" bordered={false}>曝光 / 点击 / CTR</Tag>}
+              extra={<Tag color="cyan" bordered={false}>曝光 / 点击 / 练习 / 掌握</Tag>}
             >
               {loading ? (
                 <Skeleton active paragraph={{ rows: 8 }} />
@@ -639,6 +655,9 @@ export default function AdminDashboardPage() {
                       { label: "累计曝光", value: recommendationAnalytics.totalExposureCount || 0, color: "bg-cyan-50 text-cyan-700" },
                       { label: "累计点击", value: recommendationAnalytics.totalClickCount || 0, color: "bg-emerald-50 text-emerald-700" },
                       { label: "点击率", value: `${recommendationAnalytics.clickThroughRate || 0}%`, color: "bg-blue-50 text-blue-700" },
+                      { label: "练习转化", value: `${recommendationAnalytics.practiceConversionRate || 0}%`, color: "bg-violet-50 text-violet-700" },
+                      { label: "收藏转化", value: `${recommendationAnalytics.favourConversionRate || 0}%`, color: "bg-amber-50 text-amber-700" },
+                      { label: "掌握转化", value: `${recommendationAnalytics.masteredConversionRate || 0}%`, color: "bg-rose-50 text-rose-700" },
                     ].map((item) => (
                       <div key={item.label} className={`rounded-2xl border border-slate-100 px-5 py-4 ${item.color}`}>
                         <div className="text-xs font-black uppercase tracking-wider opacity-70">{item.label}</div>
@@ -669,12 +688,17 @@ export default function AdminDashboardPage() {
                         <div className="min-w-0">
                           <div className="font-semibold text-slate-800">{item.source || "unknown"}</div>
                           <div className="mt-1 text-xs text-slate-500">
-                            曝光 {item.exposureCount || 0} 次 · 点击 {item.clickCount || 0} 次
+                            曝光 {item.exposureCount || 0} 次 · 点击 {item.clickCount || 0} 次 · 练习 {item.practiceCount || 0} 次
                           </div>
                         </div>
-                        <Tag color="processing" className="m-0">
-                          CTR {item.clickThroughRate || 0}%
-                        </Tag>
+                        <div className="flex flex-col items-end gap-2">
+                          <Tag color="processing" className="m-0">
+                            CTR {item.clickThroughRate || 0}%
+                          </Tag>
+                          <Tag color="purple" className="m-0">
+                            掌握转化 {item.masteredConversionRate || 0}%
+                          </Tag>
+                        </div>
                       </div>
                     </List.Item>
                   )}

@@ -60,4 +60,22 @@ public final class CityUtils {
         }
         return isSupportedCity(normalizedCity) ? normalizedCity : null;
     }
+
+    public static String extractSupportedCity(String locationText) {
+        String normalizedCity = normalizeSupportedCity(locationText);
+        if (normalizedCity != null) {
+            return normalizedCity;
+        }
+        String normalizedLocationText = normalizeCity(locationText);
+        if (normalizedLocationText == null) {
+            return null;
+        }
+        String compactLocationText = normalizedLocationText.replace(" ", "");
+        for (String supportedCity : SUPPORTED_CITY_SET) {
+            if (compactLocationText.contains(supportedCity)) {
+                return supportedCity;
+            }
+        }
+        return null;
+    }
 }

@@ -305,10 +305,19 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         QueryWrapper<QuestionRecommendLog> clickWrapper = new QueryWrapper<>();
         clickWrapper.eq("action", "click");
         long totalClickCount = questionRecommendLogService.count(clickWrapper);
+        long totalPracticeCount = countRecommendationLogByAction("practice");
+        long totalFavourCount = countRecommendationLogByAction("favour");
+        long totalMasteredCount = countRecommendationLogByAction("mastered");
 
         analytics.put("totalExposureCount", totalExposureCount);
         analytics.put("totalClickCount", totalClickCount);
+        analytics.put("totalPracticeCount", totalPracticeCount);
+        analytics.put("totalFavourCount", totalFavourCount);
+        analytics.put("totalMasteredCount", totalMasteredCount);
         analytics.put("clickThroughRate", totalExposureCount == 0 ? 0D : Math.round(totalClickCount * 10000D / totalExposureCount) / 100D);
+        analytics.put("practiceConversionRate", totalClickCount == 0 ? 0D : Math.round(totalPracticeCount * 10000D / totalClickCount) / 100D);
+        analytics.put("favourConversionRate", totalClickCount == 0 ? 0D : Math.round(totalFavourCount * 10000D / totalClickCount) / 100D);
+        analytics.put("masteredConversionRate", totalClickCount == 0 ? 0D : Math.round(totalMasteredCount * 10000D / totalClickCount) / 100D);
         analytics.put("sourceBreakdown", buildRecommendationSourceBreakdown());
         analytics.put("trend", buildRecommendationTrend());
         return analytics;
@@ -330,11 +339,20 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 .map(entry -> {
                     long exposureCount = entry.getValue().getOrDefault("exposure", 0L);
                     long clickCount = entry.getValue().getOrDefault("click", 0L);
+                    long practiceCount = entry.getValue().getOrDefault("practice", 0L);
+                    long favourCount = entry.getValue().getOrDefault("favour", 0L);
+                    long masteredCount = entry.getValue().getOrDefault("mastered", 0L);
                     Map<String, Object> item = new LinkedHashMap<>();
                     item.put("source", entry.getKey());
                     item.put("exposureCount", exposureCount);
                     item.put("clickCount", clickCount);
+                    item.put("practiceCount", practiceCount);
+                    item.put("favourCount", favourCount);
+                    item.put("masteredCount", masteredCount);
                     item.put("clickThroughRate", exposureCount == 0 ? 0D : Math.round(clickCount * 10000D / exposureCount) / 100D);
+                    item.put("practiceConversionRate", clickCount == 0 ? 0D : Math.round(practiceCount * 10000D / clickCount) / 100D);
+                    item.put("favourConversionRate", clickCount == 0 ? 0D : Math.round(favourCount * 10000D / clickCount) / 100D);
+                    item.put("masteredConversionRate", clickCount == 0 ? 0D : Math.round(masteredCount * 10000D / clickCount) / 100D);
                     return item;
                 })
                 .sorted(Comparator.comparingLong((Map<String, Object> item) -> (Long) item.get("exposureCount")).reversed())
@@ -346,19 +364,27 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         List<String> dateList = new ArrayList<>();
         List<Long> exposureTrend = new ArrayList<>();
         List<Long> clickTrend = new ArrayList<>();
+        List<Long> practiceTrend = new ArrayList<>();
+        List<Long> masteredTrend = new ArrayList<>();
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
         LocalDate startDate = today.minusDays(6);
         Map<LocalDate, Long> exposureTrendMap = listDateCountMapForRecommendationLog(startDate, today, "exposure");
         Map<LocalDate, Long> clickTrendMap = listDateCountMapForRecommendationLog(startDate, today, "click");
+        Map<LocalDate, Long> practiceTrendMap = listDateCountMapForRecommendationLog(startDate, today, "practice");
+        Map<LocalDate, Long> masteredTrendMap = listDateCountMapForRecommendationLog(startDate, today, "mastered");
         for (int i = 6; i >= 0; i--) {
             LocalDate date = today.minusDays(i);
             dateList.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
             exposureTrend.add(exposureTrendMap.getOrDefault(date, 0L));
             clickTrend.add(clickTrendMap.getOrDefault(date, 0L));
+            practiceTrend.add(practiceTrendMap.getOrDefault(date, 0L));
+            masteredTrend.add(masteredTrendMap.getOrDefault(date, 0L));
         }
         trend.put("dates", dateList);
         trend.put("exposureTrend", exposureTrend);
         trend.put("clickTrend", clickTrend);
+        trend.put("practiceTrend", practiceTrend);
+        trend.put("masteredTrend", masteredTrend);
         return trend;
     }
 
@@ -672,6 +698,12 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         queryWrapper.eq(StringUtils.isNotBlank(action), "action", action);
         queryWrapper.groupBy("DATE(createTime)");
         return dateCountMapFrom(questionRecommendLogService.listMaps(queryWrapper));
+    }
+
+    private long countRecommendationLogByAction(String action) {
+        QueryWrapper<QuestionRecommendLog> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("action", action);
+        return questionRecommendLogService.count(queryWrapper);
     }
 
     private Map<LocalDate, Long> dateCountMapFrom(List<Map<String, Object>> mapList) {

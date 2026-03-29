@@ -67,7 +67,7 @@ const UserAdminPage: React.FC = () => {
       valueType: "text",
     },
     {
-      title: "城市",
+      title: "最近登录城市",
       dataIndex: "city",
       valueType: "select",
       valueEnum: CITY_VALUE_ENUM,
@@ -77,7 +77,7 @@ const UserAdminPage: React.FC = () => {
         optionFilterProp: "label",
         popupMatchSelectWidth: false,
       },
-      render: (text) => text || <span className="text-slate-300">未填写</span>,
+      render: (text) => text || <span className="text-slate-300">暂未识别</span>,
     },
     {
       title: "就业方向",

@@ -20,6 +20,7 @@ import com.xduo.springbootinit.satoken.DeviceUtils;
 import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.AliyunSmsUtils;
+import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.utils.NetUtils;
 import com.xduo.springbootinit.utils.SqlUtils;
 import com.xduo.springbootinit.exception.ThrowUtils;
@@ -77,6 +78,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Resource
     private SystemConfigService systemConfigService;
 
+    @Resource
+    private IpCityResolver ipCityResolver;
+
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword,
             HttpServletRequest request) {
@@ -131,6 +135,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ensureUserAvailable(user);
         clearPasswordLoginFailure(loginIdentifier);
         ensureMaintenanceLoginAllowed(user);
+        user = syncUserCityFromRequest(user, request);
         if (!hasUsablePasswordLogin(user)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未设置可用密码，请使用验证码或第三方方式登录");
         }
@@ -157,6 +162,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         ensureMaintenanceLoginAllowed(user);
+        user = syncUserCityFromRequest(user, request);
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return this.getLoginUserVO(user);
@@ -278,6 +284,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             }
             ensureUserAvailable(user);
             ensureMaintenanceLoginAllowed(user);
+            user = syncUserCityFromRequest(user, request);
             StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
             StpUtil.getSession().set(USER_LOGIN_STATE, user);
             return this.getLoginUserVO(user);
@@ -584,6 +591,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         ensureMaintenanceLoginAllowed(user);
+        user = syncUserCityFromRequest(user, request);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -620,6 +628,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         ensureMaintenanceLoginAllowed(user);
+        user = syncUserCityFromRequest(user, request);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -656,6 +665,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         ensureUserAvailable(user);
         ensureMaintenanceLoginAllowed(user);
+        user = syncUserCityFromRequest(user, request);
         // 3. 建立登录态
         StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
@@ -892,6 +902,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 StpUtil.getSession().set(USER_LOGIN_STATE, latestUser);
             }
         }
+    }
+
+    private User syncUserCityFromRequest(User user, HttpServletRequest request) {
+        if (user == null || request == null) {
+            return user;
+        }
+        String resolvedCity = ipCityResolver.resolveSupportedCity(request);
+        if (StringUtils.isBlank(resolvedCity) || StringUtils.equals(resolvedCity, user.getCity())) {
+            return user;
+        }
+        User updateUser = new User();
+        updateUser.setId(user.getId());
+        updateUser.setCity(resolvedCity);
+        boolean updated = this.updateById(updateUser);
+        if (!updated) {
+            return user;
+        }
+        User latestUser = this.getById(user.getId());
+        return latestUser == null ? user : latestUser;
     }
 
     private void ensureUserAvailable(User user) {

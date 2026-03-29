@@ -13,6 +13,7 @@ import com.xduo.springbootinit.model.entity.UserQuestionHistory;
 import com.xduo.springbootinit.model.entity.UserLearningGoal;
 import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.UserQuestionHistoryVO;
+import com.xduo.springbootinit.service.QuestionRecommendLogService;
 import com.xduo.springbootinit.service.UserLearningGoalService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
@@ -41,6 +42,9 @@ public class UserQuestionHistoryController {
     @Resource
     private UserLearningGoalService userLearningGoalService;
 
+    @Resource
+    private QuestionRecommendLogService questionRecommendLogService;
+
     /**
      * 添加/修改刷题记录
      *
@@ -64,6 +68,12 @@ public class UserQuestionHistoryController {
                 historyAddRequest.getQuestionId(),
                 status
         );
+        if (result) {
+            questionRecommendLogService.logActionByRecentSource(loginUser.getId(), historyAddRequest.getQuestionId(), "practice");
+            if (status == 1) {
+                questionRecommendLogService.logActionByRecentSource(loginUser.getId(), historyAddRequest.getQuestionId(), "mastered");
+            }
+        }
         return ResultUtils.success(result);
     }
 

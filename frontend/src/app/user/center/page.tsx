@@ -164,7 +164,7 @@ function UserCenterContent() {
                 </Tag>
                 {user.city ? (
                   <Tag className="rounded-full px-3 m-0 bg-emerald-50 border-emerald-100 text-emerald-700">
-                    城市: {user.city}
+                    最近登录城市: {user.city}
                   </Tag>
                 ) : null}
                 {user.careerDirection ? (
