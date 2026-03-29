@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, Card, Empty, Input, List, Progress, Skeleton, Tag, Typography, message } from "antd";
 import {
   Briefcase,
@@ -8,19 +8,26 @@ import {
   ChevronRight,
   ClipboardCheck,
   Clock3,
+  Download,
   Flag,
+  Mic,
+  MicOff,
   Radar,
   Sparkles,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import {
+  downloadMockInterviewReviewUsingGet,
   getMockInterviewByIdUsingGet,
   handleMockInterviewEventUsingPost,
+  streamMockInterviewEventUsingPost,
 } from "@/api/mockInterviewController";
 import "./index.css";
 
 const { Title, Paragraph, Text } = Typography;
 
-interface Message {
+interface MessageItem {
   content: string;
   isAI: boolean;
   timestamp: number;
@@ -70,9 +77,52 @@ interface InterviewReport {
 }
 
 interface MockInterviewDetail extends API.MockInterview {
-  parsedMessages?: Message[];
+  parsedMessages?: MessageItem[];
   parsedReport?: InterviewReport | null;
 }
+
+interface StreamingReply {
+  content: string;
+  round?: number;
+  stage?: string;
+}
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  length: number;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionErrorEventLike {
+  error?: string;
+}
+
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type SpeechWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
 
 const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: "待开始", color: "orange" },
@@ -101,15 +151,51 @@ function formatTime(timestamp?: number) {
   });
 }
 
+function hydrateInterviewDetail(rawData?: API.MockInterview): MockInterviewDetail | undefined {
+  if (!rawData) {
+    return undefined;
+  }
+  const data = { ...(rawData as MockInterviewDetail) };
+  data.parsedMessages = safeParseJson<MessageItem[]>(data.messages) || [];
+  data.parsedReport = safeParseJson<InterviewReport>(data.report) || null;
+  return data;
+}
+
+function getSpeechRecognitionConstructor() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const speechWindow = window as SpeechWindow;
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
+}
+
 export default function InterviewRoomPage({ params }: { params: { mockInterviewId: string } }) {
   const { mockInterviewId } = params;
   const interviewId = Number(mockInterviewId);
   const [submitting, setSubmitting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [inputMessage, setInputMessage] = useState("");
   const [interview, setInterview] = useState<MockInterviewDetail>();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
   const [questionElapsedSeconds, setQuestionElapsedSeconds] = useState(0);
+  const [streamStatus, setStreamStatus] = useState("");
+  const [streamingReply, setStreamingReply] = useState<StreamingReply | null>(null);
+  const [autoSpeakEnabled, setAutoSpeakEnabled] = useState(true);
+  const [speechRecognitionSupported, setSpeechRecognitionSupported] = useState(false);
+  const [speechSynthesisSupported, setSpeechSynthesisSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
+
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const voiceBaseInputRef = useRef("");
+  const lastSpokenKeyRef = useRef("");
+
+  const applyInterviewData = useCallback((rawData?: API.MockInterview) => {
+    const nextInterview = hydrateInterviewDetail(rawData);
+    setInterview(nextInterview);
+    setMessages(nextInterview?.parsedMessages || []);
+  }, []);
 
   const loadInterview = useCallback(async (silent = false) => {
     if (!interviewId) {
@@ -121,11 +207,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     }
     try {
       const res = await getMockInterviewByIdUsingGet({ id: interviewId });
-      const data = (res.data || {}) as MockInterviewDetail;
-      data.parsedMessages = safeParseJson<Message[]>(data.messages) || [];
-      data.parsedReport = safeParseJson<InterviewReport>(data.report) || null;
-      setInterview(data);
-      setMessages(data.parsedMessages || []);
+      applyInterviewData(res.data);
     } catch (error: any) {
       message.error(error?.message || "加载面试数据失败");
     } finally {
@@ -133,11 +215,26 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
         setLoading(false);
       }
     }
-  }, [interviewId]);
+  }, [applyInterviewData, interviewId]);
 
   useEffect(() => {
     void loadInterview();
   }, [loadInterview]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    setSpeechRecognitionSupported(Boolean(getSpeechRecognitionConstructor()));
+    setSpeechSynthesisSupported("speechSynthesis" in window);
+    return () => {
+      speechRecognitionRef.current?.abort();
+      speechRecognitionRef.current = null;
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const status = statusMap[interview?.status ?? 0] || statusMap[0];
   const isStarted = interview?.status === 1;
@@ -169,6 +266,16 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     return null;
   }, [messages]);
 
+  const latestSpeakableMessage = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const item = messages[i];
+      if (item.isAI && ["question", "probe", "summary"].includes(item.stage || "")) {
+        return item;
+      }
+    }
+    return null;
+  }, [messages]);
+
   useEffect(() => {
     if (!latestQuestionMessage?.timestamp || isEnded || !isStarted) {
       setQuestionElapsedSeconds(0);
@@ -182,37 +289,219 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
     return () => window.clearInterval(timer);
   }, [isEnded, isStarted, latestQuestionMessage?.timestamp]);
 
-  const handleEvent = async (eventType: "start" | "chat" | "end", msg?: string) => {
-    setSubmitting(true);
-    const hide = message.loading(eventType === "chat" ? "面试官正在组织下一轮问题..." : "正在更新面试状态...");
-    try {
-      await handleMockInterviewEventUsingPost({
-        event: eventType,
-        id: interview?.id,
-        message: msg,
-      });
-      hide();
-      if (eventType === "start") {
-        message.success("面试已开始");
-      }
-      if (eventType === "end") {
-        message.success("已生成最终面试报告");
-      }
-      await loadInterview(true);
-    } catch (error: any) {
-      hide();
-      message.error(error?.message || "操作失败");
-    } finally {
-      setSubmitting(false);
+  const speakText = useCallback((content?: string) => {
+    if (!content || typeof window === "undefined" || !("speechSynthesis" in window)) {
+      return;
     }
-  };
+    const utterance = new SpeechSynthesisUtterance(content);
+    utterance.lang = "zh-CN";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  useEffect(() => {
+    if (!autoSpeakEnabled || !speechSynthesisSupported || !latestSpeakableMessage?.content) {
+      return;
+    }
+    const speakKey = `${latestSpeakableMessage.stage || "ai"}-${latestSpeakableMessage.timestamp}-${latestSpeakableMessage.content}`;
+    if (lastSpokenKeyRef.current === speakKey) {
+      return;
+    }
+    lastSpokenKeyRef.current = speakKey;
+    speakText(latestSpeakableMessage.content);
+  }, [autoSpeakEnabled, latestSpeakableMessage, speakText, speechSynthesisSupported]);
+
+  useEffect(() => {
+    if (!autoSpeakEnabled && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, [autoSpeakEnabled]);
+
+  const stopVoiceInput = useCallback(() => {
+    speechRecognitionRef.current?.stop();
+    speechRecognitionRef.current = null;
+    setIsListening(false);
+    setVoiceStatus("已停止语音输入");
+  }, []);
+
+  const startVoiceInput = useCallback(() => {
+    const SpeechRecognition = getSpeechRecognitionConstructor();
+    if (!SpeechRecognition) {
+      message.warning("当前浏览器不支持语音输入");
+      return;
+    }
+    speechRecognitionRef.current?.abort();
+    const recognition = new SpeechRecognition();
+    voiceBaseInputRef.current = inputMessage.trim();
+    recognition.lang = "zh-CN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      let interimTranscript = "";
+      for (let i = 0; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const transcript = result[0]?.transcript?.trim() || "";
+        if (!transcript) {
+          continue;
+        }
+        if (result.isFinal) {
+          finalTranscript += `${transcript} `;
+        } else {
+          interimTranscript += `${transcript} `;
+        }
+      }
+      const parts = [
+        voiceBaseInputRef.current,
+        finalTranscript.trim(),
+        interimTranscript.trim(),
+      ].filter(Boolean);
+      setInputMessage(parts.join(" "));
+    };
+    recognition.onerror = (event) => {
+      const errorText = event?.error === "not-allowed" ? "麦克风权限被拒绝" : "语音输入不可用";
+      setVoiceStatus(errorText);
+      setIsListening(false);
+      speechRecognitionRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      if (speechRecognitionRef.current === recognition) {
+        speechRecognitionRef.current = null;
+      }
+      setVoiceStatus((current) => (current.includes("拒绝") || current.includes("不可用") ? current : "已结束语音输入"));
+    };
+    recognition.start();
+    speechRecognitionRef.current = recognition;
+    setIsListening(true);
+    setVoiceStatus("正在听你说话...");
+  }, [inputMessage]);
+
+  const handleEvent = useCallback(
+    async (eventType: "start" | "chat" | "end", msg?: string) => {
+      if (!interview?.id) {
+        return false;
+      }
+      setSubmitting(true);
+      setStreamStatus(eventType === "chat" ? "面试官正在组织下一轮问题..." : "正在更新面试状态...");
+      setStreamingReply(null);
+
+      let hasStreamed = false;
+      try {
+        await streamMockInterviewEventUsingPost(
+          {
+            event: eventType,
+            id: interview.id,
+            message: msg,
+          },
+          async (event, payload) => {
+            hasStreamed = true;
+            if (event === "status") {
+              setStreamStatus(payload?.message || "");
+              return;
+            }
+            if (event === "delta") {
+              setStreamStatus("面试官正在输出回复...");
+              setStreamingReply({
+                content: payload?.accumulated || "",
+                round: payload?.round,
+                stage: payload?.stage,
+              });
+              return;
+            }
+            if (event === "done") {
+              if (payload?.interview) {
+                applyInterviewData(payload.interview as API.MockInterview);
+              } else {
+                await loadInterview(true);
+              }
+              setStreamingReply(null);
+              setStreamStatus("");
+              return;
+            }
+            if (event === "error") {
+              throw new Error(payload?.message || "流式面试处理失败");
+            }
+          },
+        );
+
+        if (eventType === "start") {
+          message.success("面试已开始");
+        }
+        if (eventType === "end") {
+          message.success("已生成最终面试报告");
+        }
+        return true;
+      } catch (error: any) {
+        setStreamingReply(null);
+        setStreamStatus("");
+        if (hasStreamed) {
+          await loadInterview(true);
+          message.warning(error?.message || "流式输出中断，已为你刷新最新面试结果");
+          return false;
+        }
+        try {
+          await handleMockInterviewEventUsingPost({
+            event: eventType,
+            id: interview.id,
+            message: msg,
+          });
+          await loadInterview(true);
+          if (eventType === "start") {
+            message.success("面试已开始");
+          }
+          if (eventType === "end") {
+            message.success("已生成最终面试报告");
+          }
+          return true;
+        } catch (fallbackError: any) {
+          message.error(fallbackError?.message || "操作失败");
+          return false;
+        }
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [applyInterviewData, interview?.id, loadInterview],
+  );
 
   const sendMessage = async () => {
     if (!inputMessage.trim()) {
       return;
     }
-    await handleEvent("chat", inputMessage.trim());
-    setInputMessage("");
+    if (isListening) {
+      stopVoiceInput();
+    }
+    const success = await handleEvent("chat", inputMessage.trim());
+    if (success) {
+      setInputMessage("");
+      setVoiceStatus("");
+    }
+  };
+
+  const handleExportReview = async () => {
+    if (!interview?.id) {
+      return;
+    }
+    setExporting(true);
+    try {
+      const { blob, fileName } = await downloadMockInterviewReviewUsingGet(interview.id);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      message.success("逐题复盘已导出");
+    } catch (error: any) {
+      message.error(error?.message || "导出复盘失败");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const infoItems = [
@@ -273,7 +562,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   模拟面试 #{interview.id}
                 </Title>
                 <Paragraph className="!mb-0 text-slate-500">
-                  这一轮会尽量按真实面试节奏追问。建议你用“背景 - 方案 - 结果 - 复盘”的结构回答。
+                  这一轮会尽量按真实面试节奏追问。你可以直接说话作答，也可以开启自动播报来模拟面试官口头发问。
                 </Paragraph>
               </div>
               <Tag color={status.color} className="status-tag">
@@ -293,7 +582,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
             <div className="hero-actions">
               <Button
                 type="primary"
-                onClick={() => handleEvent("start")}
+                onClick={() => void handleEvent("start")}
                 disabled={isStarted || isEnded}
                 loading={submitting}
                 className="action-button"
@@ -302,12 +591,21 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
               </Button>
               <Button
                 danger
-                onClick={() => handleEvent("end")}
+                onClick={() => void handleEvent("end")}
                 disabled={!isStarted || isEnded}
                 loading={submitting}
                 className="action-button"
               >
                 结束并生成报告
+              </Button>
+              <Button
+                onClick={handleExportReview}
+                disabled={!isEnded}
+                loading={exporting}
+                className="action-button secondary"
+              >
+                <Download size={16} />
+                导出逐题复盘
               </Button>
             </div>
           </Card>
@@ -346,12 +644,25 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                       </List.Item>
                     )}
                   />
-                  {submitting && isStarted && !isEnded ? (
+                  {streamingReply?.content ? (
+                    <div className="message-row ai">
+                      <div className="message-bubble ai streaming">
+                        <div className="message-head">
+                          <span className="speaker">面试官输入中</span>
+                          {streamingReply.round ? (
+                            <span className="round-tag">第 {streamingReply.round} 轮</span>
+                          ) : null}
+                        </div>
+                        <div className="message-content">{streamingReply.content}</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {submitting && isStarted && !isEnded && !streamingReply?.content ? (
                     <div className="thinking-card">
                       <div className="thinking-dot" />
                       <div className="thinking-dot" />
                       <div className="thinking-dot" />
-                      <span>面试官正在整理下一轮追问...</span>
+                      <span>{streamStatus || "面试官正在整理下一轮追问..."}</span>
                     </div>
                   ) : null}
                 </>
@@ -374,15 +685,47 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   }
                 }}
               />
-              <Button
-                type="primary"
-                onClick={sendMessage}
-                loading={submitting}
-                disabled={!isStarted || isEnded}
-                className="send-button"
-              >
-                发送回答
-              </Button>
+              <div className="input-toolbar">
+                <div className="tool-group">
+                  <Button
+                    onClick={isListening ? stopVoiceInput : startVoiceInput}
+                    disabled={!speechRecognitionSupported || !isStarted || isEnded}
+                    className="tool-button"
+                  >
+                    {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+                    {isListening ? "停止收音" : "语音输入"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setAutoSpeakEnabled((prev) => !prev);
+                    }}
+                    disabled={!speechSynthesisSupported}
+                    className="tool-button"
+                  >
+                    {autoSpeakEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                    {autoSpeakEnabled ? "关闭自动播报" : "开启自动播报"}
+                  </Button>
+                  <Button
+                    onClick={() => speakText(latestSpeakableMessage?.content)}
+                    disabled={!speechSynthesisSupported || !latestSpeakableMessage?.content}
+                    className="tool-button"
+                  >
+                    <Volume2 size={16} />
+                    播报当前题目
+                  </Button>
+                </div>
+                <Button
+                  type="primary"
+                  onClick={() => void sendMessage()}
+                  loading={submitting}
+                  disabled={!isStarted || isEnded}
+                  className="send-button"
+                >
+                  发送回答
+                </Button>
+              </div>
+              {voiceStatus ? <div className="voice-status">{voiceStatus}</div> : null}
+              {streamStatus && submitting ? <div className="stream-status">{streamStatus}</div> : null}
             </div>
           </Card>
         </section>
@@ -427,7 +770,9 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   当前考察点
                 </Title>
               </div>
-              <span className="score-pill subtle">{Math.floor(questionElapsedSeconds / 60)}:{String(questionElapsedSeconds % 60).padStart(2, "0")}</span>
+              <span className="score-pill subtle">
+                {Math.floor(questionElapsedSeconds / 60)}:{String(questionElapsedSeconds % 60).padStart(2, "0")}
+              </span>
             </div>
             <div className="live-cue-panel">
               <div className="cue-tag">{currentQuestionStyle}</div>
@@ -568,7 +913,7 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
             ) : (
               <div className="report-placeholder">
                 <Paragraph className="!mb-0 text-slate-500">
-                  面试结束后，这里会生成结构化复盘报告。你可以先专注回答问题，结束时再查看完整反馈。
+                  面试结束后，这里会生成结构化复盘报告。你也可以直接导出逐题复盘 markdown，方便沉淀到自己的面经笔记。
                 </Paragraph>
               </div>
             )}
@@ -584,21 +929,23 @@ export default function InterviewRoomPage({ params }: { params: { mockInterviewI
                   </Title>
                 </div>
               </div>
-                <div className="round-record-list">
-                  {(report?.roundRecords || []).map((item) => (
-                    <div className="round-record-item" key={item.round}>
-                      <div className="record-head">
-                        <strong>第 {item.round} 轮</strong>
+              <div className="round-record-list">
+                {(report?.roundRecords || []).map((item) => (
+                  <div className="round-record-item" key={item.round}>
+                    <div className="record-head">
+                      <strong>第 {item.round} 轮</strong>
                       <span>{item.score || 0} 分</span>
+                    </div>
+                    <div className="record-question">{item.question}</div>
+                    {item.questionStyle ? (
+                      <div className="record-style">
+                        {item.questionStyle} / 建议 {item.recommendedAnswerSeconds || 120}s
                       </div>
-                      <div className="record-question">{item.question}</div>
-                      {item.questionStyle ? (
-                        <div className="record-style">{item.questionStyle} / 建议 {item.recommendedAnswerSeconds || 120}s</div>
-                      ) : null}
-                      <div className="record-comment">
-                        {item.shortComment}
-                        <ChevronRight size={14} />
-                      </div>
+                    ) : null}
+                    <div className="record-comment">
+                      {item.shortComment}
+                      <ChevronRight size={14} />
+                    </div>
                   </div>
                 ))}
               </div>

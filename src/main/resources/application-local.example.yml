@@ -1,0 +1,133 @@
+# application-local.yml 模板文件
+# 使用方式：
+# 1. 复制一份为 application-local.yml
+# 2. 将数据库、Redis、ES、OAuth 等值改成你本机实际配置
+# 3. application-local.yml 已在 .gitignore 中，不会被误提交
+# 4. local 即开发环境
+
+# 本地服务启动地址
+server:
+  address: 0.0.0.0
+  port: ${SERVER_PORT:8101}
+
+spring:
+  # 本地开发开启热重启
+  devtools:
+    restart:
+      enabled: true
+  # 本地数据库连接
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/Intelligent_interview_question_bank_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: your_db_password
+  # 本地 Redis 连接
+  data:
+    redis:
+      database: 0
+      host: localhost
+      port: 6379
+      timeout: 5000
+      password: your_redis_password
+  # 本地 Elasticsearch 连接
+  elasticsearch:
+    uris: http://localhost:9200
+    username: elastic
+    password: your_es_password
+  # 本地邮件发送配置
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: auto-sender@example.com
+    password: your_mail_password
+    protocol: smtps
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: true
+  # Spring Cloud 本地联调配置
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+        server-addr: 127.0.0.1:8848
+      config:
+        enabled: false
+        server-addr: 127.0.0.1:8848
+        file-extension: yml
+        shared-configs:
+          - data-id: common.yml
+            refresh: true
+    sentinel:
+      enabled: false
+      transport:
+        dashboard: localhost:8138
+  # 通过 Spring Config 导入 Nacos 远程配置
+  config:
+    import:
+      - optional:nacos:Intelligent-interview-question-bank-system.yml
+
+# 本地开发建议开启 SQL 日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 本地黑名单配置来源
+nacos:
+  config:
+    data-id: black-ip-list.yml
+    group: DEFAULT_GROUP
+
+# 腾讯云 COS 配置
+cos:
+  client:
+    accessKey: your_cos_access_key
+    secretKey: your_cos_secret_key
+    region: ap-beijing
+    bucket: your_cos_bucket
+
+# 本地保留接口文档
+knife4j:
+  enable: true
+
+# 阿里云短信配置
+aliyun:
+  sms:
+    accessKeyId: your_sms_access_key_id
+    accessKeySecret: your_sms_access_key_secret
+    signName: 智面平台
+    templateCode: SMS_xxxxxxx
+
+# 第三方登录本地配置
+social:
+  github:
+    id: your_github_client_id
+    secret: your_github_client_secret
+    redirect-uri: http://localhost:8101/api/user/login/github/callback
+  gitee:
+    id: your_gitee_client_id
+    secret: your_gitee_client_secret
+    redirect-uri: http://localhost:8101/api/user/login/gitee/callback
+  google:
+    id: your_google_client_id
+    secret: your_google_client_secret
+    redirect-uri: http://localhost:8101/api/user/login/google/callback
+
+# AI 模型本地配置
+ai:
+  # 本地开发使用的模型服务密钥
+  api-key: your_ai_api_key
+  # 模型服务地址
+  host: https://api.deepseek.com/v1
+  # 默认模型名称
+  model: deepseek-chat
+
+# 前端联调地址
+app:
+  frontend-url: http://localhost:3000

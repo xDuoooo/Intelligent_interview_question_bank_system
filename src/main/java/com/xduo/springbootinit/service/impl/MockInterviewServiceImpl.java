@@ -19,11 +19,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -199,6 +204,126 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
             default:
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的事件类型");
         }
+    }
+
+    @Override
+    public SseEmitter streamInterviewEvent(MockInterview mockInterview, String event, String userMessage) {
+        ThrowUtils.throwIf(mockInterview == null || mockInterview.getId() == null, ErrorCode.PARAMS_ERROR);
+        List<InterviewMessage> beforeMessages = parseMessages(mockInterview.getMessages());
+        SseEmitter emitter = new SseEmitter(0L);
+        CompletableFuture.runAsync(() -> {
+            try {
+                sendSseEvent(emitter, "status", buildStatusPayload("received", "已收到请求，正在同步面试状态。"));
+                sendSseEvent(emitter, "status", buildStatusPayload("thinking", "面试官正在组织追问与反馈。"));
+                String result = handleInterviewEvent(mockInterview, event, userMessage);
+                MockInterview latestInterview = this.getById(mockInterview.getId());
+                if (latestInterview == null) {
+                    latestInterview = mockInterview;
+                }
+                List<InterviewMessage> afterMessages = parseMessages(latestInterview.getMessages());
+                InterviewMessage streamTarget = getLatestGeneratedAiMessage(beforeMessages, afterMessages, result);
+                if (streamTarget != null) {
+                    sendSseEvent(emitter, "status", buildStatusPayload("streaming", "面试官正在输出回复。"));
+                    streamAssistantMessage(emitter, streamTarget);
+                }
+                LinkedHashMap<String, Object> donePayload = new LinkedHashMap<>();
+                donePayload.put("message", result);
+                donePayload.put("interview", latestInterview);
+                sendSseEvent(emitter, "done", donePayload);
+                emitter.complete();
+            } catch (Exception e) {
+                try {
+                    sendSseEvent(emitter, "error", buildStatusPayload("error",
+                            StringUtils.defaultIfBlank(e.getMessage(), "流式面试处理失败")));
+                } catch (Exception ignored) {
+                    // ignore secondary send failure
+                }
+                emitter.complete();
+            }
+        });
+        return emitter;
+    }
+
+    @Override
+    public String exportInterviewReview(MockInterview mockInterview) {
+        ThrowUtils.throwIf(mockInterview == null || mockInterview.getId() == null, ErrorCode.PARAMS_ERROR);
+        MockInterview latestInterview = this.getById(mockInterview.getId());
+        if (latestInterview != null) {
+            mockInterview = latestInterview;
+        }
+        List<InterviewMessage> messageList = parseMessages(mockInterview.getMessages());
+        InterviewReport interviewReport = parseReport(mockInterview.getReport(), mockInterview);
+        StringBuilder markdownBuilder = new StringBuilder(2048);
+
+        markdownBuilder.append("# 模拟面试逐题复盘\n\n");
+        markdownBuilder.append("## 面试信息\n\n");
+        appendMarkdownBullet(markdownBuilder, "面试编号", String.valueOf(mockInterview.getId()));
+        appendMarkdownBullet(markdownBuilder, "目标岗位", StringUtils.defaultIfBlank(mockInterview.getJobPosition(), "-"));
+        appendMarkdownBullet(markdownBuilder, "面试类型", StringUtils.defaultIfBlank(mockInterview.getInterviewType(), "技术深挖"));
+        appendMarkdownBullet(markdownBuilder, "工作年限", StringUtils.defaultIfBlank(mockInterview.getWorkExperience(), "不限"));
+        appendMarkdownBullet(markdownBuilder, "难度", StringUtils.defaultIfBlank(mockInterview.getDifficulty(), "中等"));
+        appendMarkdownBullet(markdownBuilder, "技术方向", StringUtils.defaultIfBlank(mockInterview.getTechStack(), "通用后端"));
+        appendMarkdownBullet(markdownBuilder, "计划轮次", String.valueOf(interviewReport.getExpectedRounds()));
+        appendMarkdownBullet(markdownBuilder, "完成轮次", String.valueOf(interviewReport.getCompletedRounds()));
+        appendMarkdownBullet(markdownBuilder, "创建时间", formatDateTime(mockInterview.getCreateTime()));
+        if (StringUtils.isNotBlank(mockInterview.getResumeText())) {
+            markdownBuilder.append("\n### 简历 / 项目背景\n\n");
+            appendMarkdownQuote(markdownBuilder, mockInterview.getResumeText());
+        }
+
+        markdownBuilder.append("\n## 综合结论\n\n");
+        appendMarkdownBullet(markdownBuilder, "综合评分", String.valueOf(interviewReport.getOverallScore()));
+        appendMarkdownBullet(markdownBuilder, "表达能力", String.valueOf(interviewReport.getCommunicationScore()));
+        appendMarkdownBullet(markdownBuilder, "技术深度", String.valueOf(interviewReport.getTechnicalScore()));
+        appendMarkdownBullet(markdownBuilder, "问题分析", String.valueOf(interviewReport.getProblemSolvingScore()));
+        markdownBuilder.append('\n');
+        appendMarkdownQuote(markdownBuilder, StringUtils.defaultIfBlank(interviewReport.getSummary(), "面试总结暂未生成。"));
+
+        appendMarkdownStringList(markdownBuilder, "亮点总结", interviewReport.getStrengths());
+        appendMarkdownStringList(markdownBuilder, "改进建议", interviewReport.getImprovements());
+        appendMarkdownStringList(markdownBuilder, "建议继续准备", interviewReport.getSuggestedTopics());
+
+        markdownBuilder.append("\n## 逐题复盘\n");
+        if (interviewReport.getRoundRecords() == null || interviewReport.getRoundRecords().isEmpty()) {
+            markdownBuilder.append("\n暂无逐题复盘记录。\n");
+        } else {
+            for (RoundRecord roundRecord : interviewReport.getRoundRecords()) {
+                markdownBuilder.append("\n### 第 ")
+                        .append(roundRecord.getRound() == null ? "-" : roundRecord.getRound())
+                        .append(" 轮\n\n");
+                appendMarkdownBullet(markdownBuilder, "考察重点", StringUtils.defaultIfBlank(roundRecord.getFocus(), "-"));
+                appendMarkdownBullet(markdownBuilder, "题型", StringUtils.defaultIfBlank(roundRecord.getQuestionStyle(), "-"));
+                appendMarkdownBullet(markdownBuilder, "建议作答时长",
+                        roundRecord.getRecommendedAnswerSeconds() == null ? "-" : roundRecord.getRecommendedAnswerSeconds() + " 秒");
+                appendMarkdownBullet(markdownBuilder, "本轮评分",
+                        roundRecord.getScore() == null ? "-" : String.valueOf(roundRecord.getScore()));
+                markdownBuilder.append('\n').append("#### 面试问题\n\n");
+                appendMarkdownQuote(markdownBuilder, StringUtils.defaultIfBlank(roundRecord.getQuestion(), "暂无问题记录"));
+                markdownBuilder.append("\n#### 候选人回答\n\n");
+                appendMarkdownQuote(markdownBuilder, StringUtils.defaultIfBlank(roundRecord.getAnswer(), "暂无回答记录"));
+                markdownBuilder.append("\n#### 面试官评语\n\n");
+                appendMarkdownQuote(markdownBuilder, StringUtils.defaultIfBlank(roundRecord.getShortComment(), "暂无评语"));
+            }
+        }
+
+        markdownBuilder.append("\n## 完整对话\n");
+        if (messageList.isEmpty()) {
+            markdownBuilder.append("\n暂无对话记录。\n");
+        } else {
+            for (InterviewMessage interviewMessage : messageList) {
+                markdownBuilder.append("\n### ")
+                        .append(interviewMessage.isAI ? "面试官" : "候选人");
+                if (interviewMessage.round != null && interviewMessage.round > 0) {
+                    markdownBuilder.append(" · 第 ").append(interviewMessage.round).append(" 轮");
+                }
+                if (StringUtils.isNotBlank(interviewMessage.stage)) {
+                    markdownBuilder.append(" · ").append(interviewMessage.stage);
+                }
+                markdownBuilder.append(" · ").append(formatTimestamp(interviewMessage.timestamp)).append("\n\n");
+                appendMarkdownQuote(markdownBuilder, StringUtils.defaultIfBlank(interviewMessage.content, ""));
+            }
+        }
+        return markdownBuilder.toString();
     }
 
     private void fillInterviewReportFromSummary(InterviewReport interviewReport, SummaryResult summaryResult) {
@@ -622,6 +747,128 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    private void sendSseEvent(SseEmitter emitter, String eventName, Object data) throws Exception {
+        emitter.send(SseEmitter.event().name(eventName).data(JSONUtil.toJsonStr(data)));
+    }
+
+    private LinkedHashMap<String, Object> buildStatusPayload(String phase, String message) {
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+        payload.put("phase", phase);
+        payload.put("message", message);
+        return payload;
+    }
+
+    private InterviewMessage getLatestGeneratedAiMessage(List<InterviewMessage> beforeMessages,
+                                                         List<InterviewMessage> afterMessages,
+                                                         String fallbackContent) {
+        int startIndex = Math.min(beforeMessages.size(), afterMessages.size());
+        for (int i = afterMessages.size() - 1; i >= startIndex; i--) {
+            InterviewMessage interviewMessage = afterMessages.get(i);
+            if (interviewMessage.isAI) {
+                return interviewMessage;
+            }
+        }
+        for (int i = afterMessages.size() - 1; i >= 0; i--) {
+            InterviewMessage interviewMessage = afterMessages.get(i);
+            if (interviewMessage.isAI) {
+                return interviewMessage;
+            }
+        }
+        if (StringUtils.isBlank(fallbackContent)) {
+            return null;
+        }
+        return new InterviewMessage(fallbackContent, true, System.currentTimeMillis(), null, "generated");
+    }
+
+    private void streamAssistantMessage(SseEmitter emitter, InterviewMessage interviewMessage) throws Exception {
+        String content = StringUtils.defaultString(interviewMessage.content);
+        StringBuilder accumulated = new StringBuilder();
+        for (String chunk : splitForStreaming(content)) {
+            accumulated.append(chunk);
+            LinkedHashMap<String, Object> deltaPayload = new LinkedHashMap<>();
+            deltaPayload.put("content", chunk);
+            deltaPayload.put("accumulated", accumulated.toString());
+            deltaPayload.put("round", interviewMessage.round);
+            deltaPayload.put("stage", interviewMessage.stage);
+            deltaPayload.put("timestamp", interviewMessage.timestamp);
+            sendSseEvent(emitter, "delta", deltaPayload);
+            Thread.sleep(30L);
+        }
+    }
+
+    private List<String> splitForStreaming(String content) {
+        if (StringUtils.isBlank(content)) {
+            return Collections.singletonList("");
+        }
+        List<String> chunks = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        for (char ch : content.toCharArray()) {
+            current.append(ch);
+            boolean reachBoundary = current.length() >= 18
+                    || "。！？；，,.!?;\n".indexOf(ch) >= 0;
+            if (reachBoundary) {
+                chunks.add(current.toString());
+                current.setLength(0);
+            }
+        }
+        if (current.length() > 0) {
+            chunks.add(current.toString());
+        }
+        return chunks.isEmpty() ? Collections.singletonList(content) : chunks;
+    }
+
+    private void appendMarkdownBullet(StringBuilder markdownBuilder, String label, String value) {
+        markdownBuilder.append("- ")
+                .append(label)
+                .append("：")
+                .append(sanitizeInlineMarkdown(value))
+                .append('\n');
+    }
+
+    private void appendMarkdownStringList(StringBuilder markdownBuilder, String title, List<String> items) {
+        markdownBuilder.append("\n### ").append(title).append("\n\n");
+        if (items == null || items.isEmpty()) {
+            markdownBuilder.append("- 暂无\n");
+            return;
+        }
+        for (String item : items) {
+            markdownBuilder.append("- ").append(sanitizeInlineMarkdown(item)).append('\n');
+        }
+    }
+
+    private void appendMarkdownQuote(StringBuilder markdownBuilder, String content) {
+        String[] lines = StringUtils.defaultString(content).split("\\R", -1);
+        if (lines.length == 0) {
+            markdownBuilder.append("> \n");
+            return;
+        }
+        for (String line : lines) {
+            markdownBuilder.append("> ").append(line).append('\n');
+        }
+    }
+
+    private String sanitizeInlineMarkdown(String value) {
+        return StringUtils.defaultString(value)
+                .replace("\r", " ")
+                .replace("\n", " ")
+                .replace("|", "\\|")
+                .trim();
+    }
+
+    private String formatDateTime(Date date) {
+        if (date == null) {
+            return "-";
+        }
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(date);
+    }
+
+    private String formatTimestamp(long timestamp) {
+        if (timestamp <= 0) {
+            return "-";
+        }
+        return formatDateTime(new Date(timestamp));
     }
 
     private List<InterviewPlanItem> buildInterviewAgenda(MockInterview mockInterview) {

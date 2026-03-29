@@ -17,10 +17,17 @@ import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.service.MockInterviewService;
 import com.xduo.springbootinit.service.UserService;
 import org.springframework.beans.BeanUtils;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.nio.charset.StandardCharsets;
+import java.net.URLEncoder;
 
 /**
  * 模拟面试接口
@@ -80,6 +87,30 @@ public class MockInterviewController {
         MockInterview mockInterview = getOwnedMockInterview(eventRequest.getId(), loginUser, request);
         String result = mockInterviewService.handleInterviewEvent(mockInterview, eventRequest.getEvent(), eventRequest.getMessage());
         return ResultUtils.success(result);
+    }
+
+    @PostMapping(value = "/stream/handleEvent", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamMockInterviewEvent(@RequestBody MockInterviewEventRequest eventRequest,
+                                               HttpServletRequest request) {
+        ThrowUtils.throwIf(eventRequest == null || eventRequest.getId() == null || eventRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        MockInterview mockInterview = getOwnedMockInterview(eventRequest.getId(), loginUser, request);
+        return mockInterviewService.streamInterviewEvent(mockInterview, eventRequest.getEvent(), eventRequest.getMessage());
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportMockInterview(long id, HttpServletRequest request) {
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        MockInterview mockInterview = getOwnedMockInterview(id, loginUser, request);
+        String markdown = mockInterviewService.exportInterviewReview(mockInterview);
+        String encodedFileName = URLEncoder.encode(String.format("mock-interview-%d-review.md", id), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFileName)
+                .contentType(MediaType.parseMediaType("text/markdown;charset=UTF-8"))
+                .body(markdown.getBytes(StandardCharsets.UTF_8));
     }
 
     @PostMapping("/list/page")
