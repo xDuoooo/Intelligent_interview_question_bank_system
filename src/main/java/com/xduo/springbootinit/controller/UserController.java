@@ -438,7 +438,14 @@ public class UserController {
     }
 
     /**
-     * 注销账号
+     * 注销当前账号
+     */
+    @PostMapping("/delete/my")
+    public BaseResponse<Boolean> deleteMyAccount(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.deleteMyAccount(loginUser.getId());
+        return ResultUtils.success(true);
+    }
 
     /**
      * 用户签到

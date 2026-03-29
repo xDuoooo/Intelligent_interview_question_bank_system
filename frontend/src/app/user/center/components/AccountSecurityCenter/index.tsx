@@ -7,12 +7,14 @@ import {
   Phone, 
   Mail, 
   Unlink,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from "lucide-react";
 import Image from "next/image";
 import { 
   bindEmailUsingPost,
   bindPhoneUsingPost,
+  deleteMyAccountUsingPost,
   getLoginUserUsingGet,
   sendVerificationCodeUsingPost,
   unbindEmailUsingPost,
@@ -28,6 +30,8 @@ import { setLoginUser } from "@/stores/loginUser";
 import { getSocialAuthProviderLabel, getSocialAuthUrl } from "@/config/auth";
 import PasswordChangeForm from "../PasswordChangeForm";
 import request from "@/libs/request";
+import { DEFAULT_USER } from "@/constants/user";
+import { useRouter } from "next/navigation";
 
 const { Text } = Typography;
 
@@ -39,6 +43,7 @@ interface Props {
  * 账号安全中心组件
  */
 const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [bindModalVisible, setBindModalVisible] = useState(false);
@@ -263,6 +268,27 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     }
   };
 
+  const handleDeleteMyAccount = () => {
+    Modal.confirm({
+      title: "确认注销当前账号",
+      content:
+        "注销后你的登录状态会立即失效，个人资料将无法恢复。已发布的公开内容会保留，但账号本身会被标记为已注销。",
+      okText: "确认注销",
+      cancelText: "取消",
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await deleteMyAccountUsingPost();
+          dispatch(setLoginUser(DEFAULT_USER));
+          message.success("账号已注销");
+          router.replace("/");
+        } catch (error: any) {
+          message.error(error?.message || "注销账号失败");
+        }
+      },
+    });
+  };
+
   // 解绑逻辑
   const handleUnbind = async (type: "github" | "gitee" | "google") => {
     const providerLabel = getSocialAuthProviderLabel(type);
@@ -398,6 +424,25 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
       ) : (
         <Button type="link" href={getSocialAuthUrl("google", "bind")}>立即关联</Button>
       )
+    },
+    {
+      key: "danger",
+      title: "危险操作",
+      description: user.userRole === "admin"
+        ? "管理员账号不支持在个人中心直接注销，请通过后台统一处理。"
+        : "如果你确认不再使用当前账号，可以在这里执行注销。该操作不可恢复。",
+      status: <Tag color="error">高风险</Tag>,
+      icon: <AlertTriangle size={20} className="text-red-500" />,
+      action: (
+        <Button
+          danger
+          type="primary"
+          onClick={handleDeleteMyAccount}
+          disabled={user.userRole === "admin"}
+        >
+          注销账号
+        </Button>
+      ),
     }
   ];
 
