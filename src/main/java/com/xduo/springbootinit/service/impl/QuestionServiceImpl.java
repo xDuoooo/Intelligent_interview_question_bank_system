@@ -295,6 +295,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Long id = questionQueryRequest.getId();
         Long notId = questionQueryRequest.getNotId();
         String searchText = questionQueryRequest.getSearchText();
+        String title = questionQueryRequest.getTitle();
+        String content = questionQueryRequest.getContent();
+        String answer = questionQueryRequest.getAnswer();
         List<String> tags = questionQueryRequest.getTags();
         Long questionBankId = questionQueryRequest.getQuestionBankId();
         Long userId = questionQueryRequest.getUserId();
@@ -329,6 +332,15 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         if (questionBankId != null) {
             boolQueryBuilder.filter(f -> f.term(t -> t.field("questionBankId").value(questionBankId)));
+        }
+        if (StringUtils.isNotBlank(title)) {
+            boolQueryBuilder.must(m -> m.match(mm -> mm.field("title").query(title)));
+        }
+        if (StringUtils.isNotBlank(content)) {
+            boolQueryBuilder.must(m -> m.match(mm -> mm.field("content").query(content)));
+        }
+        if (StringUtils.isNotBlank(answer)) {
+            boolQueryBuilder.must(m -> m.match(mm -> mm.field("answer").query(answer)));
         }
         // 必须包含所有标签
         if (CollUtil.isNotEmpty(tags)) {

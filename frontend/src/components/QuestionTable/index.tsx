@@ -1,18 +1,40 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { listQuestionVoByPageUsingPost } from "@/api/questionController";
-import TagList from "@/components/TagList";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ChevronLeft, ChevronRight, Loader2, Filter, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Table, Tag, Space, Button } from "antd";
+import { usePathname, useRouter } from "next/navigation";
+import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import TagList from "@/components/TagList";
+import { ChevronLeft, ChevronRight, Filter, Loader2, Search, Sparkles } from "lucide-react";
+import { Button, Input, Select, Tag } from "antd";
 
 interface Props {
-  // 默认值（用于展示服务端渲染的数据）
   defaultQuestionList?: API.QuestionVO[];
   defaultTotal?: number;
-  // 默认搜索条件
   defaultSearchParams?: API.QuestionQueryRequest;
+}
+
+const PAGE_SIZE = 12;
+
+const SORT_OPTIONS = [
+  { label: "最新发布", value: "createTime_descend", sortField: "createTime", sortOrder: "descend" },
+  { label: "最近更新", value: "updateTime_descend", sortField: "updateTime", sortOrder: "descend" },
+  { label: "标题 A-Z", value: "title_ascend", sortField: "title", sortOrder: "ascend" },
+];
+
+function getSortValue(sortField?: string, sortOrder?: string) {
+  const matchedSort = SORT_OPTIONS.find(
+    (item) => item.sortField === sortField && item.sortOrder === sortOrder,
+  );
+  return matchedSort?.value || "createTime_descend";
+}
+
+function getSortMeta(sortValue: string) {
+  return SORT_OPTIONS.find((item) => item.value === sortValue) || SORT_OPTIONS[0];
+}
+
+function cleanText(value?: string) {
+  const nextValue = value?.trim();
+  return nextValue ? nextValue : undefined;
 }
 
 /**
@@ -21,55 +43,133 @@ interface Props {
  */
 const QuestionTable: React.FC<Props> = (props) => {
   const { defaultQuestionList, defaultTotal, defaultSearchParams = {} } = props;
-  
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [questionList, setQuestionList] = useState<API.QuestionVO[]>(defaultQuestionList || []);
   const [total, setTotal] = useState<number>(defaultTotal || 0);
-  const [params, setParams] = useState<API.QuestionQueryRequest>({
-    current: 1,
-    pageSize: 12,
-    ...defaultSearchParams
-  });
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState(defaultSearchParams.searchText || "");
+  const [titleKeyword, setTitleKeyword] = useState(defaultSearchParams.title || "");
+  const [contentKeyword, setContentKeyword] = useState(defaultSearchParams.content || "");
+  const [answerKeyword, setAnswerKeyword] = useState(defaultSearchParams.answer || "");
+  const [selectedTags, setSelectedTags] = useState<string[]>(defaultSearchParams.tags || []);
+  const [sortValue, setSortValue] = useState(
+    getSortValue(defaultSearchParams.sortField, defaultSearchParams.sortOrder),
+  );
+  const [params, setParams] = useState<API.QuestionQueryRequest>({
+    current: defaultSearchParams.current || 1,
+    pageSize: defaultSearchParams.pageSize || PAGE_SIZE,
+    sortField: defaultSearchParams.sortField || "createTime",
+    sortOrder: defaultSearchParams.sortOrder || "descend",
+    searchText: defaultSearchParams.searchText,
+    title: defaultSearchParams.title,
+    content: defaultSearchParams.content,
+    answer: defaultSearchParams.answer,
+    tags: defaultSearchParams.tags,
+  });
 
-  // 这里的 fetchData 作为一个通用请求函数
-  const fetchData = async (currentParams = params) => {
+  const activeFilterCount = useMemo(() => {
+    return [
+      cleanText(searchText),
+      cleanText(titleKeyword),
+      cleanText(contentKeyword),
+      cleanText(answerKeyword),
+      selectedTags.length ? "tags" : "",
+      sortValue !== "createTime_descend" ? sortValue : "",
+    ].filter(Boolean).length;
+  }, [answerKeyword, contentKeyword, searchText, selectedTags, sortValue, titleKeyword]);
+
+  const syncUrl = (nextParams: API.QuestionQueryRequest) => {
+    const currentPathname = pathname || "/questions";
+    const searchParam = new URLSearchParams();
+    if (nextParams.searchText) {
+      searchParam.set("q", nextParams.searchText);
+    }
+    if (nextParams.title) {
+      searchParam.set("title", nextParams.title);
+    }
+    if (nextParams.content) {
+      searchParam.set("content", nextParams.content);
+    }
+    if (nextParams.answer) {
+      searchParam.set("answer", nextParams.answer);
+    }
+    if (nextParams.tags?.length) {
+      searchParam.set("tags", nextParams.tags.join(","));
+    }
+    if (nextParams.sortField && nextParams.sortField !== "createTime") {
+      searchParam.set("sortField", nextParams.sortField);
+    }
+    if (nextParams.sortOrder && nextParams.sortOrder !== "descend") {
+      searchParam.set("sortOrder", nextParams.sortOrder);
+    }
+    if ((nextParams.current || 1) > 1) {
+      searchParam.set("page", String(nextParams.current));
+    }
+    const queryString = searchParam.toString();
+    router.replace(queryString ? `${currentPathname}?${queryString}` : currentPathname, { scroll: false });
+  };
+
+  const buildRequestParams = (current = 1): API.QuestionQueryRequest => {
+    const sortMeta = getSortMeta(sortValue);
+    return {
+      current,
+      pageSize: params.pageSize || PAGE_SIZE,
+      searchText: cleanText(searchText),
+      title: cleanText(titleKeyword),
+      content: cleanText(contentKeyword),
+      answer: cleanText(answerKeyword),
+      tags: selectedTags.length ? selectedTags : undefined,
+      sortField: sortMeta.sortField,
+      sortOrder: sortMeta.sortOrder,
+    };
+  };
+
+  const fetchData = async (requestParams: API.QuestionQueryRequest) => {
     setLoading(true);
     try {
-      const res = (await listQuestionVoByPageUsingPost({
-        ...currentParams,
-        searchText: searchText || undefined,
-      })) as unknown as API.BaseResponsePageQuestionVO_;
+      const res = (await searchQuestionVoByPageUsingPost(requestParams)) as unknown as API.BaseResponsePageQuestionVO_;
       if (res.data) {
         setQuestionList(res.data.records || []);
         setTotal(res.data.total || 0);
       }
-    } catch (e) {
-      console.error("获取题目失败", e);
+      setParams(requestParams);
+      syncUrl(requestParams);
+    } catch (error) {
+      console.error("获取题目失败", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 标题搜索
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const newParams = { ...params, current: 1 };
-    setParams(newParams);
-    fetchData(newParams);
+  const handleSearch = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    await fetchData(buildRequestParams(1));
   };
 
-  // 分页点击
-  const handlePageChange = (newPage: number) => {
-    const newParams = { ...params, current: newPage };
-    setParams(newParams);
-    fetchData(newParams);
+  const handleReset = async () => {
+    setSearchText("");
+    setTitleKeyword("");
+    setContentKeyword("");
+    setAnswerKeyword("");
+    setSelectedTags([]);
+    setSortValue("createTime_descend");
+    await fetchData({
+      current: 1,
+      pageSize: PAGE_SIZE,
+      sortField: "createTime",
+      sortOrder: "descend",
+    });
+  };
+
+  const handlePageChange = async (newPage: number) => {
+    await fetchData(buildRequestParams(newPage));
   };
 
   return (
     <div className="space-y-10">
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="relative group max-w-2xl mx-auto">
+      <form onSubmit={handleSearch} className="relative group max-w-3xl mx-auto">
         <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground group-focus-within:text-primary transition-colors" />
         <input
           type="text"
@@ -78,7 +178,7 @@ const QuestionTable: React.FC<Props> = (props) => {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <button 
+        <button
           type="submit"
           disabled={loading}
           className="absolute right-3 top-1/2 -translate-y-1/2 h-10 px-8 rounded-2xl bg-primary text-primary-foreground font-black text-sm hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/25 disabled:opacity-50"
@@ -87,77 +187,164 @@ const QuestionTable: React.FC<Props> = (props) => {
         </button>
       </form>
 
-      {/* Grid List */}
+      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/35">
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <Filter className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-lg font-black text-slate-900">高级筛选</div>
+                <div className="mt-1 text-sm text-slate-500">
+                  关键词不够时，可以继续按标题、内容、题解和标签精确筛选。
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Tag className="rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-slate-500">
+                已启用 {activeFilterCount} 项筛选
+              </Tag>
+              <Button onClick={() => void handleReset()} disabled={loading}>
+                清空筛选
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Input
+              size="large"
+              value={titleKeyword}
+              onChange={(e) => setTitleKeyword(e.target.value)}
+              placeholder="标题关键词"
+              allowClear
+            />
+            <Input
+              size="large"
+              value={contentKeyword}
+              onChange={(e) => setContentKeyword(e.target.value)}
+              placeholder="内容关键词"
+              allowClear
+            />
+            <Input
+              size="large"
+              value={answerKeyword}
+              onChange={(e) => setAnswerKeyword(e.target.value)}
+              placeholder="题解关键词"
+              allowClear
+            />
+            <Select
+              size="large"
+              value={sortValue}
+              onChange={setSortValue}
+              options={SORT_OPTIONS}
+              placeholder="排序方式"
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_160px] lg:items-center">
+            <Select
+              mode="tags"
+              size="large"
+              value={selectedTags}
+              onChange={(value) => setSelectedTags(value)}
+              tokenSeparators={[",", " "]}
+              placeholder="输入一个或多个标签，例如：MySQL、索引、Java"
+              allowClear
+            />
+            <Button
+              type="primary"
+              size="large"
+              className="h-11 rounded-2xl font-black"
+              onClick={() => void handleSearch()}
+              loading={loading}
+            >
+              应用筛选
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <div className="relative min-h-[400px]">
         {loading && (
-          <div className="absolute inset-0 z-20 bg-white/40 backdrop-blur-[1px] flex items-center justify-center rounded-[3rem]">
+          <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[3rem] bg-white/40 backdrop-blur-[1px]">
             <Loader2 className="h-12 w-12 animate-spin text-primary" />
           </div>
         )}
 
         <div className="grid gap-5">
           {questionList.map((item) => (
-             <Link
-                key={item.id}
-                href={`/question/${item.id}`}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between p-6 sm:p-8 rounded-[2.5rem] bg-white border border-slate-100/80 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500"
-              >
-                <div className="flex flex-col gap-3 flex-1 min-w-0 pr-6">
-                  <h3 className="text-xl sm:text-2xl font-black text-foreground group-hover:text-primary transition-colors truncate">
+            <Link
+              key={item.id}
+              href={`/question/${item.id}`}
+              className="group flex flex-col justify-between rounded-[2.5rem] border border-slate-100/80 bg-white p-6 transition-all duration-500 hover:border-primary/40 hover:shadow-2xl hover:shadow-primary/5 sm:flex-row sm:items-center sm:p-8"
+            >
+              <div className="min-w-0 flex-1 pr-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="truncate text-xl font-black text-foreground transition-colors group-hover:text-primary sm:text-2xl">
                     {item.title}
                   </h3>
-                  <div className="scale-100 origin-left">
-                     <TagList tagList={item.tagList} />
-                  </div>
+                  {item.recommendReason ? (
+                    <Tag className="rounded-full border-primary/15 bg-primary/5 px-3 py-1 text-primary">
+                      {item.recommendReason}
+                    </Tag>
+                  ) : null}
                 </div>
-                <div className="mt-6 sm:mt-0 flex items-center gap-5">
-                   <div className="h-12 w-12 rounded-2xl bg-slate-50 group-hover:bg-primary text-slate-400 group-hover:text-white flex items-center justify-center transition-all duration-300 shadow-inner group-hover:shadow-lg group-hover:shadow-primary/30">
-                      <ChevronRight className="h-6 w-6 group-hover:translate-x-0.5 transition-transform" />
-                   </div>
+                <div className="mt-3 scale-100 origin-left">
+                  <TagList tagList={item.tagList} />
                 </div>
-              </Link>
+              </div>
+
+              <div className="mt-6 flex items-center gap-5 sm:mt-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50 text-slate-400 shadow-inner transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/30">
+                  <ChevronRight className="h-6 w-6 transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </div>
+            </Link>
           ))}
-          
+
           {questionList.length === 0 && !loading && (
-            <div className="py-24 text-center space-y-6 bg-white/50 rounded-[3rem] border-2 border-dashed border-slate-200">
-               <div className="text-7xl opacity-20 filter grayscale text-primary"><Sparkles className="h-20 w-20" /></div>
-               <div className="space-y-1">
-                 <p className="text-xl font-black text-foreground">没有找到相关题目</p>
-                 <p className="text-sm font-medium text-muted-foreground">换个关键词搜索一下，或许会有惊喜</p>
-               </div>
+            <div className="space-y-6 rounded-[3rem] border-2 border-dashed border-slate-200 bg-white/50 py-24 text-center">
+              <div className="text-primary opacity-20 grayscale">
+                <Sparkles className="mx-auto h-20 w-20" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xl font-black text-foreground">没有找到相关题目</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  试试减少筛选条件，或者换个关键词重新搜索。
+                </p>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modern Pagination */}
-      {total > (params.pageSize || 12) && (
+      {total > (params.pageSize || PAGE_SIZE) && (
         <div className="flex items-center justify-center gap-6 pt-12">
-           <button 
-             onClick={() => handlePageChange((params.current || 1) - 1)}
-             disabled={(params.current || 1) === 1 || loading}
-             className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-slate-200 transition-all shadow-xl shadow-slate-200/50 active:scale-90"
-           >
-             <ChevronLeft className="h-6 w-6" />
-           </button>
-           
-           <div className="flex items-center gap-3">
-              <span className="font-black text-2xl text-foreground">
-                {params.current}
-              </span>
-              <span className="text-slate-300 font-bold text-xl">/</span>
-              <span className="text-muted-foreground font-black text-xl">
-                {Math.ceil(total / (params.pageSize || 12))}
-              </span>
-           </div>
+          <button
+            onClick={() => void handlePageChange((params.current || 1) - 1)}
+            disabled={(params.current || 1) === 1 || loading}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 transition-all active:scale-90 disabled:opacity-30 disabled:hover:border-slate-200 hover:border-primary hover:text-primary"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
 
-           <button 
-             onClick={() => handlePageChange((params.current || 1) + 1)}
-             disabled={(params.current || 1) * (params.pageSize || 12) >= total || loading}
-             className="h-14 w-14 rounded-2xl bg-white border border-slate-200 flex items-center justify-center hover:border-primary hover:text-primary disabled:opacity-30 disabled:hover:border-slate-200 transition-all shadow-xl shadow-slate-200/50 active:scale-90"
-           >
-             <ChevronRight className="h-6 w-6" />
-           </button>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-black text-foreground">{params.current}</span>
+            <span className="text-xl font-bold text-slate-300">/</span>
+            <span className="text-xl font-black text-muted-foreground">
+              {Math.ceil(total / (params.pageSize || PAGE_SIZE))}
+            </span>
+          </div>
+
+          <button
+            onClick={() => void handlePageChange((params.current || 1) + 1)}
+            disabled={(params.current || 1) * (params.pageSize || PAGE_SIZE) >= total || loading}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 transition-all active:scale-90 disabled:opacity-30 disabled:hover:border-slate-200 hover:border-primary hover:text-primary"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
         </div>
       )}
     </div>
