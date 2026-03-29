@@ -1,63 +1,421 @@
 #interviewRoomPage {
-    padding: 20px;
+    padding: 20px 0 56px;
     margin: 0 auto;
-    max-width: 1200px;
-    width: 70%;
+    max-width: 1360px;
+    width: min(94vw, 1360px);
 }
 
-.header {
+.interview-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 420px);
+    gap: 24px;
+}
+
+.interview-main,
+.interview-side {
     display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.hero-card,
+.message-card,
+.side-card {
+    border-radius: 28px !important;
+    border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08) !important;
+}
+
+.hero-header,
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.section-heading.compact {
     align-items: center;
-    gap: 16px;
-    margin-bottom: 24px;
 }
 
-.action-buttons {
+.hero-eyebrow,
+.section-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: rgba(24, 144, 255, 0.08);
+    color: #1677ff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 8px 12px;
+}
+
+.status-tag {
+    margin-inline-end: 0 !important;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+}
+
+.hero-meta {
     display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 20px;
 }
 
-.message-area {
-    margin-bottom: 48px;
-    height: 60vh;
-    overflow-y: auto;
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 14px;
 }
 
-.message-bubble {
-    max-width: 100%;
-    padding: 12px;
-    border-radius: 8px;
-    margin: 8px 0;
-}
-
-.message-bubble.ai {
-    background: #f0f2f5;
-    border: 1px solid #d9d9d9;
-}
-
-.message-bubble.user {
-    background: #1890ff;
-    color: white;
-}
-
-.message-content {
-    font-size: 14px;
-}
-
-.message-time {
-    font-size: 12px;
-    color: #666;
-    margin-top: 4px;
-    text-align: right;
-}
-
-.input-area {
+.hero-actions {
     display: flex;
     gap: 12px;
     margin-top: 24px;
 }
 
+.action-button {
+    height: 46px !important;
+    border-radius: 16px !important;
+    padding: 0 18px !important;
+    font-weight: 700 !important;
+}
+
+.message-list {
+    margin-top: 20px;
+    max-height: 72vh;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.message-row {
+    display: flex;
+    justify-content: flex-start;
+    padding: 0 !important;
+    margin-bottom: 14px;
+}
+
+.message-row.user {
+    justify-content: flex-end;
+}
+
+.message-bubble {
+    width: min(100%, 680px);
+    padding: 16px 18px;
+    border-radius: 22px;
+}
+
+.message-bubble.ai {
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    border: 1px solid rgba(203, 213, 225, 0.8);
+}
+
+.message-bubble.user {
+    background: linear-gradient(180deg, #1677ff, #0f5cd6);
+    color: white;
+    box-shadow: 0 18px 40px rgba(22, 119, 255, 0.18);
+}
+
+.message-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.message-bubble.ai .message-head {
+    color: #64748b;
+}
+
+.message-bubble.user .message-head {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.round-tag {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    padding: 4px 10px;
+}
+
+.message-time {
+    font-size: 12px;
+    color: inherit;
+    opacity: 0.72;
+    margin-top: 10px;
+    text-align: right;
+}
+
+.input-area {
+    margin-top: 24px;
+}
+
 .input-area textarea {
-    flex: 1;
+    border-radius: 18px !important;
+    padding: 16px !important;
+}
+
+.send-button {
+    margin-top: 12px;
+    height: 44px !important;
+    border-radius: 16px !important;
+    padding: 0 20px !important;
+    font-weight: 700 !important;
+}
+
+.score-pill {
+    min-width: 58px;
+    height: 36px;
+    border-radius: 999px;
+    background: #0f172a;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+}
+
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.metric-card {
+    border-radius: 18px;
+    background: #f8fafc;
+    padding: 14px;
+}
+
+.metric-card span {
+    display: block;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.metric-card strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 22px;
+    color: #0f172a;
+}
+
+.round-feedback,
+.report-panel,
+.report-placeholder {
+    margin-top: 16px;
+}
+
+.feedback-score {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 18px;
+    background: #f8fafc;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+}
+
+.feedback-score span {
+    color: #64748b;
+}
+
+.feedback-score strong {
+    font-size: 24px;
+    color: #0f172a;
+}
+
+.feedback-focus {
+    border-radius: 18px;
+    background: rgba(22, 119, 255, 0.06);
+    padding: 14px 16px;
+}
+
+.focus-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #1677ff;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.focus-text {
+    color: #475569;
+    line-height: 1.8;
+}
+
+.report-overview {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+}
+
+.overall-score {
+    width: 88px;
+    height: 88px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #0f172a, #1e293b);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    font-weight: 900;
+}
+
+.report-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #1677ff;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+
+.dimension-list {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dimension-item {
+    border-radius: 18px;
+    background: #f8fafc;
+    padding: 12px 14px;
+}
+
+.dimension-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: #475569;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.report-block {
+    margin-top: 18px;
+}
+
+.block-title {
+    font-size: 12px;
+    font-weight: 800;
+    color: #1677ff;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+}
+
+.report-block ul {
+    margin: 0;
+    padding-left: 18px;
+    color: #475569;
+    line-height: 1.8;
+}
+
+.topic-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.topic-tag {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+}
+
+.round-record-list {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.round-record-item {
+    border-radius: 18px;
+    background: #f8fafc;
+    padding: 14px;
+}
+
+.record-head,
+.record-comment {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.record-head strong {
+    color: #0f172a;
+}
+
+.record-head span {
+    color: #1677ff;
+    font-weight: 800;
+}
+
+.record-question {
+    margin-top: 10px;
+    color: #475569;
+    line-height: 1.8;
+}
+
+.record-comment {
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+    .interview-shell {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-header,
+    .section-heading {
+        flex-direction: column;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .metric-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .report-overview {
+        grid-template-columns: 1fr;
+    }
+
+    .overall-score {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+    }
 }

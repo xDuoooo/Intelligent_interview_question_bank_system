@@ -113,8 +113,16 @@ export default function MockInterviewHomePage() {
                             {item.workExperience || "经验不限"}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
+                            <BrainCircuit size={14} />
+                            {item.interviewType || "技术深挖"}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
                             <Clock3 size={14} />
                             难度：{item.difficulty || "中等"}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Sparkles size={14} />
+                            轮次：{item.currentRound || 0}/{item.expectedRounds || 5}
                           </span>
                         </div>
                         <Text className="text-slate-400">
