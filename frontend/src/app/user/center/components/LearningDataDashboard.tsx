@@ -223,23 +223,62 @@ const LearningDataDashboard: React.FC = () => {
                   {achievementList.map((item: any) => (
                     <div
                       key={item.key}
-                      className={`rounded-2xl border p-4 transition-all ${item.achieved ? "border-emerald-200 bg-emerald-50/70" : "border-slate-200 bg-slate-50/70"}`}
+                      className={`rounded-2xl border p-4 transition-all ${
+                        item.maxLevel
+                          ? "border-emerald-200 bg-emerald-50/70"
+                          : item.currentLevel > 0
+                            ? "border-blue-200 bg-blue-50/60"
+                            : "border-slate-200 bg-slate-50/70"
+                      }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="font-semibold text-slate-800">{item.title}</div>
-                          <div className="text-sm text-slate-500 mt-1">{item.description}</div>
+                          <div className="mt-1 text-sm text-slate-500">{item.description}</div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            <Tag color={item.maxLevel ? "gold" : "blue"}>
+                              {item.maxLevel ? `Lv.${item.totalLevels} 已满级` : `Lv.${item.currentLevel}/${item.totalLevels}`}
+                            </Tag>
+                            <Tag bordered={false} color="default">
+                              当前阶段：{item.currentStageTitle || "尚未解锁"}
+                            </Tag>
+                            {!item.maxLevel ? (
+                              <Tag bordered={false} color="processing">
+                                下一档：{item.nextTarget}{item.unit || ""}
+                              </Tag>
+                            ) : null}
+                          </div>
                         </div>
-                        <Tag color={item.achieved ? "success" : "default"}>
-                          {item.achieved ? "已达成" : `${item.current}/${item.target}`}
+                        <Tag color={item.maxLevel ? "success" : item.achieved ? "processing" : "default"}>
+                          {item.maxLevel ? "已满级" : `${item.current}/${item.nextTarget || item.target}`}
                         </Tag>
                       </div>
+                      <div className="mt-3 text-sm font-medium text-slate-600">{item.statusText}</div>
                       <Progress
-                        percent={Math.round((Number(item.progress || 0) / Number(item.target || 1)) * 100)}
+                        percent={Number(item.percent || 0)}
                         showInfo={false}
-                        strokeColor={item.achieved ? "#52c41a" : "#1677ff"}
+                        strokeColor={item.maxLevel ? "#52c41a" : "#1677ff"}
                         style={{ marginTop: 12, marginBottom: 0 }}
                       />
+                      {(item.milestones || []).length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {(item.milestones || []).map((milestone: any) => (
+                            <span
+                              key={`${item.key}-${milestone.level}`}
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                milestone.achieved
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : milestone.current
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-white text-slate-500 border border-slate-200"
+                              }`}
+                            >
+                              {milestone.target}
+                              {item.unit || ""}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                 </div>

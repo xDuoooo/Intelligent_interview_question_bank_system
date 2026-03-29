@@ -304,12 +304,46 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
     private List<Map<String, Object>> buildAchievementList(long totalCount, long masteredCount, long favourCount,
                                                            long activeDays, long currentStreak) {
         List<Map<String, Object>> achievementList = new ArrayList<>();
-        achievementList.add(buildAchievement("first_practice", "初试锋芒", "完成 1 道题，正式开始备战面试。", totalCount, 1));
-        achievementList.add(buildAchievement("practice_10", "刷题新秀", "累计刷题达到 10 道。", totalCount, 10));
-        achievementList.add(buildAchievement("master_20", "知识掌握者", "标记掌握题目达到 20 道。", masteredCount, 20));
-        achievementList.add(buildAchievement("favour_10", "收藏达人", "收藏题目达到 10 道。", favourCount, 10));
-        achievementList.add(buildAchievement("active_7", "持续学习者", "累计活跃学习达到 7 天。", activeDays, 7));
-        achievementList.add(buildAchievement("streak_7", "连续冲刺", "连续学习达到 7 天。", currentStreak, 7));
+        achievementList.add(buildTieredAchievement(
+                "practice_path",
+                "累计刷题",
+                "累计完成题目数量的阶段成长成就。",
+                "道",
+                totalCount,
+                new long[]{1, 10, 50, 100, 200, 500},
+                new String[]{"初试锋芒", "刷题新秀", "题感渐入", "百题进阶", "双百冲刺", "题海大师"}));
+        achievementList.add(buildTieredAchievement(
+                "master_path",
+                "掌握进阶",
+                "聚焦真正掌握的题目数量，衡量知识沉淀深度。",
+                "道",
+                masteredCount,
+                new long[]{5, 20, 50, 100, 200},
+                new String[]{"理解入门", "知识掌握者", "稳定掌握", "高频稳固", "知识壁垒"}));
+        achievementList.add(buildTieredAchievement(
+                "favour_path",
+                "收藏积累",
+                "把值得反复回看的题目沉淀成自己的精选题单。",
+                "道",
+                favourCount,
+                new long[]{5, 10, 30, 50, 100},
+                new String[]{"收藏起步", "收藏达人", "精选题单", "高频沉淀", "题库策展人"}));
+        achievementList.add(buildTieredAchievement(
+                "active_path",
+                "活跃天数",
+                "累计活跃学习天数越多，说明节奏越稳定。",
+                "天",
+                activeDays,
+                new long[]{3, 7, 15, 30, 60, 100},
+                new String[]{"连线状态", "持续学习者", "节奏建立", "月度稳定", "长期坚持", "学习常驻"}));
+        achievementList.add(buildTieredAchievement(
+                "streak_path",
+                "连续冲刺",
+                "连续学习天数越长，越能体现阶段性爆发力。",
+                "天",
+                currentStreak,
+                new long[]{3, 7, 14, 21, 30},
+                new String[]{"进入状态", "连续冲刺", "双周连击", "三周稳推", "满月打卡"}));
         return achievementList;
     }
 
@@ -322,6 +356,65 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         achievement.put("target", target);
         achievement.put("achieved", current >= target);
         achievement.put("progress", Math.min(current, target));
+        return achievement;
+    }
+
+    private Map<String, Object> buildTieredAchievement(String key, String title, String description, String unit,
+                                                       long current, long[] milestones, String[] stageTitles) {
+        Map<String, Object> achievement = new HashMap<>();
+        int currentLevel = 0;
+        for (long milestone : milestones) {
+            if (current >= milestone) {
+                currentLevel++;
+            }
+        }
+        int totalLevels = milestones.length;
+        boolean maxLevel = currentLevel >= totalLevels;
+        long previousTarget = currentLevel <= 0 ? 0 : milestones[Math.min(currentLevel - 1, totalLevels - 1)];
+        long nextTarget = maxLevel ? milestones[totalLevels - 1] : milestones[currentLevel];
+        long segmentCurrent = maxLevel ? nextTarget : Math.max(0, current - previousTarget);
+        long segmentTarget = maxLevel ? nextTarget : Math.max(1, nextTarget - previousTarget);
+        int percent = segmentTarget <= 0 ? 100 : (int) Math.min(100, Math.round(segmentCurrent * 100.0 / segmentTarget));
+
+        List<Map<String, Object>> milestoneList = new ArrayList<>();
+        int focusIndex = maxLevel ? totalLevels - 1 : currentLevel;
+        for (int i = 0; i < milestones.length; i++) {
+            Map<String, Object> milestone = new HashMap<>();
+            milestone.put("level", i + 1);
+            milestone.put("target", milestones[i]);
+            milestone.put("title", stageTitles[Math.min(i, stageTitles.length - 1)]);
+            milestone.put("achieved", current >= milestones[i]);
+            milestone.put("current", i == focusIndex);
+            milestoneList.add(milestone);
+        }
+
+        String currentStageTitle = currentLevel > 0
+                ? stageTitles[Math.min(currentLevel - 1, stageTitles.length - 1)]
+                : "尚未解锁";
+        String nextStageTitle = maxLevel
+                ? currentStageTitle
+                : stageTitles[Math.min(currentLevel, stageTitles.length - 1)];
+        String statusText = maxLevel
+                ? "已完成全部阶段，继续保持当前节奏。"
+                : String.format("距离 %s 还差 %d%s。", nextStageTitle, Math.max(0, nextTarget - current), unit);
+
+        achievement.put("key", key);
+        achievement.put("title", title);
+        achievement.put("description", description);
+        achievement.put("unit", unit);
+        achievement.put("current", current);
+        achievement.put("target", nextTarget);
+        achievement.put("achieved", currentLevel > 0);
+        achievement.put("progress", segmentCurrent);
+        achievement.put("percent", percent);
+        achievement.put("currentLevel", currentLevel);
+        achievement.put("totalLevels", totalLevels);
+        achievement.put("currentStageTitle", currentStageTitle);
+        achievement.put("nextStageTitle", nextStageTitle);
+        achievement.put("nextTarget", nextTarget);
+        achievement.put("maxLevel", maxLevel);
+        achievement.put("statusText", statusText);
+        achievement.put("milestones", milestoneList);
         return achievement;
     }
 
