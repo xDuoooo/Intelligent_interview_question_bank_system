@@ -14,7 +14,7 @@ import {
 const { Paragraph, Text } = Typography;
 
 interface Props {
-  questionId: number;
+  questionId: string | number;
 }
 
 /**
@@ -25,7 +25,7 @@ export default function QuestionNotePanel({ questionId }: Props) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [content, setContent] = useState("");
-  const [noteId, setNoteId] = useState<number | undefined>();
+  const [noteId, setNoteId] = useState<string | number | undefined>();
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>();
 
   const isLogin = useMemo(() => Boolean(loginUser?.id), [loginUser?.id]);

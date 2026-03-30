@@ -29,7 +29,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   const [bankResult, questionResult] = await Promise.allSettled([
     getQuestionBankVoByIdUsingGet(
       {
-        id: Number(questionBankId),
+        id: questionBankId,
         needQueryQuestionList: true,
         pageSize: 200,
       },
@@ -37,7 +37,7 @@ export default async function BankQuestionPage({ params }: { params: { questionB
     ),
     getQuestionVoByIdUsingGet(
       {
-        id: Number(questionId),
+        id: questionId,
       },
       requestOptions,
     ),
@@ -123,12 +123,12 @@ export default async function BankQuestionPage({ params }: { params: { questionB
                   href={`/bank/${questionBankId}/question/${q.id}`}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all mb-1",
-                    Number(questionId) === q.id
+                    String(questionId) === String(q.id)
                       ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                       : "text-muted-foreground hover:bg-slate-50 hover:text-foreground"
                   )}
                 >
-                  <Bookmark className={cn("h-4 w-4 shrink-0", Number(questionId) === q.id ? "fill-current" : "opacity-40")} />
+                  <Bookmark className={cn("h-4 w-4 shrink-0", String(questionId) === String(q.id) ? "fill-current" : "opacity-40")} />
                   <span className="truncate">{q.title}</span>
                 </Link>
               ))}

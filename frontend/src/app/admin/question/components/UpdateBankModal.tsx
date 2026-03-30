@@ -8,7 +8,7 @@ import {
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 
 interface Props {
-  questionId?: number;
+  questionId?: string | number;
   visible: boolean;
   onCancel: () => void;
 }

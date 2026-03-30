@@ -41,7 +41,7 @@ const STATUS_TEXT_MAP: Record<number, string> = {
 export default function AdminSecurityPage() {
   const actionRef = useRef<ActionType>();
 
-  const handleIgnore = async (id?: number) => {
+  const handleIgnore = async (id?: string | number) => {
     if (!id) {
       return;
     }
@@ -57,7 +57,7 @@ export default function AdminSecurityPage() {
     }
   };
 
-  const handleBan = async (id?: number) => {
+  const handleBan = async (id?: string | number) => {
     if (!id) {
       return;
     }

@@ -20,7 +20,7 @@ export async function saveMyNoteUsingPost(
 /** getMyNote GET /api/user_question_note/get/my */
 export async function getMyNoteUsingGet(
   params: {
-    questionId?: number;
+    questionId?: string | number;
   },
   options?: { [key: string]: any },
 ) {

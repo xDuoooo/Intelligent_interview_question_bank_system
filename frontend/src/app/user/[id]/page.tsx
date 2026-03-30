@@ -29,8 +29,8 @@ export default async function PublicUserProfilePage({
 }: {
   params: { id: string };
 }) {
-  const userId = Number(params.id);
-  if (!Number.isFinite(userId) || userId <= 0) {
+  const userId = params.id;
+  if (!userId || !/^\d+$/.test(userId)) {
     return (
       <div className="py-24 text-center text-slate-400">
         无效的用户主页地址
@@ -48,7 +48,7 @@ export default async function PublicUserProfilePage({
     getUserProfileVoByIdUsingGet({ id: userId }, requestOptions),
     listQuestionVoByPageUsingPost(
       {
-        userId,
+        userId: userId as any,
         reviewStatus: 1,
         pageSize: 6,
         sortField: "createTime",

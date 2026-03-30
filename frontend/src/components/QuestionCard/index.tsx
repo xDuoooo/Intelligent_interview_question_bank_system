@@ -72,7 +72,7 @@ const QuestionCard = (props: Props) => {
   const onFavourClick = async () => {
     try {
       const res = await doQuestionFavourUsingPost({
-        questionId: Number(question.id),
+        questionId: question.id,
       });
       if (res.data) {
         setHasFavour(!hasFavour);
@@ -94,7 +94,7 @@ const QuestionCard = (props: Props) => {
     };
     try {
       await addQuestionHistoryUsingPost({
-        questionId: Number(question.id),
+        questionId: question.id,
         status: statusMap[status],
       });
       message.success("状态已更新");
@@ -117,7 +117,7 @@ const QuestionCard = (props: Props) => {
       }
       hasReportedStudyRef.current = true;
       const payload = JSON.stringify({
-        questionId: Number(question.id),
+        questionId: question.id,
         durationSeconds,
       });
       try {
@@ -233,7 +233,7 @@ const QuestionCard = (props: Props) => {
       </section>
 
       <QuestionAnswerEvaluator
-        questionId={Number(question.id)}
+        questionId={question.id as string | number}
         questionTitle={question.title}
       />
 
@@ -253,12 +253,12 @@ const QuestionCard = (props: Props) => {
         </div>
       </section>
 
-      <QuestionNotePanel questionId={Number(question.id)} />
+      <QuestionNotePanel questionId={question.id as string | number} />
 
-      <QuestionRecommendPanel questionId={Number(question.id)} />
+      <QuestionRecommendPanel questionId={question.id as string | number} />
 
       {/* Discussion Section */}
-      <CommentSection questionId={Number(question.id)} />
+      <CommentSection questionId={question.id as string | number} />
     </div>
   );
 };

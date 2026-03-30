@@ -3,7 +3,7 @@ export function getNotificationTargetUrl(item?: {
   type?: string;
   title?: string;
   content?: string;
-  targetId?: number;
+  targetId?: string | number;
 }) {
   if (!item) {
     return "/user/notifications";

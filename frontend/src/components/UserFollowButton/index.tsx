@@ -9,7 +9,7 @@ import { followUserUsingPost, unfollowUserUsingPost } from "@/api/userFollowCont
 import { RootState } from "@/stores";
 
 interface Props {
-  userId?: number;
+  userId?: string | number;
   initialFollowed?: boolean;
   onChange?: (followed: boolean) => void;
   size?: "small" | "middle" | "large";
@@ -35,7 +35,7 @@ export default function UserFollowButton({
     setFollowed(Boolean(initialFollowed));
   }, [initialFollowed, userId]);
 
-  const isSelf = Boolean(loginUser?.id && userId && loginUser.id === userId);
+  const isSelf = Boolean(loginUser?.id && userId && String(loginUser.id) === String(userId));
   if (!userId || isSelf) {
     return null;
   }

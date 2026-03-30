@@ -16,7 +16,7 @@ import { RootState } from "@/stores";
 interface Props {
   open: boolean;
   onCancel: () => void;
-  userId?: number;
+  userId?: string | number;
   type: "follower" | "following";
 }
 
@@ -30,9 +30,11 @@ export default function UserFollowListModal({ open, onCancel, userId, type }: Pr
   const [pageSize] = useState(8);
   const [total, setTotal] = useState(0);
   const [records, setRecords] = useState<API.UserVO[]>([]);
-  const viewingOwnFollowingList = Boolean(type === "following" && userId && loginUser?.id === userId);
+  const viewingOwnFollowingList = Boolean(
+    type === "following" && userId && loginUser?.id && String(loginUser.id) === String(userId),
+  );
 
-  const handleFollowChange = (targetUserId: number | undefined, followed: boolean) => {
+  const handleFollowChange = (targetUserId: string | number | undefined, followed: boolean) => {
     if (!targetUserId || followed) {
       if (targetUserId) {
         setRecords((prev) =>

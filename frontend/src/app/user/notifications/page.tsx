@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { List, Card, Badge, Button, Space, Typography, message, Pagination, Empty } from "antd";
+import React, { useCallback, useEffect, useState } from "react";
+import { List, Card, Badge, Button, Space, Typography, message, Pagination, Empty, Segmented, Select, Tag } from "antd";
 import { Bell, CheckCheck, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +14,47 @@ import { getNotificationTargetUrl } from "@/lib/notification";
 
 const { Title, Text } = Typography;
 
+const STATUS_FILTER_OPTIONS = [
+  { label: "全部消息", value: "all" },
+  { label: "未读", value: "unread" },
+  { label: "已读", value: "read" },
+] as const;
+
+const TYPE_FILTER_OPTIONS = [
+  { label: "全部类型", value: "all" },
+  { label: "题目通知", value: "question_review" },
+  { label: "评论互动", value: "reply" },
+  { label: "点赞提醒", value: "like" },
+  { label: "关注提醒", value: "user_follow" },
+  { label: "帖子审核", value: "post_review" },
+  { label: "帖子互动", value: "post_reply" },
+  { label: "学习提醒", value: "learning_goal_reminder" },
+] as const;
+
+const TYPE_LABEL_MAP: Record<string, string> = {
+  question_review: "题目审核",
+  comment_review: "评论审核",
+  reply: "评论回复",
+  like: "点赞提醒",
+  user_follow: "关注提醒",
+  post_review: "帖子审核",
+  post_reply: "帖子回复",
+  post_comment_review: "社区回复审核",
+  learning_goal_reminder: "学习提醒",
+};
+
+const TYPE_COLOR_MAP: Record<string, string> = {
+  question_review: "blue",
+  comment_review: "purple",
+  reply: "cyan",
+  like: "magenta",
+  user_follow: "gold",
+  post_review: "geekblue",
+  post_reply: "lime",
+  post_comment_review: "purple",
+  learning_goal_reminder: "green",
+};
+
 /**
  * 我的通知页面
  * @constructor
@@ -23,11 +64,17 @@ const UserNotificationsPage: React.FC = () => {
   const [dataList, setDataList] = useState<API.NotificationVO[]>([]);
   const [total, setTotal] = useState(0);
   const [current, setCurrent] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const pageSize = 10;
   const router = useRouter();
 
   // 加载通知数据
-  const loadData = async (page = 1) => {
+  const loadData = useCallback(async (
+    page = 1,
+    nextStatus: "all" | "unread" | "read" = statusFilter,
+    nextType = typeFilter,
+  ) => {
     setLoading(true);
     try {
       const res = await listMyNotificationVOByPageUsingPost({
@@ -35,6 +82,8 @@ const UserNotificationsPage: React.FC = () => {
         pageSize,
         sortField: "createTime",
         sortOrder: "descend",
+        status: nextStatus === "all" ? undefined : nextStatus === "unread" ? 0 : 1,
+        type: nextType === "all" ? undefined : nextType,
       });
       if (res.data) {
         const data = res.data as API.PageNotificationVO_;
@@ -46,11 +95,11 @@ const UserNotificationsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, statusFilter, typeFilter]);
 
   useEffect(() => {
-    loadData(current);
-  }, [current]);
+    void loadData(current);
+  }, [current, loadData]);
 
   // 标记单条已读并跳转
   const handleRead = async (item: API.NotificationVO) => {
@@ -84,6 +133,17 @@ const UserNotificationsPage: React.FC = () => {
     }
   };
 
+  const handleStatusFilterChange = (value: string | number) => {
+    const nextValue = value as "all" | "unread" | "read";
+    setStatusFilter(nextValue);
+    setCurrent(1);
+  };
+
+  const handleTypeFilterChange = (value: string) => {
+    setTypeFilter(value);
+    setCurrent(1);
+  };
+
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -112,6 +172,31 @@ const UserNotificationsPage: React.FC = () => {
           </Button>
         )}
       </div>
+
+      <Card
+        bordered={false}
+        style={{ marginBottom: 16 }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-2">
+            <Text strong className="text-slate-700">筛选通知</Text>
+            <Segmented
+              options={STATUS_FILTER_OPTIONS as any}
+              value={statusFilter}
+              onChange={handleStatusFilterChange}
+            />
+          </div>
+          <div className="flex flex-col gap-2 md:min-w-[220px]">
+            <Text strong className="text-slate-700">消息类型</Text>
+            <Select
+              value={typeFilter}
+              onChange={handleTypeFilterChange}
+              options={TYPE_FILTER_OPTIONS as any}
+            />
+          </div>
+        </div>
+      </Card>
 
       <Card bodyStyle={{ padding: 0 }} bordered={false}>
         <List
@@ -145,8 +230,13 @@ const UserNotificationsPage: React.FC = () => {
                   </Badge>
                 }
                 title={
-                  <Space>
+                  <Space wrap>
                     <Text strong={item.status === 0} style={{ fontSize: 16 }}>{item.title}</Text>
+                    {item.type ? (
+                      <Tag color={TYPE_COLOR_MAP[item.type] || "default"} className="rounded-full">
+                        {TYPE_LABEL_MAP[item.type] || item.type}
+                      </Tag>
+                    ) : null}
                     <Text type="secondary" style={{ fontSize: 13, marginLeft: 8 }}>
                       {dayjs(item.createTime).format("YYYY-MM-DD HH:mm")}
                     </Text>

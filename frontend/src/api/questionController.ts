@@ -49,7 +49,7 @@ export async function evaluateQuestionAnswerUsingPost(
 }
 
 export async function evaluateQuestionAnswerByAudioUsingPost(
-  questionId: number,
+  questionId: string | number,
   audioFile: Blob,
   fileName = 'question-answer.webm',
 ) {
@@ -132,7 +132,7 @@ export async function getQuestionVoByIdUsingGet(
 /** listPersonalRecommendQuestionVO GET /api/question/recommend/personal */
 export async function listPersonalRecommendQuestionVoUsingGet(
   params: {
-    questionId?: number;
+    questionId?: string | number;
     size?: number;
   },
   options?: { [key: string]: any },
@@ -149,7 +149,7 @@ export async function listPersonalRecommendQuestionVoUsingGet(
 /** listRelatedQuestionVO GET /api/question/recommend/related */
 export async function listRelatedQuestionVoUsingGet(
   params: {
-    questionId?: number;
+    questionId?: string | number;
     size?: number;
   },
   options?: { [key: string]: any },

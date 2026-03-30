@@ -234,7 +234,7 @@ function getAudioFileExtension(mimeType?: string) {
 
 export default function InterviewRoomPage({ params }: { params: { mockInterviewId: string } }) {
   const { mockInterviewId } = params;
-  const interviewId = Number(mockInterviewId);
+  const interviewId = mockInterviewId;
   const [submitting, setSubmitting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(true);

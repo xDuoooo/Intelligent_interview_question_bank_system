@@ -240,7 +240,7 @@ declare namespace API {
     enableEmailNotification?: boolean;
     enableLearningGoalReminder?: boolean;
     enableSiteNotification?: boolean;
-    id?: number;
+    id?: string | number;
     maintenanceMode?: boolean;
     requireCaptcha?: boolean;
     seoKeywords?: string;
@@ -324,7 +324,7 @@ declare namespace API {
 
   type getMockInterviewByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getPostVOByIdUsingGETParams = {
@@ -334,32 +334,32 @@ declare namespace API {
 
   type getQuestionBankQuestionVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getQuestionBankVOByIdUsingGETParams = {
     current?: number;
     description?: string;
-    id?: number;
+    id?: string | number;
     needQueryQuestionList?: boolean;
-    notId?: number;
+    notId?: string | number;
     pageSize?: number;
     picture?: string;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     title?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type getQuestionVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getUserByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getUserSignInRecordUsingGETParams = {
@@ -369,12 +369,12 @@ declare namespace API {
 
   type getUserVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type getUserProfileVOByIdUsingGETParams = {
     /** id */
-    id?: number;
+    id?: string | number;
   };
 
   type LoginUserVO = {
@@ -382,7 +382,7 @@ declare namespace API {
     city?: string;
     createTime?: string;
     email?: string;
-    id?: number;
+    id?: string | number;
     interestTagList?: string[];
     passwordConfigured?: number;
     phone?: string;
@@ -402,7 +402,7 @@ declare namespace API {
     metricValue?: number;
     rank?: number;
     userAvatar?: string;
-    userId?: number;
+    userId?: string | number;
     userName?: string;
     userRole?: string;
   };
@@ -431,7 +431,7 @@ declare namespace API {
     difficulty?: string;
     currentRound?: number;
     expectedRounds?: number;
-    id?: number;
+    id?: string | number;
     interviewType?: string;
     isDelete?: number;
     jobPosition?: string;
@@ -440,7 +440,7 @@ declare namespace API {
     status?: number;
     techStack?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
     workExperience?: string;
     resumeText?: string;
   };
@@ -457,14 +457,14 @@ declare namespace API {
 
   type MockInterviewEventRequest = {
     event?: string;
-    id?: number;
+    id?: string | number;
     message?: string;
   };
 
   type MockInterviewQueryRequest = {
     current?: number;
     difficulty?: string;
-    id?: number;
+    id?: string | number;
     interviewType?: string;
     jobPosition?: string;
     pageSize?: number;
@@ -472,13 +472,13 @@ declare namespace API {
     sortOrder?: string;
     status?: number;
     techStack?: string;
-    userId?: number;
+    userId?: string | number;
     workExperience?: string;
   };
 
   type UserQuestionStudySessionReportRequest = {
     durationSeconds?: number;
-    questionId?: number;
+    questionId?: string | number;
   };
 
   type OrderItem = {
@@ -685,7 +685,7 @@ declare namespace API {
     content?: string;
     createTime?: string;
     favourNum?: number;
-    id?: number;
+    id?: string | number;
     isFeatured?: number;
     isDelete?: number;
     isTop?: number;
@@ -693,12 +693,12 @@ declare namespace API {
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;
-    reviewUserId?: number;
+    reviewUserId?: string | number;
     tags?: string;
     thumbNum?: number;
     title?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PostAddRequest = {
@@ -724,7 +724,7 @@ declare namespace API {
     postQueryRequest?: PostQueryRequest;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PostOperateRequest = {
@@ -736,11 +736,11 @@ declare namespace API {
   type PostQueryRequest = {
     content?: string;
     current?: number;
-    favourUserId?: number;
-    id?: number;
+    favourUserId?: string | number;
+    id?: string | number;
     isFeatured?: number;
     isTop?: number;
-    notId?: number;
+    notId?: string | number;
     orTags?: string[];
     pageSize?: number;
     reviewStatus?: number;
@@ -749,7 +749,7 @@ declare namespace API {
     sortOrder?: string;
     tags?: string[];
     title?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PostReviewRequest = {
@@ -783,7 +783,7 @@ declare namespace API {
 
   type PostUpdateRequest = {
     content?: string;
-    id?: number;
+    id?: string | number;
     tags?: string[];
     title?: string;
   };
@@ -831,16 +831,16 @@ declare namespace API {
     createTime?: string;
     difficulty?: string;
     editTime?: string;
-    id?: number;
+    id?: string | number;
     isDelete?: number;
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;
-    reviewUserId?: number;
+    reviewUserId?: string | number;
     tags?: string;
     title?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionAddRequest = {
@@ -853,7 +853,7 @@ declare namespace API {
 
   type QuestionAnswerEvaluateRequest = {
     answerContent?: string;
-    questionId?: number;
+    questionId?: string | number;
   };
 
   type QuestionAnswerEvaluateVO = {
@@ -878,12 +878,12 @@ declare namespace API {
     createTime?: string;
     description?: string;
     editTime?: string;
-    id?: number;
+    id?: string | number;
     isDelete?: number;
     picture?: string;
     title?: string;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBankAddRequest = {
@@ -894,7 +894,7 @@ declare namespace API {
 
   type QuestionBankEditRequest = {
     description?: string;
-    id?: number;
+    id?: string | number;
     picture?: string;
     title?: string;
   };
@@ -902,79 +902,79 @@ declare namespace API {
   type QuestionBankQueryRequest = {
     current?: number;
     description?: string;
-    id?: number;
+    id?: string | number;
     needQueryQuestionList?: boolean;
-    notId?: number;
+    notId?: string | number;
     pageSize?: number;
     picture?: string;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     title?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBankQuestion = {
     createTime?: string;
-    id?: number;
-    questionBankId?: number;
-    questionId?: number;
+    id?: string | number;
+    questionBankId?: string | number;
+    questionId?: string | number;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBankQuestionAddRequest = {
-    questionBankId?: number;
-    questionId?: number;
+    questionBankId?: string | number;
+    questionId?: string | number;
   };
 
   type QuestionBankQuestionBatchAddRequest = {
-    questionBankId?: number;
-    questionIdList?: number[];
+    questionBankId?: string | number;
+    questionIdList?: Array<string | number>;
   };
 
   type QuestionBankQuestionBatchRemoveRequest = {
-    questionBankId?: number;
-    questionIdList?: number[];
+    questionBankId?: string | number;
+    questionIdList?: Array<string | number>;
   };
 
   type QuestionBankQuestionQueryRequest = {
     current?: number;
-    id?: number;
-    notId?: number;
+    id?: string | number;
+    notId?: string | number;
     pageSize?: number;
-    questionBankId?: number;
-    questionId?: number;
+    questionBankId?: string | number;
+    questionId?: string | number;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBankQuestionRemoveRequest = {
-    questionBankId?: number;
-    questionId?: number;
+    questionBankId?: string | number;
+    questionId?: string | number;
   };
 
   type QuestionBankQuestionUpdateRequest = {
-    id?: number;
-    questionBankId?: number;
-    questionId?: number;
+    id?: string | number;
+    questionBankId?: string | number;
+    questionId?: string | number;
   };
 
   type QuestionBankQuestionVO = {
     createTime?: string;
-    id?: number;
-    questionBankId?: number;
-    questionId?: number;
+    id?: string | number;
+    questionBankId?: string | number;
+    questionId?: string | number;
     tagList?: string[];
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBankUpdateRequest = {
     description?: string;
-    id?: number;
+    id?: string | number;
     picture?: string;
     title?: string;
   };
@@ -982,24 +982,24 @@ declare namespace API {
   type QuestionBankVO = {
     createTime?: string;
     description?: string;
-    id?: number;
+    id?: string | number;
     picture?: string;
     questionPage?: PageQuestionVO_;
     title?: string;
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionBatchDeleteRequest = {
-    questionIdList?: number[];
+    questionIdList?: Array<string | number>;
   };
 
   type QuestionEditRequest = {
     answer?: string;
     content?: string;
     difficulty?: string;
-    id?: number;
+    id?: string | number;
     tags?: string[];
     title?: string;
   };
@@ -1009,21 +1009,21 @@ declare namespace API {
     content?: string;
     current?: number;
     difficulty?: string;
-    id?: number;
-    notId?: number;
+    id?: string | number;
+    notId?: string | number;
     pageSize?: number;
-    questionBankId?: number;
+    questionBankId?: string | number;
     reviewStatus?: number;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     tags?: string[];
     title?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type QuestionReviewRequest = {
-    id?: number;
+    id?: string | number;
     reviewMessage?: string;
     reviewStatus?: number;
   };
@@ -1037,7 +1037,7 @@ declare namespace API {
     currentUserItem?: LeaderboardUserVO;
     description?: string;
     metricLabel?: string;
-    questionBankId?: number;
+    questionBankId?: string | number;
     questionBankTitle?: string;
     rankingList?: LeaderboardUserVO[];
   };
@@ -1046,7 +1046,7 @@ declare namespace API {
     answer?: string;
     content?: string;
     difficulty?: string;
-    id?: number;
+    id?: string | number;
     tags?: string[];
     title?: string;
   };
@@ -1058,17 +1058,17 @@ declare namespace API {
     difficulty?: string;
     favourNum?: number;
     hasFavour?: boolean;
-    id?: number;
+    id?: string | number;
     recommendReason?: string;
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;
-    reviewUserId?: number;
+    reviewUserId?: string | number;
     tagList?: string[];
     title?: string;
     updateTime?: string;
     user?: UserVO;
-    userId?: number;
+    userId?: string | number;
   };
 
   type ResumeQuestionRecommendVO = {
@@ -1081,7 +1081,7 @@ declare namespace API {
   };
 
   type SecurityAlertHandleRequest = {
-    id?: number;
+    id?: string | number;
   };
 
   type SecurityAlertQueryRequest = {
@@ -1093,7 +1093,7 @@ declare namespace API {
     sortField?: string;
     sortOrder?: string;
     status?: number;
-    userId?: number;
+    userId?: string | number;
     userName?: string;
   };
 
@@ -1103,15 +1103,15 @@ declare namespace API {
     detail?: string;
     handleAction?: string;
     handleTime?: string;
-    handlerUserId?: number;
-    id?: number;
+    handlerUserId?: string | number;
+    id?: string | number;
     ip?: string;
     isDelete?: number;
     reason?: string;
     riskLevel?: string;
     status?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
     userName?: string;
   };
 
@@ -1125,7 +1125,7 @@ declare namespace API {
     createTime?: string;
     editTime?: string;
     email?: string;
-    id?: number;
+    id?: string | number;
     interestTags?: string | string[];
     isDelete?: number;
     phone?: string;
@@ -1191,7 +1191,7 @@ declare namespace API {
   type UserQueryRequest = {
     careerDirection?: string;
     current?: number;
-    id?: number;
+    id?: string | number;
     mpOpenId?: string;
     pageSize?: number;
     sortField?: string;
@@ -1227,18 +1227,18 @@ declare namespace API {
   };
 
   type QuestionFavourAddRequest = {
-    questionId?: number;
+    questionId?: string | number;
   };
 
   type UserQuestionHistoryAddRequest = {
-    questionId?: number;
+    questionId?: string | number;
     status?: number;
   };
 
   type UserUpdateRequest = {
     careerDirection?: string;
     city?: string;
-    id?: number;
+    id?: string | number;
     interestTags?: string[];
     userAvatar?: string;
     userName?: string;
@@ -1251,7 +1251,7 @@ declare namespace API {
     city?: string;
     createTime?: string;
     hasFollowed?: boolean;
-    id?: number;
+    id?: string | number;
     interestTagList?: string[];
     userAvatar?: string;
     userName?: string;
@@ -1276,7 +1276,7 @@ declare namespace API {
     activityTime?: string;
     badge?: string;
     description?: string;
-    targetId?: number;
+    targetId?: string | number;
     targetUrl?: string;
     title?: string;
     type?: string;
@@ -1284,7 +1284,7 @@ declare namespace API {
 
   type UserQuestionNoteSaveRequest = {
     content?: string;
-    questionId?: number;
+    questionId?: string | number;
   };
 
   type UserQuestionNoteQueryRequest = {
@@ -1295,11 +1295,11 @@ declare namespace API {
   type UserQuestionNoteVO = {
     content?: string;
     createTime?: string;
-    id?: number;
+    id?: string | number;
     question?: QuestionVO;
-    questionId?: number;
+    questionId?: string | number;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type PageUserQuestionNoteVO_ = {
@@ -1328,11 +1328,11 @@ declare namespace API {
   };
 
   type QuestionRecommendClickRequest = {
-    questionId?: number;
+    questionId?: string | number;
     source?: string;
   };
   type UserFollowRequest = {
-    followUserId?: number;
+    followUserId?: string | number;
   };
 
   type UserFollowQueryRequest = {
@@ -1340,49 +1340,49 @@ declare namespace API {
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    userId?: number;
+    userId?: string | number;
   };
   type UserQuestionHistoryVO = {
     createTime?: string;
-    id?: number;
+    id?: string | number;
     question?: QuestionVO;
-    questionId?: number;
+    questionId?: string | number;
     status?: number;
     updateTime?: string;
-    userId?: number;
+    userId?: string | number;
   };
 
   type NotificationVO = {
-    id?: number;
-    userId?: number;
+    id?: string | number;
+    userId?: string | number;
     title?: string;
     content?: string;
     type?: string;
     status?: number;
-    targetId?: number;
+    targetId?: string | number;
     targetUrl?: string;
     createTime?: string;
     updateTime?: string;
   };
 
   type NotificationAddRequest = {
-    userId?: number;
+    userId?: string | number;
     title?: string;
     content?: string;
     type?: string;
-    targetId?: number;
+    targetId?: string | number;
   };
 
   type NotificationQueryRequest = {
     current?: number;
     pageSize?: number;
-    id?: number;
-    userId?: number;
+    id?: string | number;
+    userId?: string | number;
     title?: string;
     content?: string;
     type?: string;
     status?: number;
-    targetId?: number;
+    targetId?: string | number;
     sortField?: string;
     sortOrder?: string;
   };
