@@ -24,7 +24,7 @@ import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
 interface Props {
-  questionId: number;
+  questionId: string | number;
 }
 
 type SortField = "createTime" | "likeNum";
@@ -108,11 +108,11 @@ function CommentInput({ placeholder = "分享你的见解...", onSubmit, onCance
 interface CommentCardProps {
   comment: CommentVO;
   loginUser: any;
-  onLike: (id: number) => void;
-  onDelete: (id: number) => void;
-  onPin: (id: number, pinned: boolean) => void;
-  onOfficial: (id: number, official: boolean) => void;
-  onReply: (parentId: number, replyToId: number, replyToName: string) => void;
+  onLike: (id: string | number) => void;
+  onDelete: (id: string | number) => void;
+  onPin: (id: string | number, pinned: boolean) => void;
+  onOfficial: (id: string | number, official: boolean) => void;
+  onReply: (parentId: string | number, replyToId: string | number, replyToName: string) => void;
   depth?: number;
 }
 
@@ -390,7 +390,7 @@ export default function CommentSection({ questionId }: Props) {
 
   // 回复状态
   const [replyState, setReplyState] = useState<{
-    parentId: number; replyToId: number; replyToName: string;
+    parentId: string | number; replyToId: string | number; replyToName: string;
   } | null>(null);
 
   const PAGE_SIZE = 10;
@@ -454,7 +454,7 @@ export default function CommentSection({ questionId }: Props) {
   };
 
   // ---- 点赞（乐观更新） ----
-  const handleLike = async (commentId: number) => {
+  const handleLike = async (commentId: string | number) => {
     if (!loginUser?.id) {
       message.warning("请先登录后再点赞");
       return;
@@ -476,7 +476,7 @@ export default function CommentSection({ questionId }: Props) {
   };
 
   // ---- 删除 ----
-  const handleDelete = async (commentId: number) => {
+  const handleDelete = async (commentId: string | number) => {
     Modal.confirm({
       title: "确定要删除这条评论吗？",
       content: "删除后将无法恢复，请确认操作。",
@@ -503,7 +503,7 @@ export default function CommentSection({ questionId }: Props) {
   };
 
   // ---- 置顶 ----
-  const handlePin = async (commentId: number, pinned: boolean) => {
+  const handlePin = async (commentId: string | number, pinned: boolean) => {
     const update = (list: CommentVO[]): CommentVO[] =>
       list.map((c) =>
         c.id === commentId ? { ...c, isPinned: pinned ? 1 : 0 } : { ...c, replies: update(c.replies) }
@@ -513,7 +513,7 @@ export default function CommentSection({ questionId }: Props) {
   };
 
   // ---- 官方解答 ----
-  const handleOfficial = async (commentId: number, official: boolean) => {
+  const handleOfficial = async (commentId: string | number, official: boolean) => {
     const update = (list: CommentVO[]): CommentVO[] =>
       list.map((c) =>
         c.id === commentId ? { ...c, isOfficial: official ? 1 : 0 } : { ...c, replies: update(c.replies) }

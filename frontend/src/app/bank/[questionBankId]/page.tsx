@@ -24,7 +24,7 @@ export default async function BankPage({ params }: { params: { questionBankId: s
 
   try {
     const res = (await getQuestionBankVoByIdUsingGet({
-      id: Number(questionBankId),
+      id: questionBankId,
       needQueryQuestionList: true,
       pageSize: 20,
     }, {
@@ -44,7 +44,7 @@ export default async function BankPage({ params }: { params: { questionBankId: s
 
   try {
     const leaderboardRes = (await getQuestionBankLeaderboardUsingGet({
-      questionBankId: Number(questionBankId),
+      questionBankId: questionBankId as any,
     }, {
       headers: {
         cookie: headers().get("cookie") || "",
@@ -138,7 +138,7 @@ export default async function BankPage({ params }: { params: { questionBankId: s
       {/* Questions Explorer */}
       <section className="space-y-8">
         <QuestionList
-          questionBankId={Number(questionBankId)}
+          questionBankId={questionBankId as any}
           questionList={bank.questionPage?.records ?? []}
           cardTitle={`题目列表 (${bank.questionPage?.total || 0})`}
         />

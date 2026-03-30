@@ -146,7 +146,7 @@ export async function streamMockInterviewEventUsingPost(
 }
 
 export async function transcribeMockInterviewAudioUsingPost(
-  id: number,
+  id: string | number,
   audioFile: Blob,
   fileName = 'mock-interview-answer.webm',
 ) {
@@ -166,7 +166,7 @@ export async function transcribeMockInterviewAudioUsingPost(
   return String(json?.data || '');
 }
 
-export async function downloadMockInterviewReviewUsingGet(id: number) {
+export async function downloadMockInterviewReviewUsingGet(id: string | number) {
   const response = await fetch(buildApiUrl(`/api/mockInterview/export?id=${id}`), {
     method: 'GET',
     credentials: 'include',

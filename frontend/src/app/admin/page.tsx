@@ -90,7 +90,7 @@ export default function AdminDashboardPage() {
   const riskAlerts = dashboard.riskAlerts || [];
   const recentOperations = dashboard.recentOperations || [];
 
-  const handleIgnoreAlert = async (id?: number) => {
+  const handleIgnoreAlert = async (id?: string | number) => {
     if (!id) {
       return;
     }
@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleBanAlertUser = async (id?: number) => {
+  const handleBanAlertUser = async (id?: string | number) => {
     if (!id) {
       return;
     }

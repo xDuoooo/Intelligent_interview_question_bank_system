@@ -181,7 +181,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
     return pendingCount > 0 ? `当前页还有 ${pendingCount} 道题目正在等待管理员审核。` : "新增题目后默认进入待审核，审核通过后才会在公开题库里展示。";
   }, [questionList]);
 
-  const handleDelete = async (questionId?: number) => {
+  const handleDelete = async (questionId?: string | number) => {
     if (!questionId) {
       return;
     }

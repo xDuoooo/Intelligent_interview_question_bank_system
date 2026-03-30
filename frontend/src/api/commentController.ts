@@ -4,15 +4,15 @@
 import request from "@/libs/request";
 
 interface CommentAddRequest {
-  questionId: number;
-  parentId?: number | null;
-  replyToId?: number | null;
+  questionId: string | number;
+  parentId?: string | number | null;
+  replyToId?: string | number | null;
   content: string;
 }
 
 interface CommentAdminQueryRequest {
-  questionId?: number;
-  userId?: number;
+  questionId?: string | number;
+  userId?: string | number;
   content?: string;
   status?: number;
   current?: number;
@@ -22,13 +22,13 @@ interface CommentAdminQueryRequest {
 }
 
 interface CommentReviewRequest {
-  id: number;
+  id: string | number;
   status: number;
   reviewMessage?: string;
 }
 
 interface CommentQueryRequest {
-  questionId: number;
+  questionId: string | number;
   current?: number;
   pageSize?: number;
   sortField?: "createTime" | "likeNum";
@@ -36,7 +36,7 @@ interface CommentQueryRequest {
 }
 
 interface CommentReportRequest {
-  commentId: number;
+  commentId: string | number;
   reason: string;
 }
 
@@ -46,7 +46,7 @@ interface CommentActivityQueryRequest {
 }
 
 interface UserVO {
-  id: number;
+  id: string | number;
   userName: string;
   userAvatar: string;
   userProfile?: string;
@@ -54,10 +54,10 @@ interface UserVO {
 }
 
 export interface CommentVO {
-  id: number;
-  questionId: number;
-  parentId?: number | null;
-  replyToId?: number | null;
+  id: string | number;
+  questionId: string | number;
+  parentId?: string | number | null;
+  replyToId?: string | number | null;
   content: string;
   likeNum: number;
   isPinned: number;
@@ -91,7 +91,7 @@ export interface UserCommentActivityVO {
 }
 
 export interface CommentSubmitResult {
-  id: number;
+  id: string | number;
   status: number;
   reviewMessage?: string;
 }
@@ -113,7 +113,7 @@ export async function addComment(data: CommentAddRequest): Promise<CommentSubmit
   return res.data;
 }
 
-export async function deleteComment(id: number): Promise<boolean> {
+export async function deleteComment(id: string | number): Promise<boolean> {
   const res = (await request.post("/api/question/comment/delete", { id })) as any;
   return res.data;
 }
@@ -123,7 +123,7 @@ export async function listCommentsByPage(data: CommentQueryRequest): Promise<Pag
   return res.data;
 }
 
-export async function likeComment(commentId: number): Promise<{ liked: boolean; likeNum: number }> {
+export async function likeComment(commentId: string | number): Promise<{ liked: boolean; likeNum: number }> {
   const res = (await request.post(`/api/question/comment/like?commentId=${commentId}`)) as any;
   return res.data;
 }
@@ -133,12 +133,12 @@ export async function reportComment(data: CommentReportRequest): Promise<boolean
   return res.data;
 }
 
-export async function pinComment(commentId: number, pinned: boolean): Promise<boolean> {
+export async function pinComment(commentId: string | number, pinned: boolean): Promise<boolean> {
   const res = (await request.post(`/api/question/comment/pin?commentId=${commentId}&pinned=${pinned}`)) as any;
   return res.data;
 }
 
-export async function setOfficialAnswer(commentId: number, official: boolean): Promise<boolean> {
+export async function setOfficialAnswer(commentId: string | number, official: boolean): Promise<boolean> {
   const res = (await request.post(`/api/question/comment/official?commentId=${commentId}&official=${official}`)) as any;
   return res.data;
 }

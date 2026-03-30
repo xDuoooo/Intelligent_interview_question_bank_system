@@ -10,7 +10,7 @@ import { evaluateQuestionAnswerByAudioUsingPost, evaluateQuestionAnswerUsingPost
 const { Paragraph, Text, Title } = Typography;
 
 interface Props {
-  questionId: number;
+  questionId: string | number;
   questionTitle?: string;
 }
 

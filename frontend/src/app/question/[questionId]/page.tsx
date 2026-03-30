@@ -20,7 +20,7 @@ export default async function QuestionPage({ params }: { params: { questionId: s
   
   try {
     const res = (await getQuestionVoByIdUsingGet({
-      id: Number(questionId),
+      id: questionId,
     }, {
       headers: {
         cookie: headers().get("cookie") || "",

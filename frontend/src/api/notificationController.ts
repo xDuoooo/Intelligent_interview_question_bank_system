@@ -52,7 +52,7 @@ export async function getNotificationVOByIdUsingGet(
   params: {
     // query
     /** id */
-    id?: number;
+    id?: string | number;
   },
   options?: { [key: string]: any },
 ) {
@@ -108,7 +108,7 @@ export async function readNotificationUsingPost(
   params: {
     // query
     /** id */
-    id?: number;
+    id?: string | number;
   },
   options?: { [key: string]: any },
 ) {

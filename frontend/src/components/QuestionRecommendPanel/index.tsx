@@ -15,7 +15,7 @@ import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
 const { Title, Paragraph, Text } = Typography;
 
 interface Props {
-  questionId: number;
+  questionId: string | number;
 }
 
 /**
@@ -49,7 +49,7 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
     void loadData();
   }, [loadData, questionId]);
 
-  const trackClick = (questionId?: number, source?: string) => {
+  const trackClick = (questionId?: string | number, source?: string) => {
     if (!questionId || !source) {
       return;
     }

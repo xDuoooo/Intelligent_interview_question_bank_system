@@ -33,7 +33,7 @@ function downloadBlob(blob: Blob, fileName: string) {
 export default function AdminMockInterviewPage() {
   const actionRef = useRef<ActionType>();
 
-  const handleDelete = async (id?: number) => {
+  const handleDelete = async (id?: string | number) => {
     if (!id) {
       return;
     }
@@ -49,7 +49,7 @@ export default function AdminMockInterviewPage() {
     }
   };
 
-  const handleExport = async (id?: number) => {
+  const handleExport = async (id?: string | number) => {
     if (!id) {
       return;
     }

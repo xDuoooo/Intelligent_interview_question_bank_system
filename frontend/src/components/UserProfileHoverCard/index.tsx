@@ -23,36 +23,42 @@ interface Props {
   triggerClassName?: string;
 }
 
-const profileCache = new Map<number, API.UserProfileVO>();
-const profilePromiseCache = new Map<number, Promise<API.UserProfileVO | undefined>>();
+const profileCache = new Map<string, API.UserProfileVO>();
+const profilePromiseCache = new Map<string, Promise<API.UserProfileVO | undefined>>();
 
-function updateCachedProfile(userId: number, updater: (profile: API.UserProfileVO) => API.UserProfileVO) {
-  const currentProfile = profileCache.get(userId);
+function getProfileCacheKey(userId: string | number) {
+  return String(userId);
+}
+
+function updateCachedProfile(userId: string | number, updater: (profile: API.UserProfileVO) => API.UserProfileVO) {
+  const cacheKey = getProfileCacheKey(userId);
+  const currentProfile = profileCache.get(cacheKey);
   if (!currentProfile) {
     return;
   }
-  profileCache.set(userId, updater(currentProfile));
+  profileCache.set(cacheKey, updater(currentProfile));
 }
 
-async function fetchUserProfile(userId: number) {
-  if (profileCache.has(userId)) {
-    return profileCache.get(userId);
+async function fetchUserProfile(userId: string | number) {
+  const cacheKey = getProfileCacheKey(userId);
+  if (profileCache.has(cacheKey)) {
+    return profileCache.get(cacheKey);
   }
-  if (profilePromiseCache.has(userId)) {
-    return profilePromiseCache.get(userId);
+  if (profilePromiseCache.has(cacheKey)) {
+    return profilePromiseCache.get(cacheKey);
   }
   const task = getUserProfileVoByIdUsingGet({ id: userId })
     .then((res) => {
       if (res.data) {
-        profileCache.set(userId, res.data);
+        profileCache.set(cacheKey, res.data);
         return res.data;
       }
       return undefined;
     })
     .finally(() => {
-      profilePromiseCache.delete(userId);
+      profilePromiseCache.delete(cacheKey);
     });
-  profilePromiseCache.set(userId, task);
+  profilePromiseCache.set(cacheKey, task);
   return task;
 }
 
@@ -84,12 +90,12 @@ export default function UserProfileHoverCard({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<API.UserProfileVO | undefined>(() =>
-    user?.id ? profileCache.get(user.id) : undefined,
+    user?.id ? profileCache.get(getProfileCacheKey(user.id)) : undefined,
   );
   const [loadError, setLoadError] = useState<string>("");
 
   useEffect(() => {
-    setProfile(user?.id ? profileCache.get(user.id) : undefined);
+    setProfile(user?.id ? profileCache.get(getProfileCacheKey(user.id)) : undefined);
     setLoadError("");
   }, [user?.id]);
 
