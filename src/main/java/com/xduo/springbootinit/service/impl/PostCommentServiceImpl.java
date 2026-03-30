@@ -194,8 +194,14 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
                 .collect(Collectors.groupingBy(PostComment::getParentId));
 
         Set<Long> userIds = new HashSet<>();
-        topComments.forEach(c -> userIds.add(c.getUserId()));
-        childComments.forEach(c -> userIds.add(c.getUserId()));
+        topComments.stream()
+                .map(PostComment::getUserId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
+        childComments.stream()
+                .map(PostComment::getUserId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
 
         Set<Long> replyToCommentIds = childComments.stream()
                 .map(PostComment::getReplyToId)
@@ -206,7 +212,9 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             listByIds(replyToCommentIds).forEach(comment -> {
                 if (comment != null) {
                     replyToMap.put(comment.getId(), comment);
-                    userIds.add(comment.getUserId());
+                    if (comment.getUserId() != null) {
+                        userIds.add(comment.getUserId());
+                    }
                 }
             });
         }
@@ -245,8 +253,10 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             return resultPage;
         }
 
-        Set<Long> userIds = new HashSet<>();
-        records.forEach(comment -> userIds.add(comment.getUserId()));
+        Set<Long> userIds = records.stream()
+                .map(PostComment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Set<Long> replyToCommentIds = records.stream()
                 .map(PostComment::getReplyToId)
                 .filter(Objects::nonNull)
@@ -256,7 +266,9 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             listByIds(replyToCommentIds).forEach(comment -> {
                 if (comment != null) {
                     replyToMap.put(comment.getId(), comment);
-                    userIds.add(comment.getUserId());
+                    if (comment.getUserId() != null) {
+                        userIds.add(comment.getUserId());
+                    }
                 }
             });
         }
