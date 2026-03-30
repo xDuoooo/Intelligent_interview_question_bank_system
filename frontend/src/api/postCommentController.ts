@@ -1,7 +1,7 @@
 import request from "@/libs/request";
 
 interface UserVO {
-  id: number;
+  id: number | string;
   userName: string;
   userAvatar: string;
   userProfile?: string;
@@ -26,6 +26,11 @@ interface PostCommentAdminQueryRequest {
   userId?: number | string;
   status?: number;
   content?: string;
+  current?: number;
+  pageSize?: number;
+}
+
+interface CommentActivityQueryRequest {
   current?: number;
   pageSize?: number;
 }
@@ -55,6 +60,22 @@ export interface PostCommentSubmitResult {
   id: number | string;
   status: number;
   reviewMessage?: string;
+}
+
+export interface PostCommentActivityVO {
+  id: number | string;
+  postId: number | string;
+  postTitle?: string;
+  parentId?: number | string | null;
+  replyToId?: number | string | null;
+  content?: string;
+  status?: number;
+  reviewMessage?: string;
+  createTime?: string;
+  actionTime?: string;
+  deleted?: boolean;
+  user?: UserVO | null;
+  replyToUser?: UserVO | null;
 }
 
 interface Page<T> {
@@ -88,5 +109,12 @@ export async function listAdminPostCommentsByPage(
 
 export async function reviewPostComment(data: PostCommentReviewRequest): Promise<boolean> {
   const res = (await request.post("/api/post/comment/review", data)) as any;
+  return res.data;
+}
+
+export async function listMyRepliedPostCommentsByPage(
+  data: CommentActivityQueryRequest,
+): Promise<Page<PostCommentActivityVO>> {
+  const res = (await request.post("/api/post/comment/my/replied/page/vo", data)) as any;
   return res.data;
 }

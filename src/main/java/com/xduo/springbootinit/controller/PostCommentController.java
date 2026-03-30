@@ -9,11 +9,13 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentAddRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentAdminQueryRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentQueryRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentReviewRequest;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.PostCommentActivityVO;
 import com.xduo.springbootinit.model.vo.PostCommentSubmitResultVO;
 import com.xduo.springbootinit.model.vo.PostCommentVO;
 import com.xduo.springbootinit.service.PostCommentService;
@@ -72,6 +74,16 @@ public class PostCommentController {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(request.getPageSize() > 50, ErrorCode.PARAMS_ERROR, "每页最多 50 条");
         return ResultUtils.success(postCommentService.listAdminCommentVOByPage(request));
+    }
+
+    @PostMapping("/my/replied/page/vo")
+    public BaseResponse<Page<PostCommentActivityVO>> listMyReplyCommentVOByPage(
+            @RequestBody CommentActivityQueryRequest request,
+            HttpServletRequest httpRequest) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getPageSize() > 20, ErrorCode.PARAMS_ERROR, "每页最多 20 条");
+        User loginUser = userService.getLoginUser(httpRequest);
+        return ResultUtils.success(postCommentService.listMyReplyCommentVOByPage(request, loginUser));
     }
 
     @PostMapping("/review")

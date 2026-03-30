@@ -1,12 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { Button } from "antd";
-import { Heart, MessageSquareText, ThumbsUp } from "lucide-react";
+import { Heart, MessageSquareReply, MessageSquareText, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import MyFavourPostList from "./MyFavourPostList";
 import MyPostList from "./MyPostList";
+import MyReplyPostCommentList from "./MyReplyPostCommentList";
 import MyThumbPostList from "./MyThumbPostList";
 
-type CommunityTabKey = "published" | "favour" | "thumb";
+type CommunityTabKey = "published" | "reply" | "favour" | "thumb";
 
 const communityTabs: Array<{
   key: CommunityTabKey;
@@ -19,6 +20,12 @@ const communityTabs: Array<{
     label: "我发布的",
     icon: <MessageSquareText size={16} />,
     description: "查看自己发布过的经验帖、审核状态和后续编辑入口。",
+  },
+  {
+    key: "reply",
+    label: "我回复的",
+    icon: <MessageSquareReply size={16} />,
+    description: "把你在社区里回复过的内容集中起来，方便回看互动上下文和审核状态。",
   },
   {
     key: "favour",
@@ -50,7 +57,7 @@ export default function MyCommunityPostPanel() {
             <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">Community Footprint</div>
             <h3 className="mt-2 text-2xl font-black text-slate-900">社区足迹</h3>
             <p className="mt-2 text-sm leading-7 text-slate-500">
-              这里统一收纳你在社区里的发布、收藏和点赞行为，不用再分散去找。
+            这里统一收纳你在社区里的发布、回复、收藏和点赞行为，不用再分散去找。
             </p>
           </div>
           <Link href="/posts/create">
@@ -88,6 +95,7 @@ export default function MyCommunityPostPanel() {
       </div>
 
       {activeTab === "published" && <MyPostList />}
+      {activeTab === "reply" && <MyReplyPostCommentList />}
       {activeTab === "favour" && <MyFavourPostList />}
       {activeTab === "thumb" && <MyThumbPostList />}
     </div>

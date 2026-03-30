@@ -8,6 +8,7 @@ import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.manager.AiManager;
+import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.mapper.PostCommentMapper;
 import com.xduo.springbootinit.mapper.PostMapper;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentAddRequest;
@@ -17,8 +18,10 @@ import com.xduo.springbootinit.model.dto.postcomment.PostCommentReviewRequest;
 import com.xduo.springbootinit.model.entity.Post;
 import com.xduo.springbootinit.model.entity.PostComment;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.PostCommentActivityVO;
 import com.xduo.springbootinit.model.vo.PostCommentSubmitResultVO;
 import com.xduo.springbootinit.model.vo.PostCommentVO;
+import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostCommentService;
 import com.xduo.springbootinit.service.UserService;
@@ -284,6 +287,24 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
     }
 
     @Override
+    public Page<PostCommentActivityVO> listMyReplyCommentVOByPage(CommentActivityQueryRequest request, User loginUser) {
+        ThrowUtils.throwIf(request == null || loginUser == null || loginUser.getId() == null, ErrorCode.PARAMS_ERROR);
+        long current = request.getCurrent();
+        long pageSize = Math.min(request.getPageSize(), 20);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+
+        LambdaQueryWrapper<PostComment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PostComment::getUserId, loginUser.getId())
+                .isNotNull(PostComment::getParentId)
+                .orderByDesc(PostComment::getCreateTime);
+        Page<PostComment> commentPage = page(new Page<>(current, pageSize), wrapper);
+
+        Page<PostCommentActivityVO> resultPage = new Page<>(current, pageSize, commentPage.getTotal());
+        resultPage.setRecords(buildReplyActivityVOList(commentPage.getRecords()));
+        return resultPage;
+    }
+
+    @Override
     public boolean reviewComment(PostCommentReviewRequest request, User adminUser) {
         ThrowUtils.throwIf(request == null || request.getId() == null || request.getId() <= 0, ErrorCode.PARAMS_ERROR);
         Integer status = request.getStatus();
@@ -369,6 +390,79 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             }
         }
         return vo;
+    }
+
+    private List<PostCommentActivityVO> buildReplyActivityVOList(List<PostComment> commentList) {
+        if (commentList == null || commentList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, PostComment> commentMap = commentList.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(PostComment::getId, item -> item, (a, b) -> a));
+
+        Set<Long> userIds = commentList.stream()
+                .map(PostComment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Long> replyToCommentIds = commentList.stream()
+                .map(PostComment::getReplyToId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!replyToCommentIds.isEmpty()) {
+            listByIds(replyToCommentIds).forEach(replyComment -> {
+                if (replyComment != null) {
+                    commentMap.putIfAbsent(replyComment.getId(), replyComment);
+                    if (replyComment.getUserId() != null) {
+                        userIds.add(replyComment.getUserId());
+                    }
+                }
+            });
+        }
+
+        Map<Long, UserVO> userVOMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userService.listByIds(userIds).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(User::getId, userService::getUserVO, (a, b) -> a));
+
+        Set<Long> postIds = commentList.stream()
+                .map(PostComment::getPostId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> postTitleMap = postIds.isEmpty()
+                ? Collections.emptyMap()
+                : postMapper.selectBatchIds(postIds).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(
+                        Post::getId,
+                        post -> StringUtils.defaultIfBlank(post.getTitle(), "帖子已不可见"),
+                        (a, b) -> a
+                ));
+
+        return commentList.stream().map(comment -> {
+            PostCommentActivityVO vo = new PostCommentActivityVO();
+            vo.setId(comment.getId());
+            vo.setPostId(comment.getPostId());
+            vo.setPostTitle(postTitleMap.getOrDefault(comment.getPostId(), "帖子已不可见"));
+            vo.setParentId(comment.getParentId());
+            vo.setReplyToId(comment.getReplyToId());
+            vo.setContent(comment.getContent());
+            vo.setStatus(comment.getStatus());
+            vo.setReviewMessage(comment.getReviewMessage());
+            vo.setCreateTime(comment.getCreateTime());
+            vo.setActionTime(comment.getCreateTime());
+            vo.setDeleted(comment.getIsDelete() != null && comment.getIsDelete() == 1);
+            vo.setUser(userVOMap.get(comment.getUserId()));
+
+            if (comment.getReplyToId() != null) {
+                PostComment replyToComment = commentMap.get(comment.getReplyToId());
+                if (replyToComment != null) {
+                    vo.setReplyToUser(userVOMap.get(replyToComment.getUserId()));
+                }
+            }
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     private CommentAutoReviewResult autoReviewComment(String content) {
