@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { useSearchParams } from "next/navigation";
 import {
   batchDeleteQuestionsUsingPost,
   deleteQuestionUsingPost,
@@ -21,6 +22,7 @@ import {
   QUESTION_REVIEW_STATUS_TEXT_MAP,
   QUESTION_REVIEW_STATUS_VALUE_ENUM,
 } from "@/constants/question";
+import QuestionCommentModerationPanel from "./components/QuestionCommentModerationPanel";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
@@ -45,6 +47,8 @@ const parseTagList = (tags?: string) => {
  * @constructor
  */
 const QuestionAdminPage: React.FC = () => {
+  const searchParams = useSearchParams();
+  const activeView = searchParams?.get("view") === "comments" ? "comments" : "questions";
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
   const [updateBankModalVisible, setUpdateBankModalVisible] = useState<boolean>(false);
@@ -253,98 +257,141 @@ const QuestionAdminPage: React.FC = () => {
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
               Question Repository
            </div>
-           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">题目库管理</h1>
-           <p className="text-slate-500 font-medium text-lg">高效组织、编辑和批量维护平台的面试题目内容。</p>
+           <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+             {activeView === "comments" ? "题目评论审核" : "题目库管理"}
+           </h1>
+           <p className="text-slate-500 font-medium text-lg">
+             {activeView === "comments"
+               ? "把题目评论审核收进题目管理工作台，处理内容时不用再切换孤立页面。"
+               : "高效组织、编辑和批量维护平台的面试题目内容。"}
+           </p>
+          <div className="flex flex-wrap gap-3 pt-2">
+            <Link
+              href="/admin/question"
+              className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                activeView === "questions"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900"
+              }`}
+            >
+              题目列表
+            </Link>
+            <Link
+              href="/admin/question?view=comments"
+              className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                activeView === "comments"
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                  : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900"
+              }`}
+            >
+              评论审核
+            </Link>
+          </div>
         </div>
         <div className="relative z-10 flex flex-wrap gap-3">
-          <Link
-            href="/admin/question/ai"
-            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 h-14 px-8 rounded-2xl font-black text-lg transition-all border border-slate-200 shadow-sm"
-          >
-            <Wand2 className="h-6 w-6 text-primary" />
-            AI 生成
-          </Link>
-          <button
-            onClick={() => setCreateModalVisible(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 rounded-2xl font-black text-lg transition-all shadow-xl shadow-primary/25"
-          >
-            <Plus className="h-6 w-6" />
-            新建题目
-          </button>
+          {activeView === "questions" ? (
+            <>
+              <Link
+                href="/admin/question/ai"
+                className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 h-14 px-8 rounded-2xl font-black text-lg transition-all border border-slate-200 shadow-sm"
+              >
+                <Wand2 className="h-6 w-6 text-primary" />
+                AI 生成
+              </Link>
+              <button
+                onClick={() => setCreateModalVisible(true)}
+                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 rounded-2xl font-black text-lg transition-all shadow-xl shadow-primary/25"
+              >
+                <Plus className="h-6 w-6" />
+                新建题目
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/admin/question"
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground h-14 px-8 rounded-2xl font-black text-lg transition-all shadow-xl shadow-primary/25"
+            >
+              返回题目列表
+            </Link>
+          )}
         </div>
       </div>
 
-      <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden p-4 sm:p-6 pb-12 ant-table-premium">
-        <ProTable<API.Question>
-          headerTitle={null}
-          actionRef={actionRef}
-          rowKey="id"
-          rowSelection={{
-            selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
-          }}
-          tableAlertOptionRender={({ selectedRowKeys }) => (
-            <Space size={16}>
-              <Button
-                type="primary"
-                ghost
-                onClick={() => {
-                  setSelectedQuestionIdList(selectedRowKeys as number[]);
-                  setBatchAddQuestionsToBankModalVisible(true);
-                }}
-                className="rounded-xl font-bold h-10 border-primary text-primary"
-              >
-                批量加入题库
-              </Button>
-              <Button
-                danger
-                ghost
-                onClick={() => {
-                  setSelectedQuestionIdList(selectedRowKeys as number[]);
-                  setBatchRemoveQuestionsFromBankModalVisible(true);
-                }}
-                className="rounded-xl font-bold h-10"
-              >
-                从题库移除
-              </Button>
-              <Popconfirm
-                title="确认删除"
-                onConfirm={() => handleBatchDelete(selectedRowKeys as number[])}
-              >
-                <Button danger className="rounded-xl font-bold h-10">批量删除</Button>
-              </Popconfirm>
-            </Space>
-          )}
-          request={async (params, sort, filter) => {
-            try {
-              const sortField = Object.keys(sort)?.[0];
-              const sortOrder = sort?.[sortField] ?? undefined;
-              // @ts-ignore
-              const { data, code } = await listQuestionByPageUsingPost({
-                ...params,
-                sortField,
-                sortOrder,
-                ...filter,
-              } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestion_;
-              return {
-                success: code === 0,
-                data: data?.records || [],
-                total: Number(data?.total) || 0,
-              };
-            } catch (error: any) {
-              message.error(error?.message || "加载题目管理数据失败");
-              return {
-                success: false,
-                data: [],
-                total: 0,
-              };
-            }
-          }}
-          columns={columns}
-          scroll={{ x: true }}
-        />
-      </div>
+      {activeView === "questions" ? (
+        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden p-4 sm:p-6 pb-12 ant-table-premium">
+          <ProTable<API.Question>
+            headerTitle={null}
+            actionRef={actionRef}
+            rowKey="id"
+            rowSelection={{
+              selections: [Table.SELECTION_ALL, Table.SELECTION_INVERT],
+            }}
+            tableAlertOptionRender={({ selectedRowKeys }) => (
+              <Space size={16}>
+                <Button
+                  type="primary"
+                  ghost
+                  onClick={() => {
+                    setSelectedQuestionIdList(selectedRowKeys as number[]);
+                    setBatchAddQuestionsToBankModalVisible(true);
+                  }}
+                  className="rounded-xl font-bold h-10 border-primary text-primary"
+                >
+                  批量加入题库
+                </Button>
+                <Button
+                  danger
+                  ghost
+                  onClick={() => {
+                    setSelectedQuestionIdList(selectedRowKeys as number[]);
+                    setBatchRemoveQuestionsFromBankModalVisible(true);
+                  }}
+                  className="rounded-xl font-bold h-10"
+                >
+                  从题库移除
+                </Button>
+                <Popconfirm
+                  title="确认删除"
+                  onConfirm={() => handleBatchDelete(selectedRowKeys as number[])}
+                >
+                  <Button danger className="rounded-xl font-bold h-10">批量删除</Button>
+                </Popconfirm>
+              </Space>
+            )}
+            request={async (params, sort, filter) => {
+              try {
+                const sortField = Object.keys(sort)?.[0];
+                const sortOrder = sort?.[sortField] ?? undefined;
+                // @ts-ignore
+                const { data, code } = await listQuestionByPageUsingPost({
+                  ...params,
+                  sortField,
+                  sortOrder,
+                  ...filter,
+                } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestion_;
+                return {
+                  success: code === 0,
+                  data: data?.records || [],
+                  total: Number(data?.total) || 0,
+                };
+              } catch (error: any) {
+                message.error(error?.message || "加载题目管理数据失败");
+                return {
+                  success: false,
+                  data: [],
+                  total: 0,
+                };
+              }
+            }}
+            columns={columns}
+            scroll={{ x: true }}
+          />
+        </div>
+      ) : (
+        <QuestionCommentModerationPanel />
+      )}
 
-      {createModalVisible && (
+      {activeView === "questions" && createModalVisible && (
         <CreateModal
           visible={createModalVisible}
           columns={columns}
@@ -355,7 +402,7 @@ const QuestionAdminPage: React.FC = () => {
           onCancel={() => setCreateModalVisible(false)}
         />
       )}
-      {updateModalVisible && currentRow && (
+      {activeView === "questions" && updateModalVisible && currentRow && (
         <UpdateModal
           visible={updateModalVisible}
           columns={columns}
@@ -368,14 +415,14 @@ const QuestionAdminPage: React.FC = () => {
           onCancel={() => setUpdateModalVisible(false)}
         />
       )}
-      {updateBankModalVisible && currentRow?.id && (
+      {activeView === "questions" && updateBankModalVisible && currentRow?.id && (
         <UpdateBankModal
           visible={updateBankModalVisible}
           questionId={currentRow.id}
           onCancel={() => setUpdateBankModalVisible(false)}
         />
       )}
-      {reviewModalVisible && currentRow && (
+      {activeView === "questions" && reviewModalVisible && currentRow && (
         <ReviewModal
           open={reviewModalVisible}
           question={currentRow}
@@ -390,7 +437,7 @@ const QuestionAdminPage: React.FC = () => {
           }}
         />
       )}
-      {batchAddQuestionsToBankModalVisible && (
+      {activeView === "questions" && batchAddQuestionsToBankModalVisible && (
         <BatchAddQuestionsToBankModal
           visible={batchAddQuestionsToBankModalVisible}
           questionIdList={selectedQuestionIdList}
@@ -400,7 +447,7 @@ const QuestionAdminPage: React.FC = () => {
           onCancel={() => setBatchAddQuestionsToBankModalVisible(false)}
         />
       )}
-      {batchRemoveQuestionsFromBankModalVisible && (
+      {activeView === "questions" && batchRemoveQuestionsFromBankModalVisible && (
         <BatchRemoveQuestionsFromBankModal
           visible={batchRemoveQuestionsFromBankModalVisible}
           questionIdList={selectedQuestionIdList}

@@ -87,11 +87,13 @@ export const menus = [
         path: "/admin/comment",
         name: "评论审核",
         access: ACCESS_ENUM.ADMIN,
+        hideInMenu: true,
       },
       {
         path: "/admin/post/comment",
         name: "社区回复审核",
         access: ACCESS_ENUM.ADMIN,
+        hideInMenu: true,
       },
       {
         path: "/admin/question/ai",

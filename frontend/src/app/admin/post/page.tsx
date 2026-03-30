@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { Button, Input, message, Modal, Popconfirm, Radio, Switch, Tag } from "antd";
 import Link from "next/link";
@@ -18,8 +19,11 @@ import {
   reviewPostUsingPost,
 } from "@/api/postController";
 import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
+import PostCommentModerationPanel from "./components/PostCommentModerationPanel";
 
 const PostAdminPage: React.FC = () => {
+  const searchParams = useSearchParams();
+  const activeView = searchParams?.get("view") === "replies" ? "replies" : "posts";
   const actionRef = useRef<ActionType>();
   const [editingPost, setEditingPost] = useState<API.PostVO | undefined>();
   const [createVisible, setCreateVisible] = useState(false);
@@ -328,87 +332,131 @@ const PostAdminPage: React.FC = () => {
       <div className="rounded-[2.5rem] border border-white bg-white/70 p-8 shadow-2xl shadow-slate-200/40 backdrop-blur-xl">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            Post Community
-          </div>
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">社区管理</h1>
-          <p className="text-lg font-medium text-slate-500">统一维护经验帖内容、举报治理与精选运营能力。</p>
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
+              <span className="h-2 w-2 rounded-full bg-primary" />
+              Post Community
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+              {activeView === "replies" ? "社区回复审核" : "社区管理"}
+            </h1>
+            <p className="text-lg font-medium text-slate-500">
+              {activeView === "replies"
+                ? "把帖子评论与二级回复审核收进社区管理工作台，治理和运营放在同一页处理。"
+                : "统一维护经验帖内容、举报治理与精选运营能力。"}
+            </p>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <Link
+                href="/admin/post"
+                className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                  activeView === "posts"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900"
+                }`}
+              >
+                帖子管理
+              </Link>
+              <Link
+                href="/admin/post?view=replies"
+                className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                  activeView === "replies"
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    : "bg-white text-slate-600 ring-1 ring-slate-200 hover:text-slate-900"
+                }`}
+              >
+                社区回复审核
+              </Link>
+            </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/posts/create">
-              <Button className="h-12 rounded-2xl px-6 font-black">
-                前台发帖页
-              </Button>
-            </Link>
-            <Button
-              type="primary"
-              icon={<FilePlus2 size={16} />}
-              className="h-12 rounded-2xl px-6 font-black"
-              onClick={() => setCreateVisible(true)}
-            >
-              新建帖子
-            </Button>
+            {activeView === "posts" ? (
+              <>
+                <Link href="/posts/create">
+                  <Button className="h-12 rounded-2xl px-6 font-black">
+                    前台发帖页
+                  </Button>
+                </Link>
+                <Button
+                  type="primary"
+                  icon={<FilePlus2 size={16} />}
+                  className="h-12 rounded-2xl px-6 font-black"
+                  onClick={() => setCreateVisible(true)}
+                >
+                  新建帖子
+                </Button>
+              </>
+            ) : (
+              <Link href="/admin/post">
+                <Button type="primary" className="h-12 rounded-2xl px-6 font-black">
+                  返回帖子管理
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 lg:grid-cols-3">
-          {governanceHighlights.map((item) => (
-            <div
-              key={item.title}
-              className={`rounded-[1.6rem] border px-5 py-4 shadow-sm ${item.tone}`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="text-base font-black">{item.title}</div>
-                <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  {item.badge}
+        {activeView === "posts" ? (
+          <div className="mt-6 grid gap-3 lg:grid-cols-3">
+            {governanceHighlights.map((item) => (
+              <div
+                key={item.title}
+                className={`rounded-[1.6rem] border px-5 py-4 shadow-sm ${item.tone}`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="text-base font-black">{item.title}</div>
+                  <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    {item.badge}
+                  </div>
                 </div>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
-      <div className="rounded-[2.5rem] border border-slate-100 bg-white p-4 shadow-2xl shadow-slate-200/40 sm:p-6">
-        <ProTable<API.PostVO>
-          headerTitle={null}
-          actionRef={actionRef}
-          rowKey="id"
-          search={{ labelWidth: 80, defaultCollapsed: false }}
-          scroll={{ x: 1560 }}
-          columns={columns}
-          request={async (params, sort) => {
-            try {
-              const sortField = Object.keys(sort || {})?.[0];
-              const sortOrder = sortField ? sort?.[sortField] : undefined;
-              const res = await listPostVoByPageUsingPost({
-                current: params.current,
-                pageSize: params.pageSize,
-                title: params.title,
-                userId: params.userId,
-                reviewStatus: params.reviewStatus,
-                sortField,
-                sortOrder,
-              } as API.PostQueryRequest);
-              return {
-                data: res.data?.records || [],
-                success: true,
-                total: Number(res.data?.total || 0),
-              };
-            } catch (error: any) {
-              message.error(error?.message || "加载社区管理数据失败");
-              return {
-                data: [],
-                success: false,
-                total: 0,
-              };
-            }
-          }}
-          pagination={{ pageSize: 10 }}
-        />
-      </div>
+      {activeView === "posts" ? (
+        <div className="rounded-[2.5rem] border border-slate-100 bg-white p-4 shadow-2xl shadow-slate-200/40 sm:p-6">
+          <ProTable<API.PostVO>
+            headerTitle={null}
+            actionRef={actionRef}
+            rowKey="id"
+            search={{ labelWidth: 80, defaultCollapsed: false }}
+            scroll={{ x: 1560 }}
+            columns={columns}
+            request={async (params, sort) => {
+              try {
+                const sortField = Object.keys(sort || {})?.[0];
+                const sortOrder = sortField ? sort?.[sortField] : undefined;
+                const res = await listPostVoByPageUsingPost({
+                  current: params.current,
+                  pageSize: params.pageSize,
+                  title: params.title,
+                  userId: params.userId,
+                  reviewStatus: params.reviewStatus,
+                  sortField,
+                  sortOrder,
+                } as API.PostQueryRequest);
+                return {
+                  data: res.data?.records || [],
+                  success: true,
+                  total: Number(res.data?.total || 0),
+                };
+              } catch (error: any) {
+                message.error(error?.message || "加载社区管理数据失败");
+                return {
+                  data: [],
+                  success: false,
+                  total: 0,
+                };
+              }
+            }}
+            pagination={{ pageSize: 10 }}
+          />
+        </div>
+      ) : (
+        <PostCommentModerationPanel />
+      )}
 
       <Modal
         title={null}
