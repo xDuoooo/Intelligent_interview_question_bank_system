@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, Card, message, Popconfirm, Space, Tag, Typography } from "antd";
+import { Button, Card, message, Popconfirm, Tag, Typography } from "antd";
 import { AlertTriangle, Ban, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import {
@@ -143,17 +143,15 @@ export default function AdminSecurityPage() {
     {
       title: "告警原因",
       dataIndex: "reason",
-      ellipsis: true,
       width: 240,
       hideInSearch: true,
-      render: (text) => <span className="font-medium text-slate-700">{text || "-"}</span>,
+      render: (text) => <span className="block max-w-[260px] break-words font-medium leading-6 text-slate-700">{text || "-"}</span>,
     },
     {
       title: "详情",
       dataIndex: "detail",
-      ellipsis: true,
       hideInSearch: true,
-      render: (text) => <span className="text-slate-500">{text || "-"}</span>,
+      render: (text) => <span className="block max-w-[260px] break-words leading-6 text-slate-500">{text || "-"}</span>,
     },
     {
       title: "IP",
@@ -195,7 +193,7 @@ export default function AdminSecurityPage() {
           return <Text type="secondary">已处理</Text>;
         }
         return (
-          <Space>
+          <div className="flex flex-wrap gap-2">
             <Button size="small" onClick={() => handleIgnore(record.id)}>
               忽略
             </Button>
@@ -211,7 +209,7 @@ export default function AdminSecurityPage() {
                 封禁用户
               </Button>
             </Popconfirm>
-          </Space>
+          </div>
         );
       },
     },
@@ -261,29 +259,39 @@ export default function AdminSecurityPage() {
           }}
           columns={columns}
           request={async (params, sort) => {
-            const sortField = Object.keys(sort || {})[0];
-            const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
-            const res = await listAlertByPageUsingPost({
-              current: params.current,
-              pageSize: params.pageSize,
-              searchText: params.searchText,
-              userName: params.userName,
-              alertType: params.alertType,
-              riskLevel: params.riskLevel,
-              status: params.status,
-              sortField,
-              sortOrder,
-            });
-            return {
-              data: res.data?.records || [],
-              total: Number(res.data?.total || 0),
-              success: true,
-            };
+            try {
+              const sortField = Object.keys(sort || {})[0];
+              const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
+              const res = await listAlertByPageUsingPost({
+                current: params.current,
+                pageSize: params.pageSize,
+                searchText: params.searchText,
+                userName: params.userName,
+                alertType: params.alertType,
+                riskLevel: params.riskLevel,
+                status: params.status,
+                sortField,
+                sortOrder,
+              });
+              return {
+                data: res.data?.records || [],
+                total: Number(res.data?.total || 0),
+                success: true,
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载风控面板数据失败");
+              return {
+                data: [],
+                total: 0,
+                success: false,
+              };
+            }
           }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
           }}
+          scroll={{ x: 1500 }}
           options={false}
         />
       </div>

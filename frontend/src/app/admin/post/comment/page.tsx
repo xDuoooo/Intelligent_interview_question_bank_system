@@ -141,21 +141,31 @@ export default function AdminPostCommentPage() {
           search={{ labelWidth: 80 }}
           columns={columns}
           request={async (params) => {
-            const res = await listAdminPostCommentsByPage({
-              current: params.current,
-              pageSize: params.pageSize,
-              postId: params.postId,
-              userId: params.userId,
-              content: params.content,
-              status: params.status,
-            });
-            return {
-              data: res.records || [],
-              success: true,
-              total: Number(res.total || 0),
-            };
+            try {
+              const res = await listAdminPostCommentsByPage({
+                current: params.current,
+                pageSize: params.pageSize,
+                postId: params.postId,
+                userId: params.userId,
+                content: params.content,
+                status: params.status,
+              });
+              return {
+                data: res.records || [],
+                success: true,
+                total: Number(res.total || 0),
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载社区回复审核数据失败");
+              return {
+                data: [],
+                success: false,
+                total: 0,
+              };
+            }
           }}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 1280 }}
         />
       </div>
 

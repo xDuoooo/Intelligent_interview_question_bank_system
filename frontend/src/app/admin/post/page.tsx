@@ -144,7 +144,7 @@ const PostAdminPage: React.FC = () => {
       render: (_, record) => (
         <Link
           href={`/post/${record.id}`}
-          className="block max-w-[320px] text-sm font-black leading-6 text-slate-800 transition-colors hover:text-primary"
+          className="block max-w-[380px] text-sm font-black leading-6 text-slate-800 transition-colors hover:text-primary"
         >
           <span className="line-clamp-2">{record.title}</span>
         </Link>
@@ -253,9 +253,13 @@ const PostAdminPage: React.FC = () => {
       title: "审核意见",
       dataIndex: "reviewMessage",
       hideInSearch: true,
-      ellipsis: true,
       width: 220,
-      render: (text) => text ? <div className="max-w-[220px] whitespace-normal leading-6 text-slate-600">{text}</div> : <span className="text-slate-300">-</span>,
+      render: (text) =>
+        text ? (
+          <div className="max-w-[260px] whitespace-normal break-words leading-6 line-clamp-3 text-slate-600">{text}</div>
+        ) : (
+          <span className="text-slate-300">-</span>
+        ),
     },
     {
       title: "创建时间",
@@ -268,9 +272,9 @@ const PostAdminPage: React.FC = () => {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
-      width: 320,
+      width: 380,
       render: (_, record) => (
-        <div className="flex max-w-[320px] flex-wrap gap-2">
+        <div className="flex max-w-[380px] flex-wrap gap-2.5">
           <button
             onClick={() => setEditingPost(record)}
             className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-100"
@@ -322,7 +326,7 @@ const PostAdminPage: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="rounded-[2.5rem] border border-white bg-white/70 p-8 shadow-2xl shadow-slate-200/40 backdrop-blur-xl">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-primary">
             <span className="h-2 w-2 rounded-full bg-primary" />
@@ -354,7 +358,7 @@ const PostAdminPage: React.FC = () => {
               key={item.title}
               className={`rounded-[1.6rem] border px-5 py-4 shadow-sm ${item.tone}`}
             >
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="text-base font-black">{item.title}</div>
                 <div className="inline-flex items-center gap-1 rounded-full bg-white/80 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em]">
                   <ShieldCheck className="h-3.5 w-3.5" />
@@ -373,25 +377,34 @@ const PostAdminPage: React.FC = () => {
           actionRef={actionRef}
           rowKey="id"
           search={{ labelWidth: 80, defaultCollapsed: false }}
-          scroll={{ x: 1380 }}
+          scroll={{ x: 1560 }}
           columns={columns}
           request={async (params, sort) => {
-            const sortField = Object.keys(sort || {})?.[0];
-            const sortOrder = sortField ? sort?.[sortField] : undefined;
-            const res = await listPostVoByPageUsingPost({
-              current: params.current,
-              pageSize: params.pageSize,
-              title: params.title,
-              userId: params.userId,
-              reviewStatus: params.reviewStatus,
-              sortField,
-              sortOrder,
-            } as API.PostQueryRequest);
-            return {
-              data: res.data?.records || [],
-              success: true,
-              total: Number(res.data?.total || 0),
-            };
+            try {
+              const sortField = Object.keys(sort || {})?.[0];
+              const sortOrder = sortField ? sort?.[sortField] : undefined;
+              const res = await listPostVoByPageUsingPost({
+                current: params.current,
+                pageSize: params.pageSize,
+                title: params.title,
+                userId: params.userId,
+                reviewStatus: params.reviewStatus,
+                sortField,
+                sortOrder,
+              } as API.PostQueryRequest);
+              return {
+                data: res.data?.records || [],
+                success: true,
+                total: Number(res.data?.total || 0),
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载社区管理数据失败");
+              return {
+                data: [],
+                success: false,
+                total: 0,
+              };
+            }
           }}
           pagination={{ pageSize: 10 }}
         />
@@ -539,7 +552,7 @@ const PostAdminPage: React.FC = () => {
           <div>
             <div className="text-xs font-black uppercase tracking-[0.2em] text-amber-600">Post Reports</div>
             <h3 className="mt-2 text-2xl font-black text-slate-900">帖子举报处理</h3>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 break-words text-sm text-slate-500">
               当前帖子：{reportingPost?.title || "未命名帖子"}。你可以查看举报原因，并逐条采纳或驳回。
             </p>
           </div>

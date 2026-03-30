@@ -315,20 +315,29 @@ const QuestionAdminPage: React.FC = () => {
             </Space>
           )}
           request={async (params, sort, filter) => {
-            const sortField = Object.keys(sort)?.[0];
-            const sortOrder = sort?.[sortField] ?? undefined;
-            // @ts-ignore
-            const { data, code } = await listQuestionByPageUsingPost({
-              ...params,
-              sortField,
-              sortOrder,
-              ...filter,
-            } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestion_;
-            return {
-              success: code === 0,
-              data: data?.records || [],
-              total: Number(data?.total) || 0,
-            };
+            try {
+              const sortField = Object.keys(sort)?.[0];
+              const sortOrder = sort?.[sortField] ?? undefined;
+              // @ts-ignore
+              const { data, code } = await listQuestionByPageUsingPost({
+                ...params,
+                sortField,
+                sortOrder,
+                ...filter,
+              } as API.QuestionQueryRequest) as unknown as API.BaseResponsePageQuestion_;
+              return {
+                success: code === 0,
+                data: data?.records || [],
+                total: Number(data?.total) || 0,
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载题目管理数据失败");
+              return {
+                success: false,
+                data: [],
+                total: 0,
+              };
+            }
           }}
           columns={columns}
           scroll={{ x: true }}

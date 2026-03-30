@@ -137,21 +137,31 @@ export default function AdminCommentPage() {
           search={{ labelWidth: 80 }}
           columns={columns}
           request={async (params) => {
-            const res = await listAdminCommentsByPage({
-              current: params.current,
-              pageSize: params.pageSize,
-              questionId: params.questionId,
-              userId: params.userId,
-              content: params.content,
-              status: params.status,
-            });
-            return {
-              data: res.records || [],
-              success: true,
-              total: Number(res.total || 0),
-            };
+            try {
+              const res = await listAdminCommentsByPage({
+                current: params.current,
+                pageSize: params.pageSize,
+                questionId: params.questionId,
+                userId: params.userId,
+                content: params.content,
+                status: params.status,
+              });
+              return {
+                data: res.records || [],
+                success: true,
+                total: Number(res.total || 0),
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载评论审核数据失败");
+              return {
+                data: [],
+                success: false,
+                total: 0,
+              };
+            }
           }}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 1280 }}
         />
       </div>
 
