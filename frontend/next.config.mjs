@@ -1,3 +1,10 @@
+const rawApiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  process.env.API_BASE_URL ||
+  "http://localhost:8101";
+
+const apiBaseUrl = rawApiBaseUrl.replace(/\/$/, "");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     output: "standalone",
@@ -24,6 +31,14 @@ const nextConfig = {
                 hostname: 'lh3.googleusercontent.com',
             }
         ],
+    },
+    async rewrites() {
+        return [
+            {
+                source: "/api/:path*",
+                destination: `${apiBaseUrl}/api/:path*`,
+            },
+        ];
     },
 };
 
