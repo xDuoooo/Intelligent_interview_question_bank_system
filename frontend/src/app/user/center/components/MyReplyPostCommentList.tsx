@@ -6,6 +6,16 @@ import {
   listMyRepliedPostCommentsByPage,
   type PostCommentActivityVO,
 } from "@/api/postCommentController";
+import RecordFilterToolbar from "./RecordFilterToolbar";
+
+type StatusFilter = "all" | 0 | 1 | 2;
+
+const STATUS_OPTIONS = [
+  { label: "全部状态", value: "all" },
+  { label: "已通过", value: 0 },
+  { label: "待审核", value: 1 },
+  { label: "已驳回", value: 2 },
+];
 
 function buildPostCommentLink(item: PostCommentActivityVO) {
   return `/post/${item.postId}#post-comment-${item.id}`;
@@ -17,13 +27,21 @@ export default function MyReplyPostCommentList() {
   const [pageSize] = useState(8);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const fetchCommentList = useCallback(async (page = current) => {
+  const fetchCommentList = useCallback(async (
+    page = current,
+    nextKeyword = keyword,
+    nextStatus = statusFilter,
+  ) => {
     setLoading(true);
     try {
       const res = await listMyRepliedPostCommentsByPage({
         current: page,
         pageSize,
+        searchText: nextKeyword.trim() || undefined,
+        status: nextStatus === "all" ? undefined : Number(nextStatus),
       });
       setCommentList(res.records || []);
       setTotal(Number(res.total || 0));
@@ -33,13 +51,35 @@ export default function MyReplyPostCommentList() {
     } finally {
       setLoading(false);
     }
-  }, [current, pageSize]);
+  }, [current, keyword, pageSize, statusFilter]);
 
   useEffect(() => {
-    void fetchCommentList(1);
+    void fetchCommentList(1, keyword, statusFilter);
   }, [fetchCommentList]);
 
   return (
+    <div className="space-y-5">
+      <RecordFilterToolbar
+        keyword={keyword}
+        keywordPlaceholder="按回复内容搜索社区互动"
+        onKeywordChange={setKeyword}
+        onSearch={() => {
+          void fetchCommentList(1, keyword, statusFilter);
+        }}
+        onReset={() => {
+          setKeyword("");
+          setStatusFilter("all");
+          void fetchCommentList(1, "", "all");
+        }}
+        loading={loading}
+        statusOptions={STATUS_OPTIONS}
+        statusValue={statusFilter}
+        onStatusChange={(value) => {
+          const nextValue = value as StatusFilter;
+          setStatusFilter(nextValue);
+          void fetchCommentList(1, keyword, nextValue);
+        }}
+      />
     <Spin spinning={loading}>
       {commentList.length ? (
         <div className="space-y-5">
@@ -134,5 +174,6 @@ export default function MyReplyPostCommentList() {
         </div>
       )}
     </Spin>
+    </div>
   );
 }

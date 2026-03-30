@@ -53,6 +53,23 @@ create table if not exists user_follow
     index idx_follow_createTime (followUserId, createTime)
 ) comment '用户关注关系' collate = utf8mb4_unicode_ci;
 
+-- ES 同步补偿任务
+create table if not exists es_sync_task
+(
+    id            bigint auto_increment comment 'id' primary key,
+    syncType      varchar(32)                        not null comment '同步类型：question / post',
+    entityId      bigint                             not null comment '业务主键',
+    operation     varchar(16)                        not null comment '操作类型：upsert / delete',
+    payload       longtext                           null comment '待同步到 ES 的 DTO 快照',
+    retryCount    int      default 0                 not null comment '已重试次数',
+    lastError     varchar(1000)                      null comment '最近一次错误信息',
+    nextRetryTime datetime default CURRENT_TIMESTAMP not null comment '下次允许重试时间',
+    createTime    datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    updateTime    datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    unique key uk_syncType_entityId (syncType, entityId),
+    index idx_nextRetryTime (nextRetryTime)
+) comment 'ES 同步补偿任务' collate = utf8mb4_unicode_ci;
+
 -- 题库表
 create table if not exists question_bank
 (

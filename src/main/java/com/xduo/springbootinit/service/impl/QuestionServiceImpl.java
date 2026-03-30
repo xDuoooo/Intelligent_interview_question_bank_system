@@ -28,6 +28,7 @@ import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.ResumeQuestionRecommendVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
+import com.xduo.springbootinit.service.EsSyncTaskService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
@@ -98,6 +99,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private QuestionEsDao questionEsDao;
+
+    @Resource
+    private EsSyncTaskService esSyncTaskService;
 
     /**
      * 校验数据
@@ -1451,9 +1455,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return;
         }
         try {
-            questionEsDao.save(QuestionEsDTO.objToDto(question));
+            QuestionEsDTO questionEsDTO = QuestionEsDTO.objToDto(question);
+            questionEsDao.save(questionEsDTO);
+            esSyncTaskService.clearTask("question", question.getId());
         } catch (Exception e) {
             log.error("sync question to es error, questionId={}", question.getId(), e);
+            esSyncTaskService.recordUpsertFailure("question", question.getId(),
+                    JSONUtil.toJsonStr(QuestionEsDTO.objToDto(question)), e);
         }
     }
 
@@ -1464,8 +1472,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         try {
             questionEsDao.deleteById(questionId);
+            esSyncTaskService.clearTask("question", questionId);
         } catch (Exception e) {
             log.error("delete question from es error, questionId={}", questionId, e);
+            esSyncTaskService.recordDeleteFailure("question", questionId, e);
         }
     }
 }

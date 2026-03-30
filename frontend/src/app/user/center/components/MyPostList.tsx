@@ -11,6 +11,50 @@ import {
 } from "@/api/postController";
 import PostEditorForm from "@/components/PostEditorForm";
 import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
+import RecordFilterToolbar from "./RecordFilterToolbar";
+
+type ReviewStatusFilter = "all" | 0 | 1 | 2;
+type SortKey =
+  | "latest_create"
+  | "latest_update"
+  | "most_liked"
+  | "most_favoured"
+  | "title_asc"
+  | "title_desc";
+
+const REVIEW_STATUS_OPTIONS = [
+  { label: "全部状态", value: "all" },
+  { label: "待审核", value: 0 },
+  { label: "已通过", value: 1 },
+  { label: "已驳回", value: 2 },
+];
+
+const SORT_OPTIONS = [
+  { label: "最新提交", value: "latest_create" },
+  { label: "最近更新", value: "latest_update" },
+  { label: "点赞最多", value: "most_liked" },
+  { label: "收藏最多", value: "most_favoured" },
+  { label: "标题 A-Z", value: "title_asc" },
+  { label: "标题 Z-A", value: "title_desc" },
+];
+
+function resolveSort(sortKey: SortKey) {
+  switch (sortKey) {
+    case "latest_update":
+      return { sortField: "updateTime", sortOrder: "descend" as const };
+    case "most_liked":
+      return { sortField: "thumbNum", sortOrder: "descend" as const };
+    case "most_favoured":
+      return { sortField: "favourNum", sortOrder: "descend" as const };
+    case "title_asc":
+      return { sortField: "title", sortOrder: "ascend" as const };
+    case "title_desc":
+      return { sortField: "title", sortOrder: "descend" as const };
+    case "latest_create":
+    default:
+      return { sortField: "createTime", sortOrder: "descend" as const };
+  }
+}
 
 export default function MyPostList() {
   const [postList, setPostList] = useState<API.PostVO[]>([]);
@@ -20,15 +64,26 @@ export default function MyPostList() {
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState<API.PostVO | undefined>();
   const [saving, setSaving] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [reviewStatus, setReviewStatus] = useState<ReviewStatusFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("latest_create");
 
-  const fetchPostList = useCallback(async (page = current) => {
+  const fetchPostList = useCallback(async (
+    page = current,
+    nextKeyword = keyword,
+    nextReviewStatus = reviewStatus,
+    nextSortKey = sortKey,
+  ) => {
     setLoading(true);
     try {
+      const sortConfig = resolveSort(nextSortKey);
       const res = await listMyPostVoByPageUsingPost({
         current: page,
         pageSize,
-        sortField: "createTime",
-        sortOrder: "descend",
+        searchText: nextKeyword.trim() || undefined,
+        reviewStatus: nextReviewStatus === "all" ? undefined : Number(nextReviewStatus),
+        sortField: sortConfig.sortField,
+        sortOrder: sortConfig.sortOrder,
       });
       setPostList(res.data?.records || []);
       setTotal(Number(res.data?.total || 0));
@@ -38,10 +93,10 @@ export default function MyPostList() {
     } finally {
       setLoading(false);
     }
-  }, [current, pageSize]);
+  }, [current, keyword, pageSize, reviewStatus, sortKey]);
 
   useEffect(() => {
-    void fetchPostList(1);
+    void fetchPostList(1, keyword, reviewStatus, sortKey);
   }, [fetchPostList]);
 
   const handleDelete = async (id?: string | number) => {
@@ -78,6 +133,36 @@ export default function MyPostList() {
           </Link>
         </div>
       </div>
+
+      <RecordFilterToolbar
+        keyword={keyword}
+        keywordPlaceholder="按标题或内容搜索我的帖子"
+        onKeywordChange={setKeyword}
+        onSearch={() => {
+          void fetchPostList(1, keyword, reviewStatus, sortKey);
+        }}
+        onReset={() => {
+          setKeyword("");
+          setReviewStatus("all");
+          setSortKey("latest_create");
+          void fetchPostList(1, "", "all", "latest_create");
+        }}
+        loading={loading}
+        statusOptions={REVIEW_STATUS_OPTIONS}
+        statusValue={reviewStatus}
+        onStatusChange={(value) => {
+          const nextValue = value as ReviewStatusFilter;
+          setReviewStatus(nextValue);
+          void fetchPostList(1, keyword, nextValue, sortKey);
+        }}
+        sortOptions={SORT_OPTIONS}
+        sortValue={sortKey}
+        onSortChange={(value) => {
+          const nextValue = value as SortKey;
+          setSortKey(nextValue);
+          void fetchPostList(1, keyword, reviewStatus, nextValue);
+        }}
+      />
 
       <Spin spinning={loading}>
         {postList.length ? (

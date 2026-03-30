@@ -19,6 +19,7 @@ import com.xduo.springbootinit.model.entity.*;
 import com.xduo.springbootinit.model.vo.PostVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.PostService;
+import com.xduo.springbootinit.service.EsSyncTaskService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import java.util.ArrayList;
@@ -66,6 +67,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
 
     @Resource
     private PostEsDao postEsDao;
+
+    @Resource
+    private EsSyncTaskService esSyncTaskService;
 
     @Override
     public void validPost(Post post, boolean add) {
@@ -278,9 +282,13 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             return;
         }
         try {
-            postEsDao.save(PostEsDTO.objToDto(post));
+            PostEsDTO postEsDTO = PostEsDTO.objToDto(post);
+            postEsDao.save(postEsDTO);
+            esSyncTaskService.clearTask("post", post.getId());
         } catch (Exception e) {
             log.error("sync post to es error, postId={}", post.getId(), e);
+            esSyncTaskService.recordUpsertFailure("post", post.getId(),
+                    cn.hutool.json.JSONUtil.toJsonStr(PostEsDTO.objToDto(post)), e);
         }
     }
 
@@ -291,8 +299,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }
         try {
             postEsDao.deleteById(postId);
+            esSyncTaskService.clearTask("post", postId);
         } catch (Exception e) {
             log.error("delete post from es error, postId={}", postId, e);
+            esSyncTaskService.recordDeleteFailure("post", postId, e);
         }
     }
 

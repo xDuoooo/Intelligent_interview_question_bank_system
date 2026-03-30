@@ -3,6 +3,33 @@ import { CalendarClock, Heart, ThumbsUp } from "lucide-react";
 import { Empty, Pagination, Spin, Tag, message } from "antd";
 import Link from "next/link";
 import { listMyFavourPostByPageUsingPost } from "@/api/postFavourController";
+import RecordFilterToolbar from "./RecordFilterToolbar";
+
+type SortKey = "latest_update" | "most_liked" | "most_favoured" | "title_asc" | "title_desc";
+
+const SORT_OPTIONS = [
+  { label: "最近更新", value: "latest_update" },
+  { label: "点赞最多", value: "most_liked" },
+  { label: "收藏最多", value: "most_favoured" },
+  { label: "标题 A-Z", value: "title_asc" },
+  { label: "标题 Z-A", value: "title_desc" },
+];
+
+function resolveSort(sortKey: SortKey) {
+  switch (sortKey) {
+    case "most_liked":
+      return { sortField: "thumbNum", sortOrder: "descend" as const };
+    case "most_favoured":
+      return { sortField: "favourNum", sortOrder: "descend" as const };
+    case "title_asc":
+      return { sortField: "title", sortOrder: "ascend" as const };
+    case "title_desc":
+      return { sortField: "title", sortOrder: "descend" as const };
+    case "latest_update":
+    default:
+      return { sortField: "updateTime", sortOrder: "descend" as const };
+  }
+}
 
 export default function MyFavourPostList() {
   const [postList, setPostList] = useState<API.PostVO[]>([]);
@@ -10,15 +37,19 @@ export default function MyFavourPostList() {
   const [pageSize] = useState(6);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [keyword, setKeyword] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("latest_update");
 
-  const fetchPostList = useCallback(async (page = current) => {
+  const fetchPostList = useCallback(async (page = current, nextKeyword = keyword, nextSortKey = sortKey) => {
     setLoading(true);
     try {
+      const sortConfig = resolveSort(nextSortKey);
       const res = await listMyFavourPostByPageUsingPost({
         current: page,
         pageSize,
-        sortField: "updateTime",
-        sortOrder: "descend",
+        searchText: nextKeyword.trim() || undefined,
+        sortField: sortConfig.sortField,
+        sortOrder: sortConfig.sortOrder,
       });
       setPostList(res.data?.records || []);
       setTotal(Number(res.data?.total || 0));
@@ -28,13 +59,35 @@ export default function MyFavourPostList() {
     } finally {
       setLoading(false);
     }
-  }, [current, pageSize]);
+  }, [current, keyword, pageSize, sortKey]);
 
   useEffect(() => {
-    void fetchPostList(1);
+    void fetchPostList(1, keyword, sortKey);
   }, [fetchPostList]);
 
   return (
+    <div className="space-y-5">
+      <RecordFilterToolbar
+        keyword={keyword}
+        keywordPlaceholder="按标题或内容搜索我收藏的帖子"
+        onKeywordChange={setKeyword}
+        onSearch={() => {
+          void fetchPostList(1, keyword, sortKey);
+        }}
+        onReset={() => {
+          setKeyword("");
+          setSortKey("latest_update");
+          void fetchPostList(1, "", "latest_update");
+        }}
+        loading={loading}
+        sortOptions={SORT_OPTIONS}
+        sortValue={sortKey}
+        onSortChange={(value) => {
+          const nextValue = value as SortKey;
+          setSortKey(nextValue);
+          void fetchPostList(1, keyword, nextValue);
+        }}
+      />
     <Spin spinning={loading}>
       {postList.length ? (
         <div className="space-y-5">
@@ -112,5 +165,6 @@ export default function MyFavourPostList() {
         </div>
       )}
     </Spin>
+    </div>
   );
 }
