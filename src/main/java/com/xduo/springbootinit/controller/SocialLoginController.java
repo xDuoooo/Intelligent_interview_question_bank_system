@@ -32,7 +32,7 @@ public class SocialLoginController {
             @RequestParam String platform,
             @RequestParam String code,
             HttpServletRequest request) {
-        log.warn("Deprecated mock social login endpoint invoked: platform={}, code={}", platform, code);
+        log.warn("Deprecated mock social login endpoint invoked: platform={}", platform);
         throw new BusinessException(ErrorCode.FORBIDDEN_ERROR, "Mock 社交登录入口已下线，请使用正式第三方登录流程");
     }
 }

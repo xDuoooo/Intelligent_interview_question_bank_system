@@ -38,7 +38,7 @@ public class GithubController {
     @Resource
     private UserService userService;
 
-    @Value("${app.frontend-url:http://localhost:3000}")
+    @Value("${app.frontend-url:}")
     private String frontendUrl;
 
     /**
@@ -81,11 +81,11 @@ public class GithubController {
                 .execute();
         
         String tokenBody = tokenResponse.body();
-        log.info("GitHub access token response: {}", tokenBody);
         String accessToken = JSONUtil.parseObj(tokenBody).getStr("access_token");
         if (StringUtils.isBlank(accessToken)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub Access Token 失败");
         }
+        log.info("GitHub access token exchanged successfully");
 
         // 2. 获取用户信息
         String userUrl = "https://api.github.com/user";
@@ -94,7 +94,6 @@ public class GithubController {
                 .execute();
         
         String userBody = userResponse.body();
-        log.info("GitHub user info response: {}", userBody);
         Map<String, Object> userInfo = JSONUtil.parseObj(userBody);
         String githubId = String.valueOf(userInfo.get("id"));
         String userName = (String) userInfo.get("login");
@@ -103,22 +102,32 @@ public class GithubController {
         if (StringUtils.isBlank(githubId)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub 用户资料失败");
         }
+        log.info("GitHub user info fetched successfully");
+
+        String frontendBaseUrl = getFrontendBaseUrl();
 
         // 3. 执行静默注册/登录或绑定（基于 state 显式区分意图）
         try {
             if ("bind".equals(state) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
                 userService.bindGithub(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), githubId);
                 // 重定向回中心页
-                response.sendRedirect(frontendUrl + "/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
+                response.sendRedirect(frontendBaseUrl + "/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
             } else {
                 userService.githubLogin(githubId, userName, userAvatar, request);
                 // 登录成功重定向首页
-                response.sendRedirect(frontendUrl + "/");
+                response.sendRedirect(frontendBaseUrl + "/");
             }
         } catch (BusinessException e) {
             log.error("GitHub callback error", e);
-            String redirectUrl = "bind".equals(state) ? frontendUrl + "/user/center" : frontendUrl + "/user/login";
+            String redirectUrl = "bind".equals(state) ? frontendBaseUrl + "/user/center" : frontendBaseUrl + "/user/login";
             response.sendRedirect(redirectUrl + "?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
         }
+    }
+
+    private String getFrontendBaseUrl() {
+        if (StringUtils.isBlank(frontendUrl)) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "前端地址未配置，请检查 app.frontend-url");
+        }
+        return StringUtils.removeEnd(frontendUrl, "/");
     }
 }

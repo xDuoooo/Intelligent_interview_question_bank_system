@@ -91,6 +91,8 @@ cos:
     secretKey: your_cos_secret_key
     region: ap-beijing
     bucket: your_cos_bucket
+    # 如有自定义 CDN / COS 访问域名可填写；留空时会按 bucket + region 推导默认地址
+    host: https://your-bucket.cos.ap-beijing.myqcloud.com
 
 # 本地保留接口文档
 knife4j:
@@ -133,9 +135,19 @@ ai:
 # 前端联调地址
 app:
   frontend-url: http://localhost:3000
+  cors:
+    # 多个来源可用英文逗号分隔；本地如只跑一个前端端口，可直接复用 frontend-url
+    allowed-origin-patterns: http://localhost:3000,http://127.0.0.1:3000
+  sms:
+    # 本地允许短信模拟发送，便于联调验证码流程
+    mock-enabled: true
   ip-location:
     # 本地调试“按 IP 自动识别城市”时，可临时指定一个模拟城市（需是系统支持的城市）
     dev-city: 杭州
+  upload:
+    # 本地允许在未配置 COS 时回退到项目根目录 uploads/
+    local-fallback-enabled: true
+    local-dir: ${user.dir}/uploads
   es-sync:
     question:
       # 建议默认关闭；若想让题目 ES 同步有定时兜底，可改为 true

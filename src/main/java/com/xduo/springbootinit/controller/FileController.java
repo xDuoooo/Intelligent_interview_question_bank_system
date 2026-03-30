@@ -4,8 +4,9 @@ import cn.hutool.core.io.FileUtil;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
-import com.xduo.springbootinit.constant.FileConstant;
+import com.xduo.springbootinit.config.CosClientConfig;
 import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.manager.CosManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,6 +24,7 @@ import java.util.Arrays;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,10 +48,22 @@ public class FileController {
     private CosManager cosManager;
 
     @Resource
+    private CosClientConfig cosClientConfig;
+
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
 
     @Value("${cos.client.accessKey:xxx}")
     private String cosAccessKey;
+
+    @Value("${app.upload.local-fallback-enabled:true}")
+    private boolean localUploadFallbackEnabled;
+
+    @Value("${app.upload.local-dir:${user.dir}/uploads}")
+    private String localUploadDir;
+
+    @Value("${cos.client.host:}")
+    private String cosHost;
 
     /**
      * 文件上传
@@ -98,7 +112,7 @@ public class FileController {
                 file = File.createTempFile(filepath, null);
                 multipartFile.transferTo(file);
                 cosManager.putObject(filepath, file);
-                return ResultUtils.success(FileConstant.COS_HOST + filepath);
+                return ResultUtils.success(buildCosFileUrl(filepath));
             } catch (Exception e) {
                 log.error("COS upload error, filepath = " + filepath, e);
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传至云存储失败");
@@ -106,10 +120,12 @@ public class FileController {
                 if (file != null) file.delete();
             }
         } else {
+            if (!localUploadFallbackEnabled) {
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "当前环境未开启本地文件存储，请配置 COS 后重试");
+            }
             // 本地存储兜底
             try {
-                String uploadDir = System.getProperty("user.dir") + File.separator + "uploads";
-                Path bizPath = Paths.get(uploadDir, fileUploadBizEnum.getValue(), String.valueOf(loginUser.getId()));
+                Path bizPath = Paths.get(localUploadDir, fileUploadBizEnum.getValue(), String.valueOf(loginUser.getId()));
                 if (!Files.exists(bizPath)) {
                     Files.createDirectories(bizPath);
                 }
@@ -123,6 +139,17 @@ public class FileController {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "本地文件上传失败");
             }
         }
+    }
+
+    private String buildCosFileUrl(String filepath) {
+        String baseUrl = StringUtils.trimToEmpty(cosHost);
+        if (StringUtils.isBlank(baseUrl)) {
+            ThrowUtils.throwIf(StringUtils.isAnyBlank(cosClientConfig.getBucket(), cosClientConfig.getRegion()),
+                    ErrorCode.SYSTEM_ERROR, "COS 访问地址未配置");
+            baseUrl = String.format("https://%s.cos.%s.myqcloud.com",
+                    cosClientConfig.getBucket(), cosClientConfig.getRegion());
+        }
+        return StringUtils.removeEnd(baseUrl, "/") + filepath;
     }
 
     /**

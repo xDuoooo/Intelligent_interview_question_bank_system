@@ -98,9 +98,20 @@ sa-token:
 
 # 应用级通用配置
 app:
+  cors:
+    # 允许的前端来源，多个地址可用逗号分隔；未单独配置时默认复用 app.frontend-url
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:}
+  sms:
+    # 本地或联调阶段可开启短信模拟；生产环境请在 profile 中显式关闭
+    mock-enabled: ${APP_SMS_MOCK_ENABLED:true}
   ip-location:
     # 本地或内网开发时，可在 local 环境配置一个模拟城市用于测试自动识别
     dev-city: ${APP_IP_LOCATION_DEV_CITY:}
+  upload:
+    # 未配置 COS 时，是否允许回退到本地 uploads 目录
+    local-fallback-enabled: ${APP_UPLOAD_LOCAL_FALLBACK_ENABLED:true}
+    # 本地文件目录，默认放在项目根目录下
+    local-dir: ${APP_UPLOAD_LOCAL_DIR:${user.dir}/uploads}
   es-sync:
     question:
       # 题目实时同步已内置，增量任务仅作为“写 MySQL 成功但写 ES 失败”时的兜底修复，默认关闭

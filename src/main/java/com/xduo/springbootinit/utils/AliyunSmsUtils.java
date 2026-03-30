@@ -5,6 +5,7 @@ import com.aliyun.dysmsapi20170525.models.SendSmsRequest;
 import com.aliyun.dysmsapi20170525.models.SendSmsResponse;
 import com.aliyun.teaopenapi.models.Config;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -29,12 +30,19 @@ public class AliyunSmsUtils {
     @Value("${aliyun.sms.templateCode:}")
     private String templateCode;
 
+    @Value("${app.sms.mock-enabled:true}")
+    private boolean mockEnabled;
+
     private Client client;
 
     @PostConstruct
     public void init() throws Exception {
-        if (accessKeyId.isEmpty() || accessKeySecret.isEmpty()) {
-            log.warn("阿里云短信配置未完善，SMS 功能将处于模拟模式");
+        if (StringUtils.isAnyBlank(accessKeyId, accessKeySecret, signName, templateCode)) {
+            if (mockEnabled) {
+                log.warn("阿里云短信配置未完善，SMS 功能将处于模拟模式");
+            } else {
+                log.error("阿里云短信配置未完善，当前环境已关闭模拟短信，将拒绝短信发送");
+            }
             return;
         }
         Config config = new Config()
@@ -53,7 +61,11 @@ public class AliyunSmsUtils {
      */
     public boolean sendMessage(String phone, String code) {
         if (client == null) {
-            log.info("模拟发送短信：phone={}, code={}", phone, code);
+            if (!mockEnabled) {
+                log.error("短信发送失败：阿里云短信未正确配置，phone={}", maskPhone(phone));
+                return false;
+            }
+            log.info("模拟发送短信：phone={}, code={}", maskPhone(phone), code);
             return true;
         }
         try {
@@ -65,15 +77,22 @@ public class AliyunSmsUtils {
 
             SendSmsResponse response = client.sendSms(sendSmsRequest);
             if ("OK".equals(response.getBody().getCode())) {
-                log.info("短信发送成功：phone={}", phone);
+                log.info("短信发送成功：phone={}", maskPhone(phone));
                 return true;
             } else {
-                log.error("短信发送失败：phone={}, error={}", phone, response.getBody().getMessage());
+                log.error("短信发送失败：phone={}, error={}", maskPhone(phone), response.getBody().getMessage());
                 return false;
             }
         } catch (Exception e) {
             log.error("阿里云短信接口调用异常", e);
             return false;
         }
+    }
+
+    private String maskPhone(String phone) {
+        if (StringUtils.isBlank(phone) || phone.length() < 7) {
+            return phone;
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }
