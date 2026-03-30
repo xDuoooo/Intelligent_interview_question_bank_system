@@ -33,6 +33,8 @@ interface PostCommentAdminQueryRequest {
 interface CommentActivityQueryRequest {
   current?: number;
   pageSize?: number;
+  searchText?: string;
+  status?: number;
 }
 
 interface PostCommentReviewRequest {

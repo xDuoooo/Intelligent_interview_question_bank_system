@@ -676,10 +676,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         long current = request.getCurrent();
         long pageSize = Math.min(request.getPageSize(), 20);
         ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        String searchText = StringUtils.trimToNull(request.getSearchText());
+        Integer status = request.getStatus();
 
         LambdaQueryWrapper<QuestionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(QuestionComment::getUserId, loginUser.getId())
                 .isNotNull(QuestionComment::getParentId)
+                .like(StringUtils.isNotBlank(searchText), QuestionComment::getContent, searchText)
+                .eq(status != null, QuestionComment::getStatus, status)
                 .orderByDesc(QuestionComment::getCreateTime);
         Page<QuestionComment> commentPage = page(new Page<>(current, pageSize), wrapper);
 

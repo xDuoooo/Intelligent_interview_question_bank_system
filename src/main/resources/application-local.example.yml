@@ -149,6 +149,11 @@ app:
     local-fallback-enabled: true
     local-dir: ${user.dir}/uploads
   es-sync:
+    compensation:
+      # 建议保持开启；这样写 MySQL 成功但写 ES 失败时，会落补偿任务并自动重试
+      enabled: true
+      fixed-rate-ms: 60000
+      batch-size: 200
     question:
       # 建议默认关闭；若想让题目 ES 同步有定时兜底，可改为 true
       incremental-enabled: false

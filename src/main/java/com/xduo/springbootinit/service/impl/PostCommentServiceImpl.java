@@ -292,10 +292,14 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
         long current = request.getCurrent();
         long pageSize = Math.min(request.getPageSize(), 20);
         ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR);
+        String searchText = StringUtils.trimToNull(request.getSearchText());
+        Integer status = request.getStatus();
 
         LambdaQueryWrapper<PostComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PostComment::getUserId, loginUser.getId())
                 .isNotNull(PostComment::getParentId)
+                .like(StringUtils.isNotBlank(searchText), PostComment::getContent, searchText)
+                .eq(status != null, PostComment::getStatus, status)
                 .orderByDesc(PostComment::getCreateTime);
         Page<PostComment> commentPage = page(new Page<>(current, pageSize), wrapper);
 

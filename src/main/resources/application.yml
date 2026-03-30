@@ -113,6 +113,13 @@ app:
     # 本地文件目录，默认放在项目根目录下
     local-dir: ${APP_UPLOAD_LOCAL_DIR:${user.dir}/uploads}
   es-sync:
+    compensation:
+      # 实时同步写 ES 失败时，会把任务落到 MySQL 补偿表里，由该任务持续重试
+      enabled: ${APP_ES_SYNC_COMPENSATION_ENABLED:true}
+      # 补偿重试任务执行频率（毫秒）
+      fixed-rate-ms: ${APP_ES_SYNC_COMPENSATION_FIXED_RATE_MS:60000}
+      # 单次最多处理多少条补偿任务
+      batch-size: ${APP_ES_SYNC_COMPENSATION_BATCH_SIZE:200}
     question:
       # 题目实时同步已内置，增量任务仅作为“写 MySQL 成功但写 ES 失败”时的兜底修复，默认关闭
       incremental-enabled: ${APP_ES_SYNC_QUESTION_INCREMENTAL_ENABLED:false}
