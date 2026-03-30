@@ -26,37 +26,41 @@ const boardThemes: Record<
     glow: string;
     panel: string;
     champion: string;
+    labelBg: string;
   }
 > = {
   overall: {
     icon: <Trophy className="h-5 w-5" />,
-    accent: "from-amber-500 to-orange-500",
-    accentSoft: "from-amber-50 via-white to-orange-50",
+    accent: "from-amber-400 to-orange-500",
+    accentSoft: "from-amber-50/40 via-white to-orange-50/40",
     accentText: "text-amber-700",
-    badge: "border-amber-200 bg-amber-50 text-amber-700",
-    glow: "bg-amber-300/25",
-    panel: "border-amber-100 bg-amber-50/70",
-    champion: "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-xl shadow-amber-200/70",
+    badge: "border-amber-200/50 bg-amber-50/50 text-amber-700",
+    glow: "bg-amber-300/20",
+    panel: "border-amber-100/60 bg-white/60",
+    champion: "bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-200/50",
+    labelBg: "bg-amber-100/50",
   },
   active: {
     icon: <Activity className="h-5 w-5" />,
-    accent: "from-emerald-500 to-teal-500",
-    accentSoft: "from-emerald-50 via-white to-teal-50",
+    accent: "from-emerald-400 to-teal-500",
+    accentSoft: "from-emerald-50/40 via-white to-teal-50/40",
     accentText: "text-emerald-700",
-    badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    glow: "bg-emerald-300/25",
-    panel: "border-emerald-100 bg-emerald-50/70",
-    champion: "bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-xl shadow-emerald-200/70",
+    badge: "border-emerald-200/50 bg-emerald-50/50 text-emerald-700",
+    glow: "bg-emerald-300/20",
+    panel: "border-emerald-100/60 bg-white/60",
+    champion: "bg-gradient-to-br from-emerald-400 to-teal-500 shadow-emerald-200/50",
+    labelBg: "bg-emerald-100/50",
   },
   streak: {
     icon: <Flame className="h-5 w-5" />,
-    accent: "from-rose-500 to-orange-500",
-    accentSoft: "from-rose-50 via-white to-orange-50",
+    accent: "from-rose-400 to-orange-500",
+    accentSoft: "from-rose-50/40 via-white to-orange-50/40",
     accentText: "text-rose-700",
-    badge: "border-rose-200 bg-rose-50 text-rose-700",
-    glow: "bg-rose-300/25",
-    panel: "border-rose-100 bg-rose-50/70",
-    champion: "bg-gradient-to-br from-rose-500 to-orange-500 text-white shadow-xl shadow-rose-200/70",
+    badge: "border-rose-200/50 bg-rose-50/50 text-rose-700",
+    glow: "bg-rose-300/20",
+    panel: "border-rose-100/60 bg-white/60",
+    champion: "bg-gradient-to-br from-rose-400 to-orange-500 shadow-rose-200/50",
+    labelBg: "bg-rose-100/50",
   },
 };
 
@@ -77,11 +81,6 @@ function getRankBadgeClass(rank?: number) {
   return "bg-slate-100 text-slate-600";
 }
 
-function getBoardSummary(board: API.LeaderboardBoardVO) {
-  const champion = board.rankingList?.[0];
-  return champion?.metricValue || 0;
-}
-
 /**
  * 全站榜单展示区
  */
@@ -93,86 +92,26 @@ export default function LeaderboardSection({ leaderboard }: Props) {
   }
 
   return (
-    <section className="space-y-8">
-      <div className="relative overflow-hidden rounded-[2.75rem] border border-slate-100 bg-white px-6 py-8 shadow-2xl shadow-slate-200/40 sm:px-10 sm:py-10">
-        <div className="absolute left-0 top-0 h-56 w-56 rounded-full bg-primary/6 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-amber-300/10 blur-3xl" />
+    <section className="space-y-12">
+      <div className="relative overflow-hidden rounded-[3rem] border border-slate-100 bg-white px-8 py-12 shadow-2xl shadow-slate-200/50 sm:px-12">
+        <div className="absolute left-0 top-0 h-64 w-64 rounded-full bg-primary/8 blur-[100px]" />
+        <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-amber-300/15 blur-[100px]" />
 
-        <div className="relative flex flex-col gap-8 2xl:flex-row 2xl:items-end 2xl:justify-between">
-          <div className="max-w-3xl space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-slate-600">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Smart Ranking
-            </div>
-            <div className="space-y-3">
-              <h2 className="text-3xl font-black tracking-tight text-slate-900 sm:text-5xl">
-                智能榜单
-              </h2>
-              <p className="max-w-2xl text-sm leading-7 text-slate-500 sm:text-base">
-                把综合成长、活跃频率和连续学习拆成三条独立赛道，让榜单既有竞技感，也能看清每个人最突出的学习状态。
-              </p>
-            </div>
+        <div className="relative flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/50 px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 backdrop-blur-sm shadow-sm ring-4 ring-slate-50">
+            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
+            Live Ranking Ecosystem
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2 2xl:min-w-[760px] 2xl:grid-cols-3">
-            {boardList.map((board) => {
-              const theme = getBoardTheme(board.key);
-              return (
-                <div
-                  key={`summary-${board.key}`}
-                  className={`rounded-[1.9rem] border px-5 py-5 shadow-sm backdrop-blur sm:min-h-[180px] ${theme.badge}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={`flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 ${theme.accentText}`}>
-                      {theme.icon}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="break-keep text-sm font-black leading-tight text-slate-900">
-                        {board.title}
-                      </div>
-                      <div className="mt-1 text-[11px] font-bold tracking-[0.14em] text-slate-400">
-                        {board.metricLabel}
-                      </div>
-                    </div>
-                  </div>
-                  {board.rankingList?.[0]?.userName ? (
-                    <div className="mt-5 space-y-3">
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                        当前榜首
-                      </div>
-                      <div className="text-3xl font-black tracking-tight text-slate-900">
-                        {getBoardSummary(board)}
-                      </div>
-                      <div className="rounded-2xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm">
-                        <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                          冠军用户
-                        </div>
-                        <div className="mt-1 text-sm font-black leading-6 text-slate-900 break-all">
-                          {board.rankingList[0].userName}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-5 rounded-[1.5rem] border border-dashed border-slate-200 bg-white/80 px-4 py-4">
-                      <div className="text-[11px] font-bold tracking-[0.16em] text-slate-400 whitespace-nowrap">
-                        当前榜首
-                      </div>
-                      <div className="mt-3 space-y-2">
-                        <div className="text-3xl font-black tracking-tight text-slate-900">0</div>
-                        <div className="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
-                          暂未形成排行
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          <h2 className="mt-8 text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
+            智能榜单<span className="text-primary italic">.</span>
+          </h2>
+          <p className="mt-6 max-w-2xl text-base leading-8 text-slate-400 font-medium">
+            多维度成长评估体系：综合力、活跃度与意志力三位一体，精准捕捉每一份对知识的渴望与坚持。
+          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 2xl:grid-cols-3 2xl:gap-4">
         {boardList.map((board) => {
           const theme = getBoardTheme(board.key);
           const champion = board.rankingList?.[0];
@@ -182,156 +121,157 @@ export default function LeaderboardSection({ leaderboard }: Props) {
           return (
             <article
               key={board.key}
-              className="relative flex h-full flex-col overflow-hidden rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/40"
+              className="group relative flex h-full flex-col overflow-hidden rounded-[3rem] border border-slate-100 bg-white p-7 shadow-2xl shadow-slate-200/40 transition-all hover:shadow-slate-200/60"
             >
-              <div className={`absolute -right-10 top-10 h-40 w-40 rounded-full blur-3xl ${theme.glow}`} />
+              <div className={`absolute -right-10 top-10 h-44 w-44 rounded-full blur-[80px] opacity-60 transition-all group-hover:opacity-100 ${theme.glow}`} />
 
-              <div className={`relative overflow-hidden rounded-[2.1rem] border bg-gradient-to-br p-5 ${theme.panel} ${theme.accentSoft}`}>
-                <div className="flex flex-col gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <span className={`flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${theme.accent} text-white shadow-lg`}>
+              <div className={`relative overflow-hidden rounded-[2.5rem] border bg-gradient-to-br p-6 ${theme.panel} ${theme.accentSoft}`}>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <span className={`flex h-14 w-14 items-center justify-center rounded-[1.2rem] bg-gradient-to-br ${theme.accent} text-white shadow-xl transform transition-transform group-hover:scale-110`}>
                         {theme.icon}
                       </span>
                       <div>
-                        <div className="text-xl font-black text-slate-900">{board.title}</div>
-                        <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.24em] text-slate-400">
-                          {board.metricLabel}
+                        <div className="text-2xl font-black tracking-tight text-slate-900">{board.title}</div>
+                        <div className="mt-1 flex items-center gap-2">
+                          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${theme.accent.split(' ')[1].replace('to-', 'bg-')}`} />
+                          <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">
+                            {board.metricLabel}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm leading-6 text-slate-500">
+                    <p className="max-w-[280px] text-sm leading-6 font-medium text-slate-500/80">
                       {board.description || "基于近期学习行为实时刷新，展示当前表现最突出的学习者。"}
                     </p>
-                  </div>
-
-                  <div className={`inline-flex items-center gap-2 self-start rounded-full border bg-white/85 px-3 py-2 text-xs font-black whitespace-nowrap ${theme.badge}`}>
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    动态更新
                   </div>
                 </div>
 
                 {champion ? (
-                  <div className="mt-6 space-y-4 rounded-[1.8rem] border border-white/80 bg-white/85 p-4 shadow-lg shadow-white/50">
-                    <UserProfileHoverCard user={champion} placement="topLeft">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.25rem] ${theme.champion}`}>
-                          <Medal className="h-6 w-6" />
+                  <div className="mt-8 relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 p-1.5 backdrop-blur-md shadow-xl shadow-slate-200/10">
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="relative">
+                        <UserAvatar src={champion.userAvatar} name={champion.userName} size={64} />
+                        <div className={`absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow-lg ${theme.champion}`}>
+                          <Medal className="h-3.5 w-3.5" />
                         </div>
-                        <UserAvatar src={champion.userAvatar} name={champion.userName} size={48} />
-                        <div className="min-w-0">
-                          <div className="break-keep text-lg font-black leading-tight text-slate-900">
+                      </div>
+                      <div className="min-w-0 flex-[4]">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-xl font-black text-slate-900 2xl:whitespace-normal 2xl:line-clamp-2">
                             {champion.userName || "匿名用户"}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {champion.userRole === "admin" ? "管理员领跑" : "当前榜首 · 继续保持节奏"}
-                          </div>
+                          </span>
+                          {champion.userRole === "admin" && (
+                            <span className="shrink-0 rounded-md bg-slate-900 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs font-bold text-primary/80">
+                          {champion.userRole === "admin" ? "领跑全站" : "正在卫冕中..."}
                         </div>
                       </div>
-                    </UserProfileHoverCard>
-
-                    <div className={`rounded-[1.35rem] border bg-gradient-to-br px-4 py-4 shadow-lg ${theme.panel} ${theme.accentSoft}`}>
-                      <div className={`text-[11px] font-bold tracking-[0.14em] leading-tight whitespace-nowrap ${theme.accentText}`}>
-                        {champion.metricText || board.metricLabel}
-                      </div>
-                      <div className="mt-2 text-3xl font-black tracking-tight text-slate-900">
-                        {champion.metricValue || 0}
+                      <div className={`shrink-0 text-right ml-4 ${theme.accentText}`}>
+                        <div className="text-[9px] font-black uppercase tracking-[0.15em] opacity-60">
+                          Champion
+                        </div>
+                        <div className="mt-0.5 text-2xl font-black tracking-tighter">
+                          {champion.metricValue || 0}
+                        </div>
                       </div>
                     </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="mt-8 rounded-[2rem] border border-dashed border-slate-200 bg-white/30 px-6 py-8 text-center backdrop-blur-sm">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
+                      <Trophy className="h-6 w-6" />
+                    </div>
+                    <div className="mt-4 text-xs font-bold text-slate-400 tracking-wider uppercase">虚位以待</div>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-5 flex flex-1 flex-col gap-4">
+              <div className="mt-6 flex flex-1 flex-col gap-4">
                 {board.currentUserItem ? (
-                  <div className={`rounded-[1.8rem] border p-4 ${theme.panel}`}>
-                    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className={`text-xs font-black tracking-[0.16em] ${theme.accentText}`}>
-                        我的站位
+                  <div className={`rounded-[2.2rem] border bg-white p-5 shadow-sm transition-all hover:shadow-md ${theme.panel}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`flex items-center gap-2 text-[10px] font-black tracking-[0.2em] uppercase ${theme.accentText}`}>
+                        <Sparkles className="h-3 w-3" />
+                        My Position
                       </div>
-                      <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 shadow-sm">
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                        继续冲榜
+                      <div className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white">
+                        # {board.currentUserItem.rank || "-"}
                       </div>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <UserProfileHoverCard
-                        user={board.currentUserItem}
-                        placement="topLeft"
-                        triggerClassName="sm:col-span-2"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <UserAvatar
-                            src={board.currentUserItem.userAvatar}
-                            name={board.currentUserItem.userName}
-                            size={40}
-                          />
-                          <div className="min-w-0">
-                            <div className="break-keep text-base font-black leading-tight text-slate-900">
-                              {board.currentUserItem.userName || "当前用户"}
-                            </div>
-                            <div className="mt-1 text-sm text-slate-500">
-                              再多做一点，你的榜单表现会更稳定。
-                            </div>
-                          </div>
+                    <div className="flex items-center gap-4">
+                      <UserAvatar
+                        src={board.currentUserItem.userAvatar}
+                        name={board.currentUserItem.userName}
+                        size={44}
+                      />
+                      <div className="min-w-0 flex-[4]">
+                        <div className="truncate text-base font-black text-slate-900 2xl:min-w-[200px] 2xl:whitespace-normal 2xl:line-clamp-2">
+                          {board.currentUserItem.userName || "当前用户"}
                         </div>
-                      </UserProfileHoverCard>
-
-                      <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                        <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400 whitespace-nowrap">排名</div>
-                        <div className="mt-1 text-xl font-black text-slate-900">
-                          #{board.currentUserItem.rank || "-"}
+                        <div className="mt-0.5 text-[11px] font-medium text-slate-400">
+                          再多做一点，表现更稳定
                         </div>
                       </div>
-
-                      <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                        <div className="text-[11px] font-bold tracking-[0.12em] leading-tight text-slate-400 break-keep whitespace-nowrap">
-                          {board.currentUserItem.metricText || board.metricLabel}
+                      <div className="shrink-0 text-right ml-4">
+                        <div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">
+                          SCORE
                         </div>
-                        <div className="mt-1 text-xl font-black text-slate-900">
+                        <div className="text-xl font-black text-slate-900">
                           {board.currentUserItem.metricValue || 0}
                         </div>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-[1.8rem] border border-dashed border-slate-200 px-4 py-4 text-sm text-slate-400">
-                    登录并开始刷题后，你的名次和当前成绩会出现在这里。
+                  <div className="rounded-[2rem] border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                    <div className="mb-0 text-xs font-bold leading-relaxed text-slate-400">
+                      登录并开始刷题后<br />你的成绩会出现在这里
+                    </div>
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {secondaryList.map((item) => (
+                <div className="space-y-4 mt-4">
+                  {secondaryList.map((item: any) => (
                     <div
                       key={`${board.key}-${item.userId}`}
-                      className="rounded-[1.6rem] border border-slate-100 bg-slate-50/75 px-4 py-4 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg hover:shadow-slate-200/40"
+                      className={`rounded-[2.2rem] border bg-white p-5 shadow-sm transition-all hover:shadow-md ${theme.panel}`}
                     >
-                      <div className="flex flex-col gap-3">
-                        <UserProfileHoverCard user={item} placement="topLeft">
-                          <div className="min-w-0 flex items-center gap-3">
-                            <div
-                              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${getRankBadgeClass(item.rank)}`}
-                            >
-                              {item.rank}
-                            </div>
-                            <UserAvatar src={item.userAvatar} name={item.userName} size={40} />
-                            <div className="min-w-0">
-                              <div className="break-keep font-black leading-tight text-slate-900">
-                                {item.userName || "匿名用户"}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-500">
-                                {item.userRole === "admin" ? "管理员" : "学习者"}
-                              </div>
-                            </div>
-                          </div>
-                        </UserProfileHoverCard>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className={`flex items-center gap-2 text-[10px] font-black tracking-[0.2em] uppercase ${theme.accentText}`}>
+                          <Medal className="h-3 w-3" />
+                          Rank
+                        </div>
+                        <div className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[0.1em] text-white ${getRankBadgeClass(item.rank).split(' ')[0]}`}>
+                          # {item.rank}
+                        </div>
+                      </div>
 
-                        <div className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm">
-                          <div className="min-w-0 text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 break-all">
-                            {item.metricText || board.metricLabel}
+                      <div className="flex items-center gap-4">
+                        <UserAvatar
+                          src={item.userAvatar}
+                          name={item.userName}
+                          size={44}
+                        />
+                        <div className="min-w-0 flex-[4]">
+                          <div className="truncate text-base font-black text-slate-900 2xl:min-w-[200px] 2xl:whitespace-normal 2xl:line-clamp-2">
+                            {item.userName || "匿名用户"}
                           </div>
-                          <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-slate-50 px-4 py-2 text-lg font-black text-slate-900">
+                          <div className="mt-0.5 text-[11px] font-medium text-slate-400">
+                            {item.userRole === "admin" ? "官方领跑" : "榜上有名"}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-right ml-4">
+                          <div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">
+                            SCORE
+                          </div>
+                          <div className="text-xl font-black text-slate-900">
                             {item.metricValue || 0}
                           </div>
                         </div>
@@ -340,8 +280,8 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                   ))}
 
                   {!rankingList.length ? (
-                    <div className="rounded-[1.6rem] border border-dashed border-slate-200 px-4 py-5 text-sm text-slate-400">
-                      这条赛道还没有形成榜单，先开始刷题试试看。
+                    <div className="rounded-[2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
+                      这条赛道还没有形成榜单，立刻开始刷题占领榜首！
                     </div>
                   ) : null}
                 </div>
