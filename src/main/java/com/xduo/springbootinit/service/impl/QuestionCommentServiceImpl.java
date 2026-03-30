@@ -412,8 +412,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
 
         // 收集所有用户 id（包括被回复人的 id）
         Set<Long> userIds = new HashSet<>();
-        topComments.forEach(c -> userIds.add(c.getUserId()));
-        childComments.forEach(c -> userIds.add(c.getUserId()));
+        topComments.stream()
+                .map(QuestionComment::getUserId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
+        childComments.stream()
+                .map(QuestionComment::getUserId)
+                .filter(Objects::nonNull)
+                .forEach(userIds::add);
         
         // 收集所有涉及到的评论 id 来查作者
         Set<Long> allInvolvedCommentIds = new HashSet<>();
@@ -424,10 +430,14 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         });
         if (!allInvolvedCommentIds.isEmpty()) {
             List<QuestionComment> replyToComments = listByIds(allInvolvedCommentIds);
-            replyToComments.forEach(rc -> userIds.add(rc.getUserId()));
+            replyToComments.forEach(rc -> {
+                if (rc != null && rc.getUserId() != null) {
+                    userIds.add(rc.getUserId());
+                }
+            });
         }
 
-        List<User> users = userService.listByIds(userIds);
+        List<User> users = userIds.isEmpty() ? Collections.emptyList() : userService.listByIds(userIds);
         Map<Long, User> userMap = users.stream()
                 .collect(Collectors.toMap(User::getId, u -> u, (left, right) -> left));
 
@@ -535,7 +545,10 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
 
         Page<QuestionComment> commentPage = page(new Page<>(current, pageSize), wrapper);
         List<QuestionComment> records = commentPage.getRecords();
-        Set<Long> userIds = records.stream().map(QuestionComment::getUserId).collect(Collectors.toSet());
+        Set<Long> userIds = records.stream()
+                .map(QuestionComment::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
         Set<Long> replyToCommentIds = records.stream()
                 .map(QuestionComment::getReplyToId)
                 .filter(Objects::nonNull)
@@ -544,12 +557,19 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         if (!replyToCommentIds.isEmpty()) {
             List<QuestionComment> replyComments = listByIds(replyToCommentIds);
             replyComments.forEach(replyComment -> {
-                userIds.add(replyComment.getUserId());
+                if (replyComment == null) {
+                    return;
+                }
+                if (replyComment.getUserId() != null) {
+                    userIds.add(replyComment.getUserId());
+                }
                 commentToUserMap.put(replyComment.getId(), replyComment.getUserId());
             });
         }
         records.forEach(record -> commentToUserMap.put(record.getId(), record.getUserId()));
-        Map<Long, User> userMap = userService.listByIds(userIds).stream()
+        Map<Long, User> userMap = userIds.isEmpty()
+                ? Collections.emptyMap()
+                : userService.listByIds(userIds).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
 
         List<CommentVO> commentVOList = records.stream().map(comment -> {
@@ -771,7 +791,9 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
             List<QuestionComment> replyToComments = listByIds(replyToCommentIds);
             replyToComments.forEach(replyComment -> {
                 if (replyComment != null) {
-                    userIds.add(replyComment.getUserId());
+                    if (replyComment.getUserId() != null) {
+                        userIds.add(replyComment.getUserId());
+                    }
                     commentMap.putIfAbsent(replyComment.getId(), replyComment);
                 }
             });
