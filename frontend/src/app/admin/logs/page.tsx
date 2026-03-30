@@ -239,23 +239,10 @@ export default function AdminLogsPage() {
             ],
           }}
           request={async (params, sort) => {
-            const sortField = Object.keys(sort || {})[0];
-            const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
-            latestQueryRef.current = {
-              userName: params.userName,
-              operation: params.operation,
-              method: params.method,
-              ip: params.ip,
-              startTime: params.startTime,
-              endTime: params.endTime,
-              sortField,
-              sortOrder,
-            };
-            const res: any = await request<any>("/api/admin/log/list/page", {
-              method: "POST",
-              data: {
-                current: params.current,
-                pageSize: params.pageSize,
+            try {
+              const sortField = Object.keys(sort || {})[0];
+              const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
+              latestQueryRef.current = {
                 userName: params.userName,
                 operation: params.operation,
                 method: params.method,
@@ -264,13 +251,35 @@ export default function AdminLogsPage() {
                 endTime: params.endTime,
                 sortField,
                 sortOrder,
-              },
-            });
-            return {
-              success: res.code === 0,
-              data: res.data?.records || [],
-              total: res.data?.total || 0,
-            };
+              };
+              const res: any = await request<any>("/api/admin/log/list/page", {
+                method: "POST",
+                data: {
+                  current: params.current,
+                  pageSize: params.pageSize,
+                  userName: params.userName,
+                  operation: params.operation,
+                  method: params.method,
+                  ip: params.ip,
+                  startTime: params.startTime,
+                  endTime: params.endTime,
+                  sortField,
+                  sortOrder,
+                },
+              });
+              return {
+                success: res.code === 0,
+                data: res.data?.records || [],
+                total: res.data?.total || 0,
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载操作日志失败");
+              return {
+                success: false,
+                data: [],
+                total: 0,
+              };
+            }
           }}
           columns={columns}
           pagination={{

@@ -426,7 +426,7 @@ export default function AdminDashboardPage() {
         <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12">
           <Sparkles className="h-32 w-32 text-primary" />
         </div>
-        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-end">
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-end">
           <div className="space-y-6 max-w-3xl">
             <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs">
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -441,7 +441,7 @@ export default function AdminDashboardPage() {
               </Paragraph>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
               {heroHighlights.map((item) => (
                 <div
                   key={item.label}
@@ -688,17 +688,17 @@ export default function AdminDashboardPage() {
                   dataSource={geoCityList}
                   renderItem={(item: any, index) => (
                     <List.Item>
-                      <div className="w-full flex items-center justify-between gap-4">
+                      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0 flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-sm font-black text-white">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-sm font-black text-primary">
                             {index + 1}
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate font-semibold text-slate-800">{item.city}</div>
+                            <div className="line-clamp-2 break-all font-semibold leading-6 text-slate-800">{item.city}</div>
                             <div className="text-xs text-slate-500 mt-1">用户 {item.userCount || 0} 人</div>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
+                        <div className="shrink-0 text-left sm:text-right">
                           <Tag color="blue">{item.practiceCount || 0} 次练习</Tag>
                           <div className="text-xs text-slate-500 mt-1">人均 {item.avgPracticeCount || 0}</div>
                         </div>
@@ -832,14 +832,14 @@ export default function AdminDashboardPage() {
                     </div>
                     <div className="space-y-3">
                       {(searchAnalytics.topKeywords || []).slice(0, 8).map((item: any, index: number) => (
-                        <div key={`${item.keyword}-${index}`} className="rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 flex items-center justify-between gap-3">
+                        <div key={`${item.keyword}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="min-w-0">
-                            <div className="font-semibold text-slate-800 truncate">{item.keyword}</div>
+                            <div className="line-clamp-2 break-all font-semibold leading-6 text-slate-800">{item.keyword}</div>
                             <div className="text-xs text-slate-500 mt-1">
                               平均命中 {item.avgResultCount || 0} 条
                             </div>
                           </div>
-                          <Tag color="geekblue" className="m-0">搜索 {item.count || 0} 次</Tag>
+                          <Tag color="geekblue" className="m-0 self-start sm:self-auto">搜索 {item.count || 0} 次</Tag>
                         </div>
                       ))}
                     </div>
@@ -911,14 +911,14 @@ export default function AdminDashboardPage() {
                   dataSource={questionHealth}
                   renderItem={(item: any) => (
                     <List.Item>
-                      <div className="w-full flex items-center justify-between gap-4">
+                      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
-                          <div className="font-semibold text-slate-800 truncate">{item.title || "未命名题目"}</div>
+                          <div className="line-clamp-2 break-all font-semibold leading-6 text-slate-800">{item.title || "未命名题目"}</div>
                           <div className="text-xs text-slate-400 mt-1">
                             最近更新时间：{item.updateTime ? dayjs(item.updateTime).format("YYYY-MM-DD HH:mm") : "-"}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
+                        <div className="shrink-0 text-left sm:text-right">
                           <Tag color={item.status === "待激活" ? "red" : item.status === "低热度" ? "gold" : "green"}>{item.status}</Tag>
                           <div className="text-xs text-slate-500 mt-1">练习 {item.practiceCount} 次</div>
                         </div>
@@ -974,7 +974,7 @@ export default function AdminDashboardPage() {
                         <Tag color={item.riskLevel === "high" ? "error" : "warning"}>
                           {item.riskLevel === "high" ? "高风险" : "中风险"}
                         </Tag>
-                        <span className="font-semibold text-slate-800">{item.reason || "异常访问告警"}</span>
+                        <span className="break-words font-semibold text-slate-800">{item.reason || "异常访问告警"}</span>
                       </div>
                       <div className="mt-2 text-sm text-slate-500">
                         {(item.userName || "未知用户")}
@@ -1011,7 +1011,7 @@ export default function AdminDashboardPage() {
                 <List.Item>
                   <div className="w-full flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">{item.operation || item.method}</div>
+                      <div className="break-words font-semibold text-slate-800">{item.operation || item.method}</div>
                       <div className="text-xs text-slate-500 mt-1">
                         {item.userName || "未知管理员"} · {item.ip || "-"} · {item.method || "-"}
                       </div>

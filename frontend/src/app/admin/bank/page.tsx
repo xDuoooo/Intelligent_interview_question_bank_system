@@ -156,20 +156,29 @@ const QuestionBankAdminPage: React.FC = () => {
             className: "admin-search-form",
           }}
           request={async (params, sort, filter) => {
-            const sortField = Object.keys(sort)?.[0];
-            const sortOrder = sort?.[sortField] ?? undefined;
-            // @ts-ignore
-            const res = await listQuestionBankByPageUsingPost({
-              ...params,
-              sortField,
-              sortOrder,
-              ...filter,
-            } as API.QuestionBankQueryRequest) as unknown as API.BaseResponsePageQuestionBankVO_;
-            return {
-              success: res.code === 0,
-              data: res.data?.records || [],
-              total: Number(res.data?.total) || 0,
-            };
+            try {
+              const sortField = Object.keys(sort)?.[0];
+              const sortOrder = sort?.[sortField] ?? undefined;
+              // @ts-ignore
+              const res = await listQuestionBankByPageUsingPost({
+                ...params,
+                sortField,
+                sortOrder,
+                ...filter,
+              } as API.QuestionBankQueryRequest) as unknown as API.BaseResponsePageQuestionBankVO_;
+              return {
+                success: res.code === 0,
+                data: res.data?.records || [],
+                total: Number(res.data?.total) || 0,
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载题库管理数据失败");
+              return {
+                success: false,
+                data: [],
+                total: 0,
+              };
+            }
           }}
           columns={columns}
         />

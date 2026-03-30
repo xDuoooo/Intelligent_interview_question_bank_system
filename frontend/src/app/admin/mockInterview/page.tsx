@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, Card, message, Popconfirm, Space, Tag, Typography } from "antd";
+import { Button, Card, message, Popconfirm, Tag, Typography } from "antd";
 import { BrainCircuit, Download, FileSearch, RefreshCw, Trash2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import {
@@ -73,7 +73,7 @@ export default function AdminMockInterviewPage() {
       title: "岗位",
       dataIndex: "jobPosition",
       ellipsis: true,
-      render: (text) => <span className="font-bold text-slate-800">{text || "未命名面试"}</span>,
+      render: (text) => <span className="block max-w-[240px] break-words font-bold leading-6 text-slate-800">{text || "未命名面试"}</span>,
     },
     {
       title: "用户 ID",
@@ -92,7 +92,7 @@ export default function AdminMockInterviewPage() {
       dataIndex: "techStack",
       ellipsis: true,
       hideInSearch: true,
-      render: (text) => text || <span className="text-slate-300">-</span>,
+      render: (text) => text ? <span className="block max-w-[220px] break-words leading-6 text-slate-700">{text}</span> : <span className="text-slate-300">-</span>,
     },
     {
       title: "难度",
@@ -150,9 +150,9 @@ export default function AdminMockInterviewPage() {
       title: "操作",
       dataIndex: "option",
       valueType: "option",
-      width: 240,
+      width: 280,
       render: (_, record) => (
-        <Space size="middle">
+        <div className="flex flex-wrap gap-3">
           <Button
             type="link"
             className="!px-0 font-bold"
@@ -181,7 +181,7 @@ export default function AdminMockInterviewPage() {
               删除
             </Button>
           </Popconfirm>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -230,30 +230,40 @@ export default function AdminMockInterviewPage() {
           }}
           columns={columns}
           request={async (params, sort) => {
-            const sortField = Object.keys(sort || {})[0];
-            const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
-            const res = await listMockInterviewByPageUsingPost({
-              current: params.current,
-              pageSize: params.pageSize,
-              id: params.id,
-              userId: params.userId,
-              jobPosition: params.jobPosition,
-              interviewType: params.interviewType,
-              difficulty: params.difficulty,
-              status: params.status,
-              sortField,
-              sortOrder,
-            });
-            return {
-              data: res.data?.records || [],
-              total: Number(res.data?.total || 0),
-              success: true,
-            };
+            try {
+              const sortField = Object.keys(sort || {})[0];
+              const sortOrder = sortField ? (sort as Record<string, "ascend" | "descend">)[sortField] : undefined;
+              const res = await listMockInterviewByPageUsingPost({
+                current: params.current,
+                pageSize: params.pageSize,
+                id: params.id,
+                userId: params.userId,
+                jobPosition: params.jobPosition,
+                interviewType: params.interviewType,
+                difficulty: params.difficulty,
+                status: params.status,
+                sortField,
+                sortOrder,
+              });
+              return {
+                data: res.data?.records || [],
+                total: Number(res.data?.total || 0),
+                success: true,
+              };
+            } catch (error: any) {
+              message.error(error?.message || "加载面试管理数据失败");
+              return {
+                data: [],
+                total: 0,
+                success: false,
+              };
+            }
           }}
           pagination={{
             pageSize: 10,
             showSizeChanger: true,
           }}
+          scroll={{ x: 1450 }}
           options={false}
         />
       </div>
