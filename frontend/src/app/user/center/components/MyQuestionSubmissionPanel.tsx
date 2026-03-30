@@ -6,8 +6,11 @@ import { Alert, Button, Card, Empty, Form, Input, List, message, Modal, Paginati
 import { addQuestionUsingPost, deleteQuestionUsingPost, editQuestionUsingPost, listMyQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import {
+  QUESTION_DIFFICULTY_COLOR_MAP,
+  QUESTION_DIFFICULTY_OPTIONS,
   QUESTION_REVIEW_STATUS_COLOR_MAP,
   QUESTION_REVIEW_STATUS_ENUM,
+  QUESTION_REVIEW_STATUS_OPTIONS,
   QUESTION_REVIEW_STATUS_TEXT_MAP,
 } from "@/constants/question";
 import { formatDateTime } from "@/lib/utils";
@@ -19,6 +22,29 @@ type QuestionFormValues = {
   tags: string[];
   content: string;
   answer: string;
+};
+
+type QuestionFilterState = {
+  title?: string;
+  reviewStatus?: number;
+  difficulty?: string;
+  sortKey: string;
+};
+
+const SORT_OPTIONS = [
+  { label: "最新提交", value: "createTime_desc" },
+  { label: "最近更新", value: "updateTime_desc" },
+  { label: "审核时间最新", value: "reviewTime_desc" },
+  { label: "标题 A-Z", value: "title_asc" },
+  { label: "标题 Z-A", value: "title_desc" },
+];
+
+const getSortParams = (sortKey: string) => {
+  const [sortField, sortOrderKey] = sortKey.split("_");
+  return {
+    sortField,
+    sortOrder: sortOrderKey === "asc" ? "ascend" : "descend",
+  };
 };
 
 interface SubmissionModalProps {
@@ -113,15 +139,26 @@ const MyQuestionSubmissionPanel: React.FC = () => {
   const [pageSize, setPageSize] = useState(5);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<API.QuestionVO>();
+  const [filters, setFilters] = useState<QuestionFilterState>({
+    sortKey: "createTime_desc",
+  });
 
-  const loadData = async (nextCurrent = current, nextPageSize = pageSize) => {
+  const loadData = async (
+    nextCurrent = current,
+    nextPageSize = pageSize,
+    nextFilters: QuestionFilterState = filters,
+  ) => {
     setLoading(true);
     try {
+      const { sortField, sortOrder } = getSortParams(nextFilters.sortKey);
       const res = (await listMyQuestionVoByPageUsingPost({
         current: nextCurrent,
         pageSize: nextPageSize,
-        sortField: "createTime",
-        sortOrder: "descend",
+        sortField,
+        sortOrder,
+        title: nextFilters.title?.trim() || undefined,
+        reviewStatus: nextFilters.reviewStatus,
+        difficulty: nextFilters.difficulty,
       })) as API.BaseResponsePageQuestionVO_;
       setQuestionList(res.data?.records || []);
       setTotal(Number(res.data?.total) || 0);
@@ -154,7 +191,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
       hide();
       message.success("题目已删除");
       const nextCurrent = questionList.length === 1 && current > 1 ? current - 1 : current;
-      await loadData(nextCurrent, pageSize);
+      await loadData(nextCurrent, pageSize, filters);
     } catch (error: any) {
       hide();
       message.error("删除失败，" + (error?.message || "请稍后重试"));
@@ -182,6 +219,69 @@ const MyQuestionSubmissionPanel: React.FC = () => {
           >
             新增题目
           </Button>
+        </div>
+      </Card>
+
+      <Card className="rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <Title level={5} style={{ margin: 0 }}>
+                排序与筛选
+              </Title>
+              <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                支持按标题、审核状态、难度筛选，并切换题目排序方式。
+              </Paragraph>
+            </div>
+            <Text type="secondary">共 {total} 道题目</Text>
+          </div>
+          <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr_1fr_1fr_auto]">
+            <Input
+              allowClear
+              placeholder="按题目标题搜索"
+              value={filters.title}
+              onChange={(e) => setFilters((prev) => ({ ...prev, title: e.target.value }))}
+              onPressEnter={() => void loadData(1, pageSize, filters)}
+            />
+            <Select
+              allowClear
+              placeholder="审核状态"
+              options={QUESTION_REVIEW_STATUS_OPTIONS}
+              value={filters.reviewStatus}
+              onChange={(value) => setFilters((prev) => ({ ...prev, reviewStatus: value }))}
+            />
+            <Select
+              allowClear
+              placeholder="难度"
+              options={QUESTION_DIFFICULTY_OPTIONS}
+              value={filters.difficulty}
+              onChange={(value) => setFilters((prev) => ({ ...prev, difficulty: value }))}
+            />
+            <Select
+              placeholder="排序方式"
+              options={SORT_OPTIONS}
+              value={filters.sortKey}
+              onChange={(value) => {
+                const nextFilters = { ...filters, sortKey: value };
+                setFilters(nextFilters);
+                void loadData(1, pageSize, nextFilters);
+              }}
+            />
+            <Space wrap>
+              <Button type="primary" onClick={() => void loadData(1, pageSize, filters)}>
+                应用筛选
+              </Button>
+              <Button
+                onClick={() => {
+                  const nextFilters: QuestionFilterState = { sortKey: "createTime_desc" };
+                  setFilters(nextFilters);
+                  void loadData(1, pageSize, nextFilters);
+                }}
+              >
+                重置
+              </Button>
+            </Space>
+          </div>
         </div>
       </Card>
 
@@ -222,6 +322,11 @@ const MyQuestionSubmissionPanel: React.FC = () => {
                             <Link href={`/question/${item.id}`} className="text-lg font-black text-slate-900 hover:text-primary">
                               {item.title}
                             </Link>
+                            {item.difficulty ? (
+                              <Tag color={QUESTION_DIFFICULTY_COLOR_MAP[item.difficulty] || "default"} className="rounded-full px-3 py-1 font-semibold">
+                                {item.difficulty}
+                              </Tag>
+                            ) : null}
                             <Tag color={QUESTION_REVIEW_STATUS_COLOR_MAP[reviewStatus] || "default"} className="rounded-full px-3 py-1 font-semibold">
                               {QUESTION_REVIEW_STATUS_TEXT_MAP[reviewStatus] || "未知状态"}
                             </Tag>
@@ -283,7 +388,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
               total={total}
               showSizeChanger
               onChange={(page, size) => {
-                void loadData(page, size);
+                void loadData(page, size, filters);
               }}
             />
           </div>
@@ -300,7 +405,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
         onSuccess={() => {
           setModalVisible(false);
           setCurrentQuestion(undefined);
-          void loadData(current, pageSize);
+          void loadData(current, pageSize, filters);
         }}
       />
     </div>
