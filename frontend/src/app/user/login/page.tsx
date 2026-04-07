@@ -189,7 +189,16 @@ const UserLoginPage: React.FC = () => {
     try {
       let res;
       if (loginType === "password") {
-        res = await userLoginUsingPost(passwordData);
+        if (requireCaptcha && !captchaInput) {
+          message.warning("请先输入图形验证码");
+          setLoginLoading(false);
+          return;
+        }
+        res = await userLoginUsingPost({
+          ...passwordData,
+          captcha: requireCaptcha ? captchaInput : undefined,
+          captchaUuid: requireCaptcha ? captchaData?.uuid : undefined,
+        });
       } else {
         if (inputType === 0) {
           message.error("请输入有效的手机号或邮箱");
@@ -213,6 +222,10 @@ const UserLoginPage: React.FC = () => {
       }
     } catch (e: any) {
       message.error(e.message || "认证失败，请检查输入项");
+      if (requireCaptcha) {
+        refreshCaptcha();
+        setCaptchaInput("");
+      }
     } finally {
       setLoginLoading(false);
     }
@@ -305,6 +318,42 @@ const UserLoginPage: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {requireCaptcha && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
+                    <div className="flex gap-3">
+                      <div className="relative flex-1">
+                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <input
+                          type="text"
+                          className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                          placeholder="请输入右侧验证码"
+                          value={captchaInput}
+                          onChange={(e) => setCaptchaInput(e.target.value)}
+                        />
+                      </div>
+                      <div
+                        className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
+                        onClick={refreshCaptcha}
+                        title="点击刷新"
+                      >
+                        {captchaData ? (
+                          <Image
+                            src={captchaData.image}
+                            alt="captcha"
+                            width={112}
+                            height={48}
+                            unoptimized
+                            className="h-full w-full object-cover rounded-xl"
+                          />
+                        ) : (
+                          <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>
