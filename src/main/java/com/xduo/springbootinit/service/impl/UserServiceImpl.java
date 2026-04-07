@@ -113,10 +113,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public LoginUserVO userLogin(String userAccount, String userPassword, HttpServletRequest request) {
+    public LoginUserVO userLogin(String userAccount, String userPassword, String captcha, String captchaUuid, HttpServletRequest request) {
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
         }
+        
+        // 1. 图形码校验
+        if (systemConfigService.isRequireCaptcha()) {
+            ThrowUtils.throwIf(StringUtils.isAnyBlank(captcha, captchaUuid), ErrorCode.PARAMS_ERROR,
+                    "参数不全，请完成图形码验证");
+            String captchaKey = RedisConstant.getUserCaptchaRedisKey(captchaUuid);
+            String savedCaptcha = stringRedisTemplate.opsForValue().get(captchaKey);
+            if (savedCaptcha == null || !savedCaptcha.equalsIgnoreCase(captcha)) {
+                log.warn("图形验证码匹配失败: target={}, input={}, saved={}", userAccount, captcha, savedCaptcha);
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "图形验证码错误或已过期");
+            }
+            stringRedisTemplate.delete(captchaKey);
+        }
+
         String loginIdentifier = userAccount.trim();
         ensurePasswordLoginNotBlocked(loginIdentifier);
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());

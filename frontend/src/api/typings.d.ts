@@ -1186,6 +1186,8 @@ declare namespace API {
   type UserLoginRequest = {
     userAccount?: string;
     userPassword?: string;
+    captcha?: string;
+    captchaUuid?: string;
   };
 
   type UserQueryRequest = {
