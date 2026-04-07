@@ -28,9 +28,9 @@ export default function MyReplyCommentList() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
   const fetchCommentList = useCallback(async (
-    page = current,
-    nextKeyword = keyword,
-    nextStatus = statusFilter,
+    page = 1,
+    nextKeyword = "",
+    nextStatus: StatusFilter = "all",
   ) => {
     setLoading(true);
     try {
@@ -48,10 +48,10 @@ export default function MyReplyCommentList() {
     } finally {
       setLoading(false);
     }
-  }, [current, keyword, pageSize, statusFilter]);
+  }, [pageSize]);
 
   useEffect(() => {
-    void fetchCommentList(1, keyword, statusFilter);
+    void fetchCommentList(1, "", "all");
   }, [fetchCommentList]);
 
   return (

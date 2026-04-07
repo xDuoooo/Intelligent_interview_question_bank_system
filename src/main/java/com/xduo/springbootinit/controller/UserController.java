@@ -653,7 +653,9 @@ public class UserController {
                 .map(UserQuestionHistory::getQuestionId)
                 .filter(id -> id != null && id > 0)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        Map<Long, Question> historyQuestionMap = questionService.listByIds(questionIdSet).stream()
+        Map<Long, Question> historyQuestionMap = questionIdSet.isEmpty()
+                ? Collections.emptyMap()
+                : questionService.listByIds(questionIdSet).stream()
                 .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
         historyList.forEach(history -> {
             Question question = historyQuestionMap.get(history.getQuestionId());

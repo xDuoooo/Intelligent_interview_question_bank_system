@@ -428,8 +428,13 @@ public class PostController {
             return ResultUtils.success(postReportVOPage);
         }
 
-        Set<Long> userIdSet = reportList.stream().map(PostReport::getUserId).collect(Collectors.toSet());
-        Map<Long, User> userMap = userService.listByIds(userIdSet).stream()
+        Set<Long> userIdSet = reportList.stream()
+                .map(PostReport::getUserId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : userService.listByIds(userIdSet).stream()
                 .collect(Collectors.toMap(User::getId, user -> user));
         List<PostReportVO> postReportVOList = reportList.stream().map(report -> {
             PostReportVO postReportVO = new PostReportVO();

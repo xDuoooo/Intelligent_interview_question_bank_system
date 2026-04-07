@@ -258,7 +258,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .map(Question::getUserId)
                 .filter(ObjectUtils::isNotEmpty)
                 .collect(Collectors.toSet());
-        Map<Long, User> userMap = userService.listByIds(userIdSet).stream()
+        Map<Long, User> userMap = userIdSet.isEmpty()
+                ? Collections.emptyMap()
+                : userService.listByIds(userIdSet).stream()
                 .collect(Collectors.toMap(User::getId, user -> user, (existing, replacement) -> existing));
         Set<Long> questionIdSet = questionList.stream()
                 .map(Question::getId)
