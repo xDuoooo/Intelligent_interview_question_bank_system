@@ -40,7 +40,7 @@ export default function MyFavourPostList() {
   const [keyword, setKeyword] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("latest_update");
 
-  const fetchPostList = useCallback(async (page = current, nextKeyword = keyword, nextSortKey = sortKey) => {
+  const fetchPostList = useCallback(async (page = 1, nextKeyword = "", nextSortKey: SortKey = "latest_update") => {
     setLoading(true);
     try {
       const sortConfig = resolveSort(nextSortKey);
@@ -59,10 +59,10 @@ export default function MyFavourPostList() {
     } finally {
       setLoading(false);
     }
-  }, [current, keyword, pageSize, sortKey]);
+  }, [pageSize]);
 
   useEffect(() => {
-    void fetchPostList(1, keyword, sortKey);
+    void fetchPostList(1, "", "latest_update");
   }, [fetchPostList]);
 
   return (

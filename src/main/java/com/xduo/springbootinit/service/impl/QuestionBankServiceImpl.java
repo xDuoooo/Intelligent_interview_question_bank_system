@@ -139,8 +139,13 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
             return QuestionBankVO.objToVo(questionBank);
         }).collect(Collectors.toList());
         // 关联查询用户信息
-        Set<Long> userIdSet = questionBankList.stream().map(QuestionBank::getUserId).collect(Collectors.toSet());
-        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
+        Set<Long> userIdSet = questionBankList.stream()
+                .map(QuestionBank::getUserId)
+                .filter(userId -> userId != null && userId > 0)
+                .collect(Collectors.toSet());
+        Map<Long, List<User>> userIdUserListMap = userIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : userService.listByIds(userIdSet).stream()
                 .collect(Collectors.groupingBy(User::getId));
         // 填充信息
         questionBankVOList.forEach(questionBankVO -> {

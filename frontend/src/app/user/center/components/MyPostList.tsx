@@ -69,10 +69,10 @@ export default function MyPostList() {
   const [sortKey, setSortKey] = useState<SortKey>("latest_create");
 
   const fetchPostList = useCallback(async (
-    page = current,
-    nextKeyword = keyword,
-    nextReviewStatus = reviewStatus,
-    nextSortKey = sortKey,
+    page = 1,
+    nextKeyword = "",
+    nextReviewStatus: ReviewStatusFilter = "all",
+    nextSortKey: SortKey = "latest_create",
   ) => {
     setLoading(true);
     try {
@@ -93,10 +93,10 @@ export default function MyPostList() {
     } finally {
       setLoading(false);
     }
-  }, [current, keyword, pageSize, reviewStatus, sortKey]);
+  }, [pageSize]);
 
   useEffect(() => {
-    void fetchPostList(1, keyword, reviewStatus, sortKey);
+    void fetchPostList(1, "", "all", "latest_create");
   }, [fetchPostList]);
 
   const handleDelete = async (id?: string | number) => {

@@ -345,28 +345,38 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
             return postVOPage;
         }
         // 1. 关联查询用户信息
-        Set<Long> userIdSet = postList.stream().map(Post::getUserId).collect(Collectors.toSet());
-        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
+        Set<Long> userIdSet = postList.stream()
+                .map(Post::getUserId)
+                .filter(userId -> userId != null && userId > 0)
+                .collect(Collectors.toSet());
+        Map<Long, List<User>> userIdUserListMap = userIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : userService.listByIds(userIdSet).stream()
                 .collect(Collectors.groupingBy(User::getId));
         // 2. 已登录，获取用户点赞、收藏状态
         Map<Long, Boolean> postIdHasThumbMap = new HashMap<>();
         Map<Long, Boolean> postIdHasFavourMap = new HashMap<>();
         User loginUser = userService.getLoginUserPermitNull(request);
         if (loginUser != null) {
-            Set<Long> postIdSet = postList.stream().map(Post::getId).collect(Collectors.toSet());
+            Set<Long> postIdSet = postList.stream()
+                    .map(Post::getId)
+                    .filter(postId -> postId != null && postId > 0)
+                    .collect(Collectors.toSet());
             loginUser = userService.getLoginUser(request);
             // 获取点赞
-            QueryWrapper<PostThumb> postThumbQueryWrapper = new QueryWrapper<>();
-            postThumbQueryWrapper.in("postId", postIdSet);
-            postThumbQueryWrapper.eq("userId", loginUser.getId());
-            List<PostThumb> postPostThumbList = postThumbMapper.selectList(postThumbQueryWrapper);
-            postPostThumbList.forEach(postPostThumb -> postIdHasThumbMap.put(postPostThumb.getPostId(), true));
-            // 获取收藏
-            QueryWrapper<PostFavour> postFavourQueryWrapper = new QueryWrapper<>();
-            postFavourQueryWrapper.in("postId", postIdSet);
-            postFavourQueryWrapper.eq("userId", loginUser.getId());
-            List<PostFavour> postFavourList = postFavourMapper.selectList(postFavourQueryWrapper);
-            postFavourList.forEach(postFavour -> postIdHasFavourMap.put(postFavour.getPostId(), true));
+            if (CollUtil.isNotEmpty(postIdSet)) {
+                QueryWrapper<PostThumb> postThumbQueryWrapper = new QueryWrapper<>();
+                postThumbQueryWrapper.in("postId", postIdSet);
+                postThumbQueryWrapper.eq("userId", loginUser.getId());
+                List<PostThumb> postPostThumbList = postThumbMapper.selectList(postThumbQueryWrapper);
+                postPostThumbList.forEach(postPostThumb -> postIdHasThumbMap.put(postPostThumb.getPostId(), true));
+                // 获取收藏
+                QueryWrapper<PostFavour> postFavourQueryWrapper = new QueryWrapper<>();
+                postFavourQueryWrapper.in("postId", postIdSet);
+                postFavourQueryWrapper.eq("userId", loginUser.getId());
+                List<PostFavour> postFavourList = postFavourMapper.selectList(postFavourQueryWrapper);
+                postFavourList.forEach(postFavour -> postIdHasFavourMap.put(postFavour.getPostId(), true));
+            }
         }
         // 填充信息
         List<PostVO> postVOList = postList.stream().map(post -> {

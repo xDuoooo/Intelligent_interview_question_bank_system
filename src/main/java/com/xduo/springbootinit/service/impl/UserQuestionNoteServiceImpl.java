@@ -81,8 +81,11 @@ public class UserQuestionNoteServiceImpl extends ServiceImpl<UserQuestionNoteMap
         }
         Set<Long> questionIdSet = noteList.stream()
                 .map(UserQuestionNote::getQuestionId)
+                .filter(questionId -> questionId != null && questionId > 0)
                 .collect(Collectors.toSet());
-        Map<Long, Question> questionMap = questionService.listByIds(questionIdSet).stream()
+        Map<Long, Question> questionMap = questionIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : questionService.listByIds(questionIdSet).stream()
                 .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
         voPage.setRecords(noteList.stream()
                 .map(note -> buildNoteVO(note, request, questionMap))

@@ -63,6 +63,9 @@ public class LearningGoalReminderJob {
             return;
         }
         Set<Long> userIdSet = goalList.stream().map(UserLearningGoal::getUserId).collect(Collectors.toSet());
+        if (userIdSet.isEmpty()) {
+            return;
+        }
         List<User> userList = userService.listByIds(userIdSet);
         java.util.Map<Long, User> userMap = userList.stream().collect(Collectors.toMap(User::getId, user -> user));
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
