@@ -1,0 +1,62 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: intelligent-interview-backend:latest
+    container_name: intelligent-interview-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-8101}:8101"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: ${DB_URL}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_DATABASE: ${REDIS_DATABASE:-1}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      ES_URIS: ${ES_URIS}
+      ES_USERNAME: ${ES_USERNAME:-}
+      ES_PASSWORD: ${ES_PASSWORD:-}
+      MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      COS_ACCESS_KEY: ${COS_ACCESS_KEY:-}
+      COS_SECRET_KEY: ${COS_SECRET_KEY:-}
+      COS_REGION: ${COS_REGION:-ap-beijing}
+      COS_BUCKET: ${COS_BUCKET:-}
+      COS_HOST: ${COS_HOST:-}
+      ALIYUN_SMS_ACCESS_KEY_ID: ${ALIYUN_SMS_ACCESS_KEY_ID:-}
+      ALIYUN_SMS_ACCESS_KEY_SECRET: ${ALIYUN_SMS_ACCESS_KEY_SECRET:-}
+      ALIYUN_SMS_SIGN_NAME: ${ALIYUN_SMS_SIGN_NAME:-智面平台}
+      ALIYUN_SMS_TEMPLATE_CODE: ${ALIYUN_SMS_TEMPLATE_CODE:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_REDIRECT_URI: ${GITHUB_REDIRECT_URI:-}
+      GITEE_CLIENT_ID: ${GITEE_CLIENT_ID:-}
+      GITEE_CLIENT_SECRET: ${GITEE_CLIENT_SECRET:-}
+      GITEE_REDIRECT_URI: ${GITEE_REDIRECT_URI:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_HOST: ${AI_HOST:-https://api.deepseek.com/v1}
+      AI_MODEL: ${AI_MODEL:-deepseek-chat}
+      AI_SPEECH_MODEL: ${AI_SPEECH_MODEL:-whisper-1}
+      FRONTEND_URL: ${FRONTEND_URL}
+      APP_CORS_ALLOWED_ORIGIN_PATTERNS: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:-${FRONTEND_URL}}
+      APP_SMS_MOCK_ENABLED: ${APP_SMS_MOCK_ENABLED:-false}
+      APP_UPLOAD_LOCAL_FALLBACK_ENABLED: ${APP_UPLOAD_LOCAL_FALLBACK_ENABLED:-true}
+      APP_UPLOAD_LOCAL_DIR: /app/uploads
+      KNIFE4J_ENABLE: ${KNIFE4J_ENABLE:-false}
+      KNIFE4J_BASIC_ENABLE: ${KNIFE4J_BASIC_ENABLE:-false}
+      KNIFE4J_USERNAME: ${KNIFE4J_USERNAME:-}
+      KNIFE4J_PASSWORD: ${KNIFE4J_PASSWORD:-}
+    volumes:
+      - uploads-data:/app/uploads
+
+volumes:
+  uploads-data:
