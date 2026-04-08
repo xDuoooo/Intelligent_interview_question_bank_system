@@ -98,13 +98,16 @@ cos:
 knife4j:
   enable: true
 
-# 阿里云短信配置
-aliyun:
+# 腾讯云短信配置
+tencent:
   sms:
-    accessKeyId: your_sms_access_key_id
-    accessKeySecret: your_sms_access_key_secret
+    secretId: your_tencent_sms_secret_id
+    secretKey: your_tencent_sms_secret_key
+    sdkAppId: your_tencent_sms_sdk_app_id
     signName: 智面平台
-    templateCode: SMS_xxxxxxx
+    templateId: your_tencent_sms_template_id
+    region: ap-guangzhou
+    countryCode: +86
 
 # 第三方登录本地配置
 social:

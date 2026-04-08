@@ -31,9 +31,9 @@ spring:
     password: ${ES_PASSWORD:}
   # 生产环境邮件发送配置
   mail:
-    host: ${MAIL_HOST:smtp.qq.com}
+    host: ${MAIL_HOST:smtp.qcloudmail.com}
     port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:auto-sender@example.com}
+    username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     protocol: smtps
     default-encoding: UTF-8
@@ -87,12 +87,15 @@ cos:
     host: ${COS_HOST:}
 
 # 生产环境短信配置
-aliyun:
+tencent:
   sms:
-    accessKeyId: ${ALIYUN_SMS_ACCESS_KEY_ID:}
-    accessKeySecret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
-    signName: ${ALIYUN_SMS_SIGN_NAME:智面平台}
-    templateCode: ${ALIYUN_SMS_TEMPLATE_CODE:SMS_xxxxxxx}
+    secretId: ${TENCENT_SMS_SECRET_ID:}
+    secretKey: ${TENCENT_SMS_SECRET_KEY:}
+    sdkAppId: ${TENCENT_SMS_SDK_APP_ID:}
+    signName: ${TENCENT_SMS_SIGN_NAME:智面平台}
+    templateId: ${TENCENT_SMS_TEMPLATE_ID:}
+    region: ${TENCENT_SMS_REGION:ap-guangzhou}
+    countryCode: ${TENCENT_SMS_COUNTRY_CODE:+86}
 
 # 生产环境第三方登录配置
 social:

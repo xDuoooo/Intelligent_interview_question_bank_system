@@ -19,10 +19,10 @@ import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.satoken.DeviceUtils;
 import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserService;
-import com.xduo.springbootinit.utils.AliyunSmsUtils;
 import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.utils.NetUtils;
 import com.xduo.springbootinit.utils.SqlUtils;
+import com.xduo.springbootinit.utils.TencentSmsUtils;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import org.redisson.api.RAtomicLong;
 import cn.hutool.core.util.RandomUtil;
@@ -73,7 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private String fromEmail;
 
     @Resource
-    private AliyunSmsUtils aliyunSmsUtils;
+    private TencentSmsUtils tencentSmsUtils;
 
     @Resource
     private SystemConfigService systemConfigService;
@@ -246,9 +246,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "邮件服务器响应异常，请检查配置");
             }
         } else {
-            sendResult = aliyunSmsUtils.sendMessage(target, code);
+            sendResult = tencentSmsUtils.sendMessage(target, code);
             if (!sendResult) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "短信发送失败，请检查阿里云配置及签名/模版 ID");
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "短信发送失败，请检查腾讯云短信配置及签名/模板 ID");
             }
         }
 
