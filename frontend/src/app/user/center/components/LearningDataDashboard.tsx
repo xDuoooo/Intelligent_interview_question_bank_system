@@ -52,7 +52,7 @@ const LearningDataDashboard: React.FC = () => {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchGoal()]);
+    await Promise.allSettled([fetchStats(), fetchGoal()]);
     setLoading(false);
   }, [fetchGoal, fetchStats]);
 

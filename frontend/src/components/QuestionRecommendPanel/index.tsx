@@ -29,12 +29,25 @@ export default function QuestionRecommendPanel({ questionId }: Props) {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [personalRes, relatedRes] = await Promise.all([
+      const [personalRes, relatedRes] = await Promise.allSettled([
         listPersonalRecommendQuestionVoUsingGet({ questionId, size: 4 }),
         listRelatedQuestionVoUsingGet({ questionId, size: 4 }),
       ]);
-      setPersonalList(personalRes.data || []);
-      setRelatedList(relatedRes.data || []);
+      if (personalRes.status === "fulfilled") {
+        setPersonalList(personalRes.value.data || []);
+      } else {
+        setPersonalList([]);
+      }
+      if (relatedRes.status === "fulfilled") {
+        setRelatedList(relatedRes.value.data || []);
+      } else {
+        setRelatedList([]);
+      }
+      if (personalRes.status === "rejected" && relatedRes.status === "rejected") {
+        message.error("加载推荐题目失败，请稍后重试");
+      } else if (personalRes.status === "rejected" || relatedRes.status === "rejected") {
+        message.warning("部分推荐结果加载失败，已展示可用内容");
+      }
     } catch (error: any) {
       message.error("加载推荐题目失败：" + (error?.message || "请稍后重试"));
     } finally {

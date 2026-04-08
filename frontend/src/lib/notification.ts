@@ -14,32 +14,33 @@ export function getNotificationTargetUrl(item?: {
   const type = item.type || "";
   const title = item.title || "";
   const content = item.content || "";
-  const targetId = Number(item.targetId || 0);
+  const targetId = String(item.targetId ?? "").trim();
+  const hasTargetId = /^[1-9]\d*$/.test(targetId);
 
   switch (type) {
     case "post_review":
       if (title.includes("未通过") || content.includes("未通过")) {
         return "/user/center?tab=posts";
       }
-      return targetId > 0 ? `/post/${targetId}` : "/user/center?tab=posts";
+      return hasTargetId ? `/post/${targetId}` : "/user/center?tab=posts";
     case "post_reply":
     case "post_comment_review":
-      return targetId > 0 ? `/post/${targetId}#post-comment-section` : "/user/notifications";
+      return hasTargetId ? `/post/${targetId}#post-comment-section` : "/user/notifications";
     case "question_review":
       if (title.includes("未通过") || content.includes("未通过")) {
         return "/user/center?tab=submission";
       }
-      return targetId > 0 ? `/question/${targetId}` : "/user/center?tab=submission";
+      return hasTargetId ? `/question/${targetId}` : "/user/center?tab=submission";
     case "reply":
     case "like":
     case "comment_review":
-      return targetId > 0 ? `/question/${targetId}#comment-section` : "/user/notifications";
+      return hasTargetId ? `/question/${targetId}#comment-section` : "/user/notifications";
     case "user_follow":
-      return targetId > 0 ? `/user/${targetId}` : "/user/notifications";
+      return hasTargetId ? `/user/${targetId}` : "/user/notifications";
     case "learning_goal_reminder":
       return "/user/center?tab=record";
     default:
-      if (targetId > 0) {
+      if (hasTargetId) {
         if (type.startsWith("post")) {
           return `/post/${targetId}`;
         }

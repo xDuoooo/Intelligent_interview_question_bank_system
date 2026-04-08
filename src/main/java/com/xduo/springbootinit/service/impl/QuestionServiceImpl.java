@@ -484,10 +484,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             Map<Long, Integer> historyStatusMap = historyList.stream()
                     .filter(item -> item.getQuestionId() != null)
                     .collect(Collectors.toMap(UserQuestionHistory::getQuestionId, UserQuestionHistory::getStatus, (a, b) -> Math.max(a, b)));
-            this.listByIds(historyQuestionIdSet).forEach(question -> {
-                int weight = convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0));
-                addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
-            });
+            if (CollUtil.isNotEmpty(historyQuestionIdSet)) {
+                this.listByIds(historyQuestionIdSet).forEach(question -> {
+                    int weight = convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0));
+                    addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
+                });
+            }
         }
 
         QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
@@ -501,7 +503,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toSet());
             interactedQuestionIdSet.addAll(favourQuestionIdSet);
-            this.listByIds(favourQuestionIdSet).forEach(question -> addTagWeights(tagWeightMap, parseTagList(question.getTags()), 5));
+            if (CollUtil.isNotEmpty(favourQuestionIdSet)) {
+                this.listByIds(favourQuestionIdSet).forEach(question ->
+                        addTagWeights(tagWeightMap, parseTagList(question.getTags()), 5));
+            }
         }
 
         if (currentQuestionId != null && currentQuestionId > 0) {
@@ -822,10 +827,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             Map<Long, Integer> historyStatusMap = historyList.stream()
                     .filter(item -> item.getQuestionId() != null)
                     .collect(Collectors.toMap(UserQuestionHistory::getQuestionId, UserQuestionHistory::getStatus, (a, b) -> Math.max(a, b)));
-            this.listByIds(historyQuestionIdSet).forEach(question -> {
-                int weight = Math.max(1, convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0)) - 1);
-                addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
-            });
+            if (CollUtil.isNotEmpty(historyQuestionIdSet)) {
+                this.listByIds(historyQuestionIdSet).forEach(question -> {
+                    int weight = Math.max(1, convertHistoryStatusToWeight(historyStatusMap.getOrDefault(question.getId(), 0)) - 1);
+                    addTagWeights(tagWeightMap, parseTagList(question.getTags()), weight);
+                });
+            }
         }
 
         QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
@@ -836,7 +843,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     .map(QuestionFavour::getQuestionId)
                     .filter(java.util.Objects::nonNull)
                     .collect(Collectors.toSet());
-            this.listByIds(favourQuestionIdSet).forEach(question -> addTagWeights(tagWeightMap, parseTagList(question.getTags()), 2));
+            if (CollUtil.isNotEmpty(favourQuestionIdSet)) {
+                this.listByIds(favourQuestionIdSet).forEach(question ->
+                        addTagWeights(tagWeightMap, parseTagList(question.getTags()), 2));
+            }
         }
     }
 

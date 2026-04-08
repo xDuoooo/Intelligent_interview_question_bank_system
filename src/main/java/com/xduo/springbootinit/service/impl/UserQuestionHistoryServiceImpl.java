@@ -97,8 +97,13 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         }
         
         // 根据题目 id 查询题目详情
-        Set<Long> questionIdSet = favourList.stream().map(QuestionFavour::getQuestionId).collect(Collectors.toSet());
-        Map<Long, Question> questionMap = questionService.listByIds(questionIdSet).stream()
+        Set<Long> questionIdSet = favourList.stream()
+                .map(QuestionFavour::getQuestionId)
+                .filter(questionId -> questionId != null && questionId > 0)
+                .collect(Collectors.toSet());
+        Map<Long, Question> questionMap = questionIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : questionService.listByIds(questionIdSet).stream()
                 .collect(Collectors.toMap(Question::getId, question -> question, (a, b) -> a));
         List<Question> questionList = favourList.stream()
                 .map(favour -> questionMap.get(favour.getQuestionId()))
@@ -124,8 +129,13 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
             return voPage;
         }
         
-        Set<Long> questionIdSet = historyList.stream().map(UserQuestionHistory::getQuestionId).collect(Collectors.toSet());
-        List<Question> questionList = questionService.listByIds(questionIdSet);
+        Set<Long> questionIdSet = historyList.stream()
+                .map(UserQuestionHistory::getQuestionId)
+                .filter(questionId -> questionId != null && questionId > 0)
+                .collect(Collectors.toSet());
+        List<Question> questionList = questionIdSet.isEmpty()
+                ? java.util.Collections.emptyList()
+                : questionService.listByIds(questionIdSet);
         Map<Long, List<Question>> questionMap = questionList.stream().collect(Collectors.groupingBy(Question::getId));
         
         List<UserQuestionHistoryVO> voList = historyList.stream().map(history -> {
@@ -429,8 +439,11 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         }
         Set<Long> questionIdSet = historyList.stream()
                 .map(UserQuestionHistory::getQuestionId)
+                .filter(questionId -> questionId != null && questionId > 0)
                 .collect(Collectors.toSet());
-        Map<Long, Question> questionMap = questionService.listByIds(questionIdSet).stream()
+        Map<Long, Question> questionMap = questionIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : questionService.listByIds(questionIdSet).stream()
                 .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
         double totalDifficultyLevel = 0D;
         int sampleCount = 0;
