@@ -1,9 +1,16 @@
 import axios, { type AxiosRequestConfig } from "axios";
 
 const isServer = typeof window === "undefined";
-export const API_BASE_URL =
+const serverApiBaseUrl =
+  process.env.API_BASE_URL ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (process.env.NODE_ENV === "development" || isServer ? "http://localhost:8101" : "");
+  "http://localhost:8101";
+
+const browserApiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8101" : "");
+
+export const API_BASE_URL = isServer ? serverApiBaseUrl : browserApiBaseUrl;
 
 export function buildApiUrl(path: string) {
   if (/^https?:\/\//.test(path)) {

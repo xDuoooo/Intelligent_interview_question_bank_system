@@ -428,8 +428,9 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                 allInvolvedCommentIds.add(c.getReplyToId());
             }
         });
+        List<QuestionComment> replyToComments = Collections.emptyList();
         if (!allInvolvedCommentIds.isEmpty()) {
-            List<QuestionComment> replyToComments = listByIds(allInvolvedCommentIds);
+            replyToComments = listByIds(allInvolvedCommentIds);
             replyToComments.forEach(rc -> {
                 if (rc != null && rc.getUserId() != null) {
                     userIds.add(rc.getUserId());
@@ -458,9 +459,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         Map<Long, Long> commentToUserMap = new HashMap<>();
         topComments.forEach(c -> commentToUserMap.put(c.getId(), c.getUserId()));
         childComments.forEach(c -> commentToUserMap.put(c.getId(), c.getUserId()));
-        if (!allInvolvedCommentIds.isEmpty()) {
-             listByIds(allInvolvedCommentIds).forEach(rc -> commentToUserMap.put(rc.getId(), rc.getUserId()));
-        }
+        replyToComments.forEach(rc -> commentToUserMap.put(rc.getId(), rc.getUserId()));
 
         // 转 VO
         return topComments.stream().map(c -> toVO(c, userMap, commentToUserMap, childrenMap, likedIds)).collect(Collectors.toList());

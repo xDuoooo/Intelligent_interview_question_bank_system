@@ -1122,7 +1122,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .map(UserQuestionHistory::getQuestionId)
                 .filter(ObjectUtils::isNotEmpty)
                 .collect(Collectors.toSet());
-        Map<Long, Question> questionMap = this.listByIds(questionIdSet).stream()
+        Map<Long, Question> questionMap = questionIdSet.isEmpty()
+                ? Collections.emptyMap()
+                : this.listByIds(questionIdSet).stream()
                 .collect(Collectors.toMap(Question::getId, question -> question, (left, right) -> left));
         double totalLevel = 0D;
         int sampleCount = 0;
