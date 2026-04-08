@@ -29,23 +29,6 @@ spring:
     uris: ${ES_URIS:}
     username: ${ES_USERNAME:}
     password: ${ES_PASSWORD:}
-  # 生产环境邮件发送配置
-  mail:
-    host: ${MAIL_HOST:smtp.qcloudmail.com}
-    port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    protocol: smtps
-    default-encoding: UTF-8
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          ssl:
-            enable: true
   # 生产环境 Spring Cloud 配置
   cloud:
     nacos:
@@ -88,6 +71,12 @@ cos:
 
 # 生产环境短信配置
 tencent:
+  email:
+    secretId: ${TENCENT_EMAIL_SECRET_ID:}
+    secretKey: ${TENCENT_EMAIL_SECRET_KEY:}
+    region: ${TENCENT_EMAIL_REGION:ap-guangzhou}
+    fromEmailAddress: ${TENCENT_EMAIL_FROM_ADDRESS:}
+    replyToAddresses: ${TENCENT_EMAIL_REPLY_TO:}
   sms:
     secretId: ${TENCENT_SMS_SECRET_ID:}
     secretKey: ${TENCENT_SMS_SECRET_KEY:}
@@ -124,6 +113,9 @@ app:
   frontend-url: ${FRONTEND_URL:}
   sms:
     # 生产环境严禁短信“假发送”
+    mock-enabled: false
+  email:
+    # 生产环境严禁邮件“假发送”
     mock-enabled: false
   upload:
     # 生产环境默认关闭本地上传兜底，避免误把文件写到应用机器磁盘

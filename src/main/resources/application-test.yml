@@ -29,23 +29,6 @@ spring:
     uris: ${ES_URIS:http://localhost:9200}
     username: ${ES_USERNAME:}
     password: ${ES_PASSWORD:}
-  # 测试环境邮件发送配置
-  mail:
-    host: ${MAIL_HOST:smtp.qcloudmail.com}
-    port: ${MAIL_PORT:465}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    protocol: smtps
-    default-encoding: UTF-8
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          ssl:
-            enable: true
   # 测试环境 Spring Cloud 配置
   cloud:
     nacos:
@@ -90,6 +73,12 @@ knife4j:
 
 # 测试环境短信配置
 tencent:
+  email:
+    secretId: ${TENCENT_EMAIL_SECRET_ID:}
+    secretKey: ${TENCENT_EMAIL_SECRET_KEY:}
+    region: ${TENCENT_EMAIL_REGION:ap-guangzhou}
+    fromEmailAddress: ${TENCENT_EMAIL_FROM_ADDRESS:}
+    replyToAddresses: ${TENCENT_EMAIL_REPLY_TO:}
   sms:
     secretId: ${TENCENT_SMS_SECRET_ID:}
     secretKey: ${TENCENT_SMS_SECRET_KEY:}
@@ -124,3 +113,5 @@ ai:
 # 测试环境前端地址
 app:
   frontend-url: ${FRONTEND_URL:}
+  email:
+    mock-enabled: ${APP_EMAIL_MOCK_ENABLED:true}

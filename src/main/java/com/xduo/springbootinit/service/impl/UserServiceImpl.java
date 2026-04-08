@@ -22,6 +22,7 @@ import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.utils.NetUtils;
 import com.xduo.springbootinit.utils.SqlUtils;
+import com.xduo.springbootinit.utils.TencentEmailUtils;
 import com.xduo.springbootinit.utils.TencentSmsUtils;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import org.redisson.api.RAtomicLong;
@@ -40,9 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -67,10 +65,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private RedissonClient redissonClient;
 
     @Resource
-    private JavaMailSender javaMailSender;
-
-    @Value("${spring.mail.username}")
-    private String fromEmail;
+    private TencentEmailUtils tencentEmailUtils;
 
     @Resource
     private TencentSmsUtils tencentSmsUtils;
@@ -306,18 +301,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     private boolean sendEmail(String email, String code) {
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(email);
-            message.setSubject("智面平台 - 验证码");
-            message.setText("您的验证码为：" + code + "，5 分钟内有效。如非本人操作请忽略。");
-            javaMailSender.send(message);
-            return true;
-        } catch (Exception e) {
-            log.error("邮件发送异常", e);
-            return false;
-        }
+        return tencentEmailUtils.sendTextEmail(email, "智面平台 - 验证码",
+                "您的验证码为：" + code + "，5 分钟内有效。如非本人操作请忽略。");
     }
 
     @Override

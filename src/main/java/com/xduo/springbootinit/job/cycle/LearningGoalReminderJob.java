@@ -7,10 +7,8 @@ import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserLearningGoalService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.TencentEmailUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -42,13 +40,10 @@ public class LearningGoalReminderJob {
     private NotificationService notificationService;
 
     @Resource
-    private JavaMailSender javaMailSender;
+    private TencentEmailUtils tencentEmailUtils;
 
     @Resource
     private SystemConfigService systemConfigService;
-
-    @Value("${spring.mail.username:}")
-    private String fromEmail;
 
     /**
      * 每天晚上 8 点检查未达标用户并发送提醒
@@ -107,19 +102,17 @@ public class LearningGoalReminderJob {
         if (!systemConfigService.isEnableEmailNotification()) {
             return;
         }
-        if (user == null || org.apache.commons.lang3.StringUtils.isBlank(user.getEmail())
-                || org.apache.commons.lang3.StringUtils.isBlank(fromEmail)) {
+        if (user == null || org.apache.commons.lang3.StringUtils.isBlank(user.getEmail())) {
             return;
         }
         try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(user.getEmail());
-            message.setSubject("智面平台 - 学习目标提醒");
-            message.setText(title + "\n\n" + content + "\n\n现在继续刷题，保持今天的学习节奏。");
-            javaMailSender.send(message);
+            boolean sent = tencentEmailUtils.sendTextEmail(user.getEmail(), "智面平台 - 学习目标提醒",
+                    title + "\n\n" + content + "\n\n现在继续刷题，保持今天的学习节奏。");
+            if (!sent) {
+                log.warn("发送学习目标提醒邮件失败,userId={}", user.getId());
+            }
         } catch (Exception e) {
-            log.warn("发送学习目标提醒邮件失败,userId={}", user.getId(), e);
+            log.warn("发送学习目标提醒邮件异常,userId={}", user.getId(), e);
         }
     }
 }
