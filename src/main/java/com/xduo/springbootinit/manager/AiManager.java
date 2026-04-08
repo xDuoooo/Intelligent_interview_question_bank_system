@@ -4,17 +4,23 @@ import cn.hutool.json.JSONUtil;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 /**
  * AI 服务管理 (通用 OpenAI 协议)
@@ -35,10 +41,8 @@ public class AiManager {
     @Value("${ai.speech-model:whisper-1}")
     private String speechModel;
 
-    private final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
+    private final HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(60))
             .build();
 
     /**
@@ -72,22 +76,13 @@ public class AiManager {
         requestMap.put("temperature", 0.7);
 
         String json = JSONUtil.toJsonStr(requestMap);
-        RequestBody body = RequestBody.create(json, MediaType.parse("application/json"));
-        Request request = new Request.Builder()
-                .url(host + "/chat/completions")
-                .post(body)
-                .addHeader("Authorization", "Bearer " + apiKey)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String errorMsg = response.body() != null ? response.body().string() : "无响应";
-                log.error("AI 请求失败: {}", errorMsg);
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 服务调用异常");
-            }
-            String responseBody = response.body() != null ? response.body().string() : "";
+        try {
+            String responseBody = sendJsonRequest("/chat/completions", json);
             return extractAssistantContent(responseBody);
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             log.error("AI 通信异常", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 通信失败");
         }
@@ -111,40 +106,78 @@ public class AiManager {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "音频内容不能为空");
         }
         String safeFileName = StringUtils.defaultIfBlank(fileName, "mock-interview-audio.webm");
-        MediaType mediaType = MediaType.parse(StringUtils.defaultIfBlank(contentType, "application/octet-stream"));
-        if (mediaType == null) {
-            mediaType = MediaType.parse("application/octet-stream");
-        }
+        String safeContentType = StringUtils.defaultIfBlank(contentType, "application/octet-stream");
+        String boundary = "----CodexBoundary" + UUID.randomUUID().toString().replace("-", "");
 
-        MultipartBody.Builder formBuilder = new MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart("model", StringUtils.defaultIfBlank(speechModel, "whisper-1"))
-                .addFormDataPart("file", safeFileName, RequestBody.create(fileBytes, mediaType));
-        if (StringUtils.isNotBlank(language)) {
-            formBuilder.addFormDataPart("language", language);
-        }
-        if (StringUtils.isNotBlank(prompt)) {
-            formBuilder.addFormDataPart("prompt", prompt);
-        }
-
-        Request request = new Request.Builder()
-                .url(host + "/audio/transcriptions")
-                .post(formBuilder.build())
-                .addHeader("Authorization", "Bearer " + apiKey)
-                .build();
-
-        try (Response response = client.newCall(request).execute()) {
-            if (!response.isSuccessful()) {
-                String errorMsg = response.body() != null ? response.body().string() : "无响应";
-                log.error("AI 音频转写失败: {}", errorMsg);
+        try {
+            byte[] requestBody = buildMultipartBody(boundary, safeFileName, fileBytes, safeContentType, language, prompt);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(host + "/audio/transcriptions"))
+                    .timeout(Duration.ofSeconds(60))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
+                    .build();
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                log.error("AI 音频转写失败: {}", response.body());
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 音频转写失败");
             }
-            String responseBody = response.body() != null ? response.body().string() : "";
+            String responseBody = response.body() == null ? "" : response.body();
             return extractTranscriptionText(responseBody);
-        } catch (IOException e) {
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             log.error("AI 音频转写通信异常", e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 音频转写通信失败");
         }
+    }
+
+    private String sendJsonRequest(String path, String json) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(host + path))
+                .timeout(Duration.ofSeconds(60))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.error("AI 请求失败: {}", response.body());
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 服务调用异常");
+        }
+        return response.body() == null ? "" : response.body();
+    }
+
+    private byte[] buildMultipartBody(String boundary, String fileName, byte[] fileBytes, String contentType,
+                                      String language, String prompt) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        writeFormField(outputStream, boundary, "model", StringUtils.defaultIfBlank(speechModel, "whisper-1"));
+        if (StringUtils.isNotBlank(language)) {
+            writeFormField(outputStream, boundary, "language", language);
+        }
+        if (StringUtils.isNotBlank(prompt)) {
+            writeFormField(outputStream, boundary, "prompt", prompt);
+        }
+        outputStream.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        outputStream.write(("Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+        outputStream.write(("Content-Type: " + contentType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        outputStream.write(fileBytes);
+        outputStream.write("\r\n".getBytes(StandardCharsets.UTF_8));
+        outputStream.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+        return outputStream.toByteArray();
+    }
+
+    private void writeFormField(ByteArrayOutputStream outputStream, String boundary, String name, String value)
+            throws IOException {
+        outputStream.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+        outputStream.write(("Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n")
+                .getBytes(StandardCharsets.UTF_8));
+        outputStream.write(StringUtils.defaultString(value).getBytes(StandardCharsets.UTF_8));
+        outputStream.write("\r\n".getBytes(StandardCharsets.UTF_8));
     }
 
     private boolean hasConfiguredApiKey() {
