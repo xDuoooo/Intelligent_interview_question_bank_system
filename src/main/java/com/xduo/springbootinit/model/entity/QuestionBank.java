@@ -40,6 +40,26 @@ public class QuestionBank {
     private Long userId;
 
     /**
+     * 审核状态：0-待审核 1-已通过 2-已驳回
+     */
+    private Integer reviewStatus;
+
+    /**
+     * 审核意见
+     */
+    private String reviewMessage;
+
+    /**
+     * 审核人 id
+     */
+    private Long reviewUserId;
+
+    /**
+     * 审核时间
+     */
+    private Date reviewTime;
+
+    /**
      * 编辑时间
      */
     private Date editTime;
@@ -128,6 +148,62 @@ public class QuestionBank {
      */
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    /**
+     * 审核状态：0-待审核 1-已通过 2-已驳回
+     */
+    public Integer getReviewStatus() {
+        return reviewStatus;
+    }
+
+    /**
+     * 审核状态：0-待审核 1-已通过 2-已驳回
+     */
+    public void setReviewStatus(Integer reviewStatus) {
+        this.reviewStatus = reviewStatus;
+    }
+
+    /**
+     * 审核意见
+     */
+    public String getReviewMessage() {
+        return reviewMessage;
+    }
+
+    /**
+     * 审核意见
+     */
+    public void setReviewMessage(String reviewMessage) {
+        this.reviewMessage = reviewMessage;
+    }
+
+    /**
+     * 审核人 id
+     */
+    public Long getReviewUserId() {
+        return reviewUserId;
+    }
+
+    /**
+     * 审核人 id
+     */
+    public void setReviewUserId(Long reviewUserId) {
+        this.reviewUserId = reviewUserId;
+    }
+
+    /**
+     * 审核时间
+     */
+    public Date getReviewTime() {
+        return reviewTime;
+    }
+
+    /**
+     * 审核时间
+     */
+    public void setReviewTime(Date reviewTime) {
+        this.reviewTime = reviewTime;
     }
 
     /**

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.constant.CommonConstant;
+import com.xduo.springbootinit.constant.QuestionBankConstant;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.mapper.QuestionBankMapper;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
@@ -79,6 +80,7 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         String sortField = questionBankQueryRequest.getSortField();
         String sortOrder = questionBankQueryRequest.getSortOrder();
         Long userId = questionBankQueryRequest.getUserId();
+        Integer reviewStatus = questionBankQueryRequest.getReviewStatus();
         // 从多字段中搜索
         if (StringUtils.isNotBlank(searchText)) {
             queryWrapper.and(qw -> qw.like("title", searchText).or().like("description", searchText));
@@ -90,6 +92,13 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         queryWrapper.ne(ObjectUtils.isNotEmpty(notId), "id", notId);
         queryWrapper.eq(ObjectUtils.isNotEmpty(id), "id", id);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
+        if (reviewStatus != null) {
+            if (QuestionBankConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+                queryWrapper.and(qw -> qw.eq("reviewStatus", reviewStatus).or().isNull("reviewStatus"));
+            } else {
+                queryWrapper.eq("reviewStatus", reviewStatus);
+            }
+        }
         // 排序规则
         queryWrapper.orderBy(SqlUtils.validSortField(sortField),
                 CommonConstant.SORT_ORDER_ASC.equals(sortOrder),

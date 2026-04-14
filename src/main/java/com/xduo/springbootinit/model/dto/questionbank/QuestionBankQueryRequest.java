@@ -48,6 +48,11 @@ public class QuestionBankQueryRequest extends PageRequest implements Serializabl
      */
     private Long userId;
 
+    /**
+     * 审核状态
+     */
+    private Integer reviewStatus;
+
     private static final long serialVersionUID = 1L;
     /**
      * 是否要关联查询题目列表
