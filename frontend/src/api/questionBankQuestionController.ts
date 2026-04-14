@@ -62,6 +62,23 @@ export async function getQuestionBankQuestionVoByIdUsingGet(
   });
 }
 
+/** getQuestionVOInBank GET /api/questionBankQuestion/get/question/vo */
+export async function getQuestionVoInBankUsingGet(
+  params: {
+    questionBankId?: string | number;
+    questionId?: string | number;
+  },
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseQuestionVO_>('/api/questionBankQuestion/get/question/vo', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}
+
 /** listQuestionBankQuestionByPage POST /api/questionBankQuestion/list/page */
 export async function listQuestionBankQuestionByPageUsingPost(
   body: API.QuestionBankQuestionQueryRequest,

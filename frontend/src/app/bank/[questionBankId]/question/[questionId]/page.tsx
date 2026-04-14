@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { getQuestionBankVoByIdUsingGet } from "@/api/questionBankController";
-import { getQuestionVoByIdUsingGet } from "@/api/questionController";
+import { getQuestionVoInBankUsingGet } from "@/api/questionBankQuestionController";
+import { getLoginUserUsingGet } from "@/api/userController";
 import QuestionCard from "@/components/QuestionCard";
+import QuestionOwnerPanel from "@/app/question/[questionId]/QuestionOwnerPanel";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ListFilter, Bookmark, Sparkles } from "lucide-react";
 import { headers } from "next/headers";
@@ -24,9 +26,9 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   // 获取题库详情
   let bank: API.QuestionBankVO | undefined = undefined;
   let question: API.QuestionVO | undefined = undefined;
-  let isNotLogin = false;
+  let loginUser: API.LoginUserVO | undefined = undefined;
 
-  const [bankResult, questionResult] = await Promise.allSettled([
+  const [bankResult, questionResult, loginUserResult] = await Promise.allSettled([
     getQuestionBankVoByIdUsingGet(
       {
         id: questionBankId,
@@ -35,12 +37,14 @@ export default async function BankQuestionPage({ params }: { params: { questionB
       },
       requestOptions,
     ),
-    getQuestionVoByIdUsingGet(
+    getQuestionVoInBankUsingGet(
       {
-        id: questionId,
+        questionBankId,
+        questionId,
       },
       requestOptions,
     ),
+    getLoginUserUsingGet(requestOptions),
   ]);
 
   if (bankResult.status === "fulfilled") {
@@ -52,13 +56,14 @@ export default async function BankQuestionPage({ params }: { params: { questionB
 
   if (questionResult.status === "fulfilled") {
     const res = questionResult.value as unknown as API.BaseResponseQuestionVO_;
-    if (res.code === 40100) {
-      isNotLogin = true;
-    } else {
-      question = res.data;
-    }
+    question = res.data;
   } else {
     console.error("获取题目详情失败", questionResult.reason);
+  }
+
+  if (loginUserResult.status === "fulfilled") {
+    const res = loginUserResult.value as unknown as API.BaseResponseLoginUserVO_;
+    loginUser = res.data;
   }
 
   if (!bank) {
@@ -75,8 +80,13 @@ export default async function BankQuestionPage({ params }: { params: { questionB
   }
 
   if (!question) {
+    const questionErrorMessage =
+      questionResult.status === "rejected"
+        ? String((questionResult.reason as Error | undefined)?.message || "")
+        : "";
+    const isNotLogin = !loginUser?.id && /401|登录|未登录/i.test(questionErrorMessage);
     const errorTitle = isNotLogin ? "您还没有登录" : "获取题目详情失败";
-    const errorDesc = isNotLogin ? "请先登录后再查看题目详情" : "该题目可能已被移除或权限不足";
+    const errorDesc = isNotLogin ? "请先登录后再查看题目详情" : "该题目可能已被移除、不属于当前题库，或权限不足";
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
@@ -94,6 +104,9 @@ export default async function BankQuestionPage({ params }: { params: { questionB
       </div>
     );
   }
+
+  const isOwner = Boolean(loginUser?.id) && String(loginUser?.id) === String(question.userId);
+  const isAdmin = loginUser?.userRole === "admin";
 
   return (
     <div id="bankQuestionPage" className="flex flex-col lg:flex-row gap-8 pb-20">
@@ -139,6 +152,18 @@ export default async function BankQuestionPage({ params }: { params: { questionB
 
       {/* Main Content - Question Card */}
       <main className="flex-1 min-w-0">
+        {isOwner || isAdmin ? (
+          <div className="mb-8">
+            <QuestionOwnerPanel
+              questionId={questionId}
+              reviewStatus={question.reviewStatus}
+              reviewMessage={question.reviewMessage}
+              reviewTime={question.reviewTime}
+              isOwner={isOwner}
+              isAdmin={isAdmin}
+            />
+          </div>
+        ) : null}
         <QuestionCard question={question} />
       </main>
     </div>

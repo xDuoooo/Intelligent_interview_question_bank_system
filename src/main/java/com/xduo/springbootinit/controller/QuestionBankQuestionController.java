@@ -16,6 +16,7 @@ import com.xduo.springbootinit.model.dto.question.QuestionBatchDeleteRequest;
 import com.xduo.springbootinit.model.dto.questionbankquestion.*;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.QuestionVO;
 import com.xduo.springbootinit.model.vo.QuestionBankQuestionVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionBankService;
@@ -81,6 +82,32 @@ public class QuestionBankQuestionController {
         boolean result = questionBankQuestionService.save(questionBankQuestion);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(questionBankQuestion.getId());
+    }
+
+    /**
+     * 获取题库中的题目详情（校验题目必须属于该题库）
+     */
+    @GetMapping("/get/question/vo")
+    public BaseResponse<QuestionVO> getQuestionVOInBank(@RequestParam Long questionBankId,
+                                                        @RequestParam Long questionId,
+                                                        HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "题库非法");
+        ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR, "题目非法");
+        User loginUser = userService.getLoginUserPermitNull(request);
+        QuestionBank questionBank = questionBankService.getById(questionBankId);
+        ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR, "题库不存在");
+        ThrowUtils.throwIf(!questionBankService.canViewQuestionBank(questionBank, loginUser), ErrorCode.NOT_FOUND_ERROR);
+
+        LambdaQueryWrapper<QuestionBankQuestion> relationQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId)
+                .eq(QuestionBankQuestion::getQuestionId, questionId);
+        QuestionBankQuestion relation = questionBankQuestionService.getOne(relationQueryWrapper, false);
+        ThrowUtils.throwIf(relation == null, ErrorCode.NOT_FOUND_ERROR, "该题目不属于当前题库");
+
+        Question question = questionService.getById(questionId);
+        ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
+        return ResultUtils.success(questionService.getQuestionVO(question, request));
     }
 
     /**
