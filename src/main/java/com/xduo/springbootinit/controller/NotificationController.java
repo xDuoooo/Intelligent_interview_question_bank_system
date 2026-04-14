@@ -11,6 +11,7 @@ import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.notification.NotificationAddRequest;
+import com.xduo.springbootinit.model.dto.notification.NotificationAdminSendRequest;
 import com.xduo.springbootinit.model.dto.notification.NotificationQueryRequest;
 import com.xduo.springbootinit.model.entity.Notification;
 import com.xduo.springbootinit.model.entity.User;
@@ -18,11 +19,16 @@ import com.xduo.springbootinit.model.vo.NotificationVO;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 通知接口
@@ -37,6 +43,10 @@ public class NotificationController {
 
     @Resource
     private UserService userService;
+
+    private static final String NOTIFICATION_SCOPE_SINGLE = "single";
+    private static final String NOTIFICATION_SCOPE_USER = "user";
+    private static final String NOTIFICATION_SCOPE_ALL = "all";
 
     // region 增删改查
 
@@ -59,6 +69,45 @@ public class NotificationController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         long newNotificationId = notification.getId();
         return ResultUtils.success(newNotificationId);
+    }
+
+    /**
+     * 管理员发送通知（支持单用户或广播）
+     */
+    @PostMapping("/admin/send")
+    @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Long> adminSendNotification(@RequestBody NotificationAdminSendRequest sendRequest) {
+        ThrowUtils.throwIf(sendRequest == null, ErrorCode.PARAMS_ERROR);
+
+        String scope = StringUtils.defaultIfBlank(StringUtils.trimToNull(sendRequest.getScope()), NOTIFICATION_SCOPE_SINGLE);
+        String title = StringUtils.trimToNull(sendRequest.getTitle());
+        String content = StringUtils.trimToNull(sendRequest.getContent());
+        String type = StringUtils.defaultIfBlank(StringUtils.trimToNull(sendRequest.getType()), "system");
+
+        ThrowUtils.throwIf(StringUtils.isBlank(title), ErrorCode.PARAMS_ERROR, "通知标题不能为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(content), ErrorCode.PARAMS_ERROR, "通知内容不能为空");
+        ThrowUtils.throwIf(StringUtils.length(title) > 80, ErrorCode.PARAMS_ERROR, "通知标题过长");
+        ThrowUtils.throwIf(StringUtils.length(content) > 1000, ErrorCode.PARAMS_ERROR, "通知内容过长");
+        ThrowUtils.throwIf(StringUtils.length(type) > 40, ErrorCode.PARAMS_ERROR, "通知类型过长");
+
+        List<Long> userIdList = resolveNotificationUserIdList(scope, sendRequest.getUserId());
+        ThrowUtils.throwIf(userIdList.isEmpty(), ErrorCode.NOT_FOUND_ERROR, "未找到可发送通知的用户");
+
+        List<Notification> notificationList = new ArrayList<>(userIdList.size());
+        userIdList.forEach(userId -> {
+            Notification notification = new Notification();
+            notification.setUserId(userId);
+            notification.setTitle(title);
+            notification.setContent(content);
+            notification.setType(type);
+            notification.setTargetId(sendRequest.getTargetId());
+            notification.setStatus(0);
+            notificationList.add(notification);
+        });
+
+        boolean result = notificationService.saveBatch(notificationList, 200);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "通知发送失败");
+        return ResultUtils.success((long) notificationList.size());
     }
 
     /**
@@ -209,4 +258,28 @@ public class NotificationController {
     }
 
     // endregion
+
+    private List<Long> resolveNotificationUserIdList(String scope, Long userId) {
+        if (NOTIFICATION_SCOPE_SINGLE.equals(scope)) {
+            ThrowUtils.throwIf(userId == null || userId <= 0, ErrorCode.PARAMS_ERROR, "请填写目标用户 ID");
+            User targetUser = userService.getById(userId);
+            ThrowUtils.throwIf(targetUser == null, ErrorCode.NOT_FOUND_ERROR, "目标用户不存在");
+            return List.of(userId);
+        }
+
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.select("id");
+        if (NOTIFICATION_SCOPE_USER.equals(scope)) {
+            userQueryWrapper.eq("userRole", UserConstant.DEFAULT_ROLE);
+        } else if (NOTIFICATION_SCOPE_ALL.equals(scope)) {
+            userQueryWrapper.ne("userRole", UserConstant.BAN_ROLE);
+        } else {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "通知发送范围不合法");
+        }
+
+        return userService.list(userQueryWrapper).stream()
+                .map(User::getId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toList());
+    }
 }

@@ -6,6 +6,7 @@ import * as wxMpController from './wxMpController';
 import * as adminDashboardController from './adminDashboardController';
 import * as fileController from './fileController';
 import * as mockInterviewController from './mockInterviewController';
+import * as notificationController from './notificationController';
 import * as postController from './postController';
 import * as postFavourController from './postFavourController';
 import * as postThumbController from './postThumbController';
@@ -19,6 +20,7 @@ export default {
   wxMpController,
   fileController,
   mockInterviewController,
+  notificationController,
   postController,
   postFavourController,
   postThumbController,

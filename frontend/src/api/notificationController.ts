@@ -17,6 +17,21 @@ export async function addNotificationUsingPost(
   });
 }
 
+/** adminSendNotification POST /api/notification/admin/send */
+export async function adminSendNotificationUsingPost(
+  body: Record<string, any>,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseLong_>('/api/notification/admin/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** deleteNotification POST /api/notification/delete */
 export async function deleteNotificationUsingPost(
   body: API.DeleteRequest,
