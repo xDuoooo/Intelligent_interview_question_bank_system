@@ -158,9 +158,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         Integer reviewStatus = postQueryRequest.getReviewStatus();
         Integer isTop = postQueryRequest.getIsTop();
         Integer isFeatured = postQueryRequest.getIsFeatured();
-        // es 起始页为 0
-        long current = Math.max(0, postQueryRequest.getCurrent() - 1);
-        long pageSize = postQueryRequest.getPageSize();
+        long requestedCurrent = Math.max(postQueryRequest.getCurrent(), 1);
+        long current = requestedCurrent - 1;
+        long pageSize = Math.max(postQueryRequest.getPageSize(), 1);
         String sortField = postQueryRequest.getSortField();
         String sortOrder = postQueryRequest.getSortOrder();
 
@@ -243,7 +243,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
                 .withPageable(org.springframework.data.domain.PageRequest.of((int) current, (int) pageSize))
                 .build();
 
-        Page<Post> page = new Page<>();
+        Page<Post> page = new Page<>(requestedCurrent, pageSize);
         List<Post> resourceList = new ArrayList<>();
         try {
             SearchHits<PostEsDTO> searchHits = elasticsearchOperations.search(nativeQuery, PostEsDTO.class);

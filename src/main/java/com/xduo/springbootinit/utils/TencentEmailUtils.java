@@ -1,6 +1,7 @@
 package com.xduo.springbootinit.utils;
 
 import com.tencentcloudapi.common.Credential;
+import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import com.tencentcloudapi.common.profile.ClientProfile;
 import com.tencentcloudapi.common.profile.HttpProfile;
 import com.tencentcloudapi.ses.v20201002.SesClient;
@@ -94,6 +95,13 @@ public class TencentEmailUtils {
                 return true;
             }
             log.error("邮件发送失败：email={}, error=腾讯云未返回 messageId", maskEmail(email));
+            return false;
+        } catch (TencentCloudSDKException e) {
+            if (StringUtils.containsIgnoreCase(e.getMessage(), "ses:SendEmail")) {
+                log.error("腾讯云邮件发送失败：当前密钥缺少 ses:SendEmail 权限，email={}", maskEmail(email), e);
+            } else {
+                log.error("腾讯云邮件接口调用异常", e);
+            }
             return false;
         } catch (Exception e) {
             log.error("腾讯云邮件接口调用异常", e);

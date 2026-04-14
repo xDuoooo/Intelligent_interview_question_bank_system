@@ -126,7 +126,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             stringRedisTemplate.delete(captchaKey);
         }
 
-        String loginIdentifier = userAccount.trim();
+        String loginIdentifier = StringUtils.trimToEmpty(userAccount);
+        String normalizedEmailIdentifier = normalizeEmailTarget(loginIdentifier);
         ensurePasswordLoginNotBlocked(loginIdentifier);
         String encryptPassword = DigestUtils.md5DigestAsHex((SALT + userPassword).getBytes());
         QueryWrapper<User> queryWrapper = new QueryWrapper<User>()
@@ -135,7 +136,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                         .or()
                         .eq("phone", loginIdentifier)
                         .or()
-                        .eq("email", loginIdentifier));
+                        .eq("email", normalizedEmailIdentifier));
         User user = this.getOne(queryWrapper);
         if (user == null) {
             recordPasswordLoginFailure(loginIdentifier);
@@ -187,7 +188,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         ThrowUtils.throwIf(StringUtils.isBlank(target) || type == null, ErrorCode.PARAMS_ERROR, "参数不全");
         validateLoginTargetType(type);
-        validateCodeLoginEntrance(target, type);
+        target = normalizeCodeLoginTarget(target, type);
 
         // 1. 图形码校验
         if (systemConfigService.isRequireCaptcha()) {
@@ -203,27 +204,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 2. 格式校验
-        if (type == 1) {
-            // 邮箱正则
-            if (!target.matches("^[\\w.+-]+@[\\w-]+\\.[\\w.]+$")) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "邮箱格式不正确");
-            }
-        } else if (type == 2) {
-            // 手机号正则
-            if (!target.matches("^1[3-9]\\d{9}$")) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "手机号格式不正确");
-            }
-        }
+        validateVerificationTargetFormat(target, type);
+        validateCodeLoginEntrance(target, type);
 
         // 3. 限流校验 (IP 10/日, 目标 5/日)
         String ip = NetUtils.getIpAddress(request);
         RAtomicLong ipCounter = redissonClient.getAtomicLong(RedisConstant.getUserIpLimitRedisKey(ip));
-        RAtomicLong phoneCounter = redissonClient.getAtomicLong(RedisConstant.getUserPhoneLimitRedisKey(target));
+        RAtomicLong targetCounter = redissonClient.getAtomicLong(RedisConstant.getUserPhoneLimitRedisKey(target));
         if (ipCounter.get() >= 10) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "今日发送次数已达上限");
         }
-        if (phoneCounter.get() >= 5) {
-            throw new BusinessException(ErrorCode.OPERATION_ERROR, "该号码今日发送次数已达上限");
+        if (targetCounter.get() >= 5) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    Objects.equals(type, 1) ? "该邮箱今日发送次数已达上限" : "该号码今日发送次数已达上限");
         }
 
         // 4. 60s 频率限制
@@ -238,7 +231,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (type == 1) {
             sendResult = sendEmail(target, code);
             if (!sendResult) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "邮件服务器响应异常，请检查配置");
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "邮件发送失败，请检查腾讯云邮件推送权限、发信地址和账号配置");
             }
         } else {
             sendResult = tencentSmsUtils.sendMessage(target, code);
@@ -255,8 +248,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         long secondsToMidnight = DateUtil.between(new Date(), DateUtil.endOfDay(new Date()), DateUnit.SECOND);
         ipCounter.incrementAndGet();
         ipCounter.expire(java.time.Duration.ofSeconds(secondsToMidnight));
-        phoneCounter.incrementAndGet();
-        phoneCounter.expire(java.time.Duration.ofSeconds(secondsToMidnight));
+        targetCounter.incrementAndGet();
+        targetCounter.expire(java.time.Duration.ofSeconds(secondsToMidnight));
     }
 
     @Override
@@ -267,6 +260,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Integer type = userCodeLoginRequest.getType();
         ThrowUtils.throwIf(StringUtils.isAnyBlank(target, code) || type == null, ErrorCode.PARAMS_ERROR, "参数不全");
         validateLoginTargetType(type);
+        target = normalizeCodeLoginTarget(target, type);
 
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
@@ -508,6 +502,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void bindPhone(String target, String code, User loginUser) {
+        target = normalizePhoneTarget(target);
         // 1. 校验验证码
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
@@ -535,6 +530,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void bindEmail(String target, String code, User loginUser) {
+        target = normalizeEmailTarget(target);
         // 1. 校验验证码
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
@@ -964,5 +960,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!allowRegister) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前未开放注册，仅已绑定邮箱或手机号的账号可使用验证码登录");
         }
+    }
+
+    private void validateVerificationTargetFormat(String target, Integer type) {
+        if (Objects.equals(type, 1)) {
+            ThrowUtils.throwIf(!target.matches("^[\\w.+-]+@[\\w-]+\\.[\\w.]+$"),
+                    ErrorCode.PARAMS_ERROR, "邮箱格式不正确");
+            return;
+        }
+        ThrowUtils.throwIf(!target.matches("^1[3-9]\\d{9}$"),
+                ErrorCode.PARAMS_ERROR, "手机号格式不正确");
+    }
+
+    private String normalizeCodeLoginTarget(String target, Integer type) {
+        if (Objects.equals(type, 1)) {
+            return normalizeEmailTarget(target);
+        }
+        return normalizePhoneTarget(target);
+    }
+
+    private String normalizeEmailTarget(String email) {
+        return StringUtils.lowerCase(StringUtils.trimToEmpty(email));
+    }
+
+    private String normalizePhoneTarget(String phone) {
+        return StringUtils.trimToEmpty(phone);
     }
 }

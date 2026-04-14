@@ -315,9 +315,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Long questionBankId = questionQueryRequest.getQuestionBankId();
         Long userId = questionQueryRequest.getUserId();
         Integer reviewStatus = questionQueryRequest.getReviewStatus();
-        // 注意，ES 的起始页为 0
-        int current = Math.max(0, questionQueryRequest.getCurrent() - 1);
-        int pageSize = questionQueryRequest.getPageSize();
+        long requestedCurrent = Math.max(questionQueryRequest.getCurrent(), 1);
+        int current = (int) (requestedCurrent - 1);
+        int pageSize = Math.max(questionQueryRequest.getPageSize(), 1);
         String sortField = questionQueryRequest.getSortField();
         String sortOrder = questionQueryRequest.getSortOrder();
 
@@ -388,7 +388,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .withPageable(org.springframework.data.domain.PageRequest.of(current, pageSize))
                 .build();
 
-        Page<Question> page = new Page<>();
+        Page<Question> page = new Page<>(requestedCurrent, pageSize);
         List<Question> resourceList = new ArrayList<>();
         try {
             SearchHits<QuestionEsDTO> searchHits = elasticsearchOperations.search(nativeQuery, QuestionEsDTO.class);
