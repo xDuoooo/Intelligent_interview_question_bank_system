@@ -158,7 +158,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public LoginUserVO userLoginBySocial(String platform, String socialId, String nickname, String avatar,
             HttpServletRequest request) {
         String normalizedPlatform = normalizeSocialPlatform(platform);
+        socialId = StringUtils.trimToEmpty(socialId);
         ThrowUtils.throwIf(StringUtils.isBlank(socialId), ErrorCode.PARAMS_ERROR, "第三方账号标识不能为空");
+        nickname = normalizeSocialUserName(nickname, normalizedPlatform);
+        avatar = StringUtils.trimToNull(avatar);
         String socialField = resolveSocialPlatformField(normalizedPlatform);
         User user = this.getOne(new QueryWrapper<User>().eq(socialField, socialId).last("limit 1"));
         if (user == null) {
@@ -578,8 +581,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setUserAccount("gh_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
                     user.setPasswordConfigured(0);
-                    user.setUserName(userName);
-                    user.setUserAvatar(userAvatar);
+                    user.setUserName(normalizeSocialUserName(userName, "github"));
+                    user.setUserAvatar(StringUtils.trimToNull(userAvatar));
                     user.setUserRole(UserRoleEnum.USER.getValue());
                     boolean saveResult = this.save(user);
                     if (!saveResult) {
@@ -615,8 +618,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setUserAccount("gt_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
                     user.setPasswordConfigured(0);
-                    user.setUserName(userName);
-                    user.setUserAvatar(userAvatar);
+                    user.setUserName(normalizeSocialUserName(userName, "gitee"));
+                    user.setUserAvatar(StringUtils.trimToNull(userAvatar));
                     user.setUserRole(UserRoleEnum.USER.getValue());
                     boolean saveResult = this.save(user);
                     if (!saveResult) {
@@ -652,8 +655,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     user.setUserAccount("gl_" + RandomUtil.randomString(8));
                     user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
                     user.setPasswordConfigured(0);
-                    user.setUserName(userName);
-                    user.setUserAvatar(userAvatar);
+                    user.setUserName(normalizeSocialUserName(userName, "google"));
+                    user.setUserAvatar(StringUtils.trimToNull(userAvatar));
                     user.setUserRole(UserRoleEnum.USER.getValue());
                     boolean saveResult = this.save(user);
                     if (!saveResult) {
@@ -675,6 +678,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void bindGithub(long userId, String githubId) {
+        githubId = StringUtils.trimToEmpty(githubId);
+        ThrowUtils.throwIf(StringUtils.isBlank(githubId), ErrorCode.PARAMS_ERROR, "GitHub 标识不能为空");
         long count = this.count(new QueryWrapper<User>().eq("githubId", githubId).ne("id", userId));
         if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 GitHub 账号已被其他账号绑定");
         User user = new User();
@@ -686,6 +691,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void bindGitee(long userId, String giteeId) {
+        giteeId = StringUtils.trimToEmpty(giteeId);
+        ThrowUtils.throwIf(StringUtils.isBlank(giteeId), ErrorCode.PARAMS_ERROR, "Gitee 标识不能为空");
         long count = this.count(new QueryWrapper<User>().eq("giteeId", giteeId).ne("id", userId));
         if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 Gitee 账号已被其他账号绑定");
         User user = new User();
@@ -697,6 +704,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public void bindGoogle(long userId, String googleId) {
+        googleId = StringUtils.trimToEmpty(googleId);
+        ThrowUtils.throwIf(StringUtils.isBlank(googleId), ErrorCode.PARAMS_ERROR, "Google 标识不能为空");
         long count = this.count(new QueryWrapper<User>().eq("googleId", googleId).ne("id", userId));
         if (count > 0) throw new BusinessException(ErrorCode.PARAMS_ERROR, "该 Google 账号已被其他账号绑定");
         User user = new User();
@@ -991,6 +1000,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private String normalizePhoneTarget(String phone) {
         return StringUtils.trimToEmpty(phone);
+    }
+
+    private String normalizeSocialUserName(String userName, String platform) {
+        String normalizedUserName = StringUtils.trimToNull(userName);
+        if (StringUtils.isNotBlank(normalizedUserName)) {
+            return StringUtils.abbreviate(normalizedUserName, 32);
+        }
+        return "智面" + StringUtils.upperCase(StringUtils.defaultIfBlank(platform, "USER")) + "用户_" + RandomUtil.randomNumbers(4);
     }
 
     private String normalizeSocialPlatform(String platform) {

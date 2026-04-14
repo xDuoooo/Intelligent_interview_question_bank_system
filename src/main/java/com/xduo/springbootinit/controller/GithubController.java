@@ -89,6 +89,10 @@ public class GithubController {
                 .header("Accept", "application/json")
                 .form(tokenParams)
                 .execute();
+        if (!tokenResponse.isOk()) {
+            log.warn("GitHub token exchange failed, status={}, body={}", tokenResponse.getStatus(), tokenResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "GitHub 授权失败，请稍后重试");
+        }
         
         String tokenBody = tokenResponse.body();
         JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
@@ -103,6 +107,10 @@ public class GithubController {
         HttpResponse userResponse = HttpRequest.get(userUrl)
                 .header("Authorization", "token " + accessToken)
                 .execute();
+        if (!userResponse.isOk()) {
+            log.warn("GitHub user info request failed, status={}, body={}", userResponse.getStatus(), userResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub 用户信息失败，请稍后重试");
+        }
         
         String userBody = userResponse.body();
         JSONObject userInfo = JSONUtil.parseObj(userBody);

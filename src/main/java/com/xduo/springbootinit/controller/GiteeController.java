@@ -88,6 +88,10 @@ public class GiteeController {
         HttpResponse tokenResponse = HttpRequest.post(tokenUrl)
                 .form(tokenParams)
                 .execute();
+        if (!tokenResponse.isOk()) {
+            log.warn("Gitee token exchange failed, status={}, body={}", tokenResponse.getStatus(), tokenResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "Gitee 授权失败，请稍后重试");
+        }
         
         String tokenBody = tokenResponse.body();
         JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
@@ -100,6 +104,10 @@ public class GiteeController {
         // 2. 获取用户信息
         String userUrl = "https://gitee.com/api/v5/user?access_token=" + accessToken;
         HttpResponse userResponse = HttpRequest.get(userUrl).execute();
+        if (!userResponse.isOk()) {
+            log.warn("Gitee user info request failed, status={}, body={}", userResponse.getStatus(), userResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Gitee 用户信息失败，请稍后重试");
+        }
         
         String userBody = userResponse.body();
         JSONObject userInfo = JSONUtil.parseObj(userBody);

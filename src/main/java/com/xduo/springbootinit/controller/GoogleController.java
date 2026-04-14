@@ -89,6 +89,10 @@ public class GoogleController {
         HttpResponse tokenResponse = HttpRequest.post(tokenUrl)
                 .form(tokenParams)
                 .execute();
+        if (!tokenResponse.isOk()) {
+            log.warn("Google token exchange failed, status={}, body={}", tokenResponse.getStatus(), tokenResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "Google 授权失败，请稍后重试");
+        }
         
         String tokenBody = tokenResponse.body();
         JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
@@ -103,6 +107,10 @@ public class GoogleController {
         HttpResponse userResponse = HttpRequest.get(userUrl)
                 .header("Authorization", "Bearer " + accessToken)
                 .execute();
+        if (!userResponse.isOk()) {
+            log.warn("Google user info request failed, status={}, body={}", userResponse.getStatus(), userResponse.body());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Google 用户信息失败，请稍后重试");
+        }
         
         String userBody = userResponse.body();
         JSONObject userInfo = JSONUtil.parseObj(userBody);
