@@ -161,9 +161,9 @@ export default async function HomePage() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.2em] text-xs">
               <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />
-              <span>Premium Curation</span>
+              <span>Fresh Collections</span>
             </div>
-            <h2 className="text-3xl font-black tracking-tighter text-slate-900 sm:text-5xl">热门题库</h2>
+            <h2 className="text-3xl font-black tracking-tighter text-slate-900 sm:text-5xl">最新公开题库</h2>
           </div>
           <Link href="/banks" className="group flex items-center gap-2 text-sm font-black text-slate-400 hover:text-primary transition-all">
             EXPLORE ALL <ArrowRight className="h-5 w-5 bg-white p-1 rounded-full group-hover:bg-primary group-hover:text-white transition-all shadow-md" />

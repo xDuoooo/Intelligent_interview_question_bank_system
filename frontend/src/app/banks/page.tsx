@@ -1,7 +1,7 @@
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
-import QuestionBankList from "@/components/QuestionBankList";
 import { Compass } from "lucide-react";
 import { headers } from "next/headers";
+import BanksExplorer from "./components/BanksExplorer";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function BanksPage() {
   let questionBankList: API.QuestionBankVO[] = [];
+  let total = 0;
   const pageSize = 12;
 
   try {
@@ -25,6 +26,7 @@ export default async function BanksPage() {
     })) as unknown as API.BaseResponsePageQuestionBankVO_;
     const records = res.data?.records ?? [];
     questionBankList = records;
+    total = Number(res.data?.total) || 0;
   } catch (e) {
     console.error("获取题库列表失败", e);
   }
@@ -48,10 +50,7 @@ export default async function BanksPage() {
          </div>
       </section>
 
-      {/* Main Grid Area */}
-      <section className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-6 sm:p-10 border border-white shadow-2xl shadow-slate-200/50">
-        <QuestionBankList questionBankList={questionBankList} />
-      </section>
+      <BanksExplorer initialQuestionBankList={questionBankList} initialTotal={total} initialPageSize={pageSize} />
     </div>
   );
 }
