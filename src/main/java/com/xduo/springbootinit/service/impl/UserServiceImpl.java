@@ -157,11 +157,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public LoginUserVO userLoginBySocial(String platform, String socialId, String nickname, String avatar,
             HttpServletRequest request) {
-        User user = this.getOne(new QueryWrapper<User>().eq("unionId", socialId));
+        String normalizedPlatform = normalizeSocialPlatform(platform);
+        ThrowUtils.throwIf(StringUtils.isBlank(socialId), ErrorCode.PARAMS_ERROR, "第三方账号标识不能为空");
+        String socialField = resolveSocialPlatformField(normalizedPlatform);
+        User user = this.getOne(new QueryWrapper<User>().eq(socialField, socialId).last("limit 1"));
         if (user == null) {
             ensureRegisterAllowed();
             user = new User();
-            user.setUnionId(socialId);
+            user.setUnionId(normalizedPlatform + ":" + socialId);
+            applySocialPlatformId(user, normalizedPlatform, socialId);
             user.setUserAccount("u_" + RandomUtil.randomString(8));
             user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
             user.setPasswordConfigured(0);
@@ -985,5 +989,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private String normalizePhoneTarget(String phone) {
         return StringUtils.trimToEmpty(phone);
+    }
+
+    private String normalizeSocialPlatform(String platform) {
+        String normalizedPlatform = StringUtils.lowerCase(StringUtils.trimToEmpty(platform));
+        ThrowUtils.throwIf(StringUtils.isBlank(normalizedPlatform), ErrorCode.PARAMS_ERROR, "第三方登录平台不能为空");
+        return normalizedPlatform;
+    }
+
+    private String resolveSocialPlatformField(String platform) {
+        switch (platform) {
+            case "github":
+                return "githubId";
+            case "gitee":
+                return "giteeId";
+            case "google":
+                return "googleId";
+            default:
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "暂不支持该第三方登录平台");
+        }
+    }
+
+    private void applySocialPlatformId(User user, String platform, String socialId) {
+        switch (platform) {
+            case "github":
+                user.setGithubId(socialId);
+                return;
+            case "gitee":
+                user.setGiteeId(socialId);
+                return;
+            case "google":
+                user.setGoogleId(socialId);
+                return;
+            default:
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "暂不支持该第三方登录平台");
+        }
     }
 }

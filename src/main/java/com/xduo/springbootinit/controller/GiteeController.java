@@ -8,6 +8,7 @@ import com.xduo.springbootinit.config.OAuthConfig;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.service.UserService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.UUID;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +33,8 @@ import java.util.Map;
 @RequestMapping("/user/login/gitee")
 @Slf4j
 public class GiteeController {
+
+    private static final String GITEE_OAUTH_STATE_SESSION_KEY = "gitee_oauth_state";
 
     @Resource
     private OAuthConfig oauthConfig;
@@ -45,8 +49,11 @@ public class GiteeController {
      * 跳转到 Gitee 授权页
      */
     @GetMapping("")
-    public void login(@RequestParam(required = false) String action, HttpServletResponse response) throws IOException {
-        String state = StringUtils.isBlank(action) ? "login" : action;
+    public void login(@RequestParam(required = false) String action,
+                      HttpServletRequest request,
+                      HttpServletResponse response) throws IOException {
+        String state = buildOAuthState(action);
+        request.getSession(true).setAttribute(GITEE_OAUTH_STATE_SESSION_KEY, state);
         String authorizeUrl = String.format(
                 "https://gitee.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code&state=%s",
                 oauthConfig.getGitee().getId(),
@@ -60,11 +67,12 @@ public class GiteeController {
     @GetMapping("/callback")
     public void callback(@RequestParam String code,
                          @RequestParam(required = false) String state,
-                         jakarta.servlet.http.HttpServletRequest request,
+                         HttpServletRequest request,
                          HttpServletResponse response) throws IOException {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "Gitee 授权码为空");
         }
+        String action = validateOAuthState(state, request);
 
         // 1. 换取 Access Token
         Map<String, Object> tokenParams = new HashMap<>();
@@ -108,7 +116,7 @@ public class GiteeController {
 
         // 3. 执行静默注册/登录或绑定（基于 state 显式区分意图）
         try {
-            if ("bind".equals(state) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
+            if ("bind".equals(action) && cn.dev33.satoken.stp.StpUtil.isLogin()) {
                 userService.bindGitee(cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong(), giteeId);
                 // 重定向回中心页
                 response.sendRedirect(frontendBaseUrl + "/user/center?msg=" + URLEncoder.encode("绑定成功", "UTF-8"));
@@ -119,9 +127,28 @@ public class GiteeController {
             }
         } catch (BusinessException e) {
             log.error("Gitee callback error", e);
-            String redirectUrl = "bind".equals(state) ? frontendBaseUrl + "/user/center" : frontendBaseUrl + "/user/login";
+            String redirectUrl = "bind".equals(action) ? frontendBaseUrl + "/user/center" : frontendBaseUrl + "/user/login";
             response.sendRedirect(redirectUrl + "?error=" + URLEncoder.encode(e.getMessage(), "UTF-8"));
         }
+    }
+
+    private String buildOAuthState(String action) {
+        String intent = "bind".equals(action) ? "bind" : "login";
+        return intent + ":" + UUID.randomUUID();
+    }
+
+    private String validateOAuthState(String state, HttpServletRequest request) {
+        Object savedState = request.getSession(false) == null
+                ? null
+                : request.getSession(false).getAttribute(GITEE_OAUTH_STATE_SESSION_KEY);
+        if (request.getSession(false) != null) {
+            request.getSession(false).removeAttribute(GITEE_OAUTH_STATE_SESSION_KEY);
+        }
+        if (!(savedState instanceof String) || StringUtils.isBlank(state) || !StringUtils.equals(state, (String) savedState)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "Gitee 登录状态无效或已过期，请重新发起授权");
+        }
+        String[] parts = StringUtils.split(state, ':');
+        return parts != null && parts.length > 0 ? parts[0] : "login";
     }
 
     private String getFrontendBaseUrl() {
