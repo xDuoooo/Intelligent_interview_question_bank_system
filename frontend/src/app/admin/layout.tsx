@@ -17,6 +17,7 @@ import {
   Settings,
   MessageSquareText,
   BrainCircuit,
+  BellRing,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -58,6 +59,7 @@ export default function AdminLayout({ children }: Props) {
     { label: "题库管理", icon: BookOpen, href: "/admin/bank" },
     { label: "题目管理", icon: Database, href: "/admin/question" },
     { label: "社区管理", icon: MessageSquareText, href: "/admin/post" },
+    { label: "通知管理", icon: BellRing, href: "/admin/notification" },
     { label: "风控面板", icon: ShieldAlert, href: "/admin/security" },
     { label: "面试管理", icon: BrainCircuit, href: "/admin/mockInterview" },
     { label: "AI 智能增题", icon: Wand2, href: "/admin/question/ai" },

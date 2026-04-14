@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { List, Card, Badge, Button, Space, Typography, message, Pagination, Empty, Segmented, Select, Tag } from "antd";
-import { Bell, CheckCheck, ChevronRight } from "lucide-react";
+import { List, Card, Badge, Button, Space, Typography, message, Pagination, Empty, Segmented, Select, Tag, Popconfirm } from "antd";
+import { Bell, CheckCheck, ChevronRight, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  deleteNotificationUsingPost,
+  deleteReadNotificationUsingPost,
   listMyNotificationVOByPageUsingPost,
   readAllNotificationUsingPost,
   readNotificationUsingPost,
@@ -68,6 +70,7 @@ const UserNotificationsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const pageSize = 10;
   const router = useRouter();
+  const readCount = dataList.filter((item) => item.status === 1).length;
 
   // 加载通知数据
   const loadData = useCallback(async (
@@ -125,11 +128,42 @@ const UserNotificationsPage: React.FC = () => {
       const res = await readAllNotificationUsingPost();
       if (res.data) {
         message.success("已将所有通知标记为已读");
-        loadData(1);
+        void loadData(1);
         setCurrent(1);
       }
     } catch (e: any) {
       message.error("操作失败：" + e.message);
+    }
+  };
+
+  const handleDelete = async (id?: string | number) => {
+    if (!id) {
+      return;
+    }
+    try {
+      const res = await deleteNotificationUsingPost({ id });
+      if (res.data) {
+        message.success("通知已删除");
+        const nextPage = dataList.length === 1 && current > 1 ? current - 1 : current;
+        if (nextPage !== current) {
+          setCurrent(nextPage);
+        } else {
+          void loadData(nextPage);
+        }
+      }
+    } catch (e: any) {
+      message.error("删除失败：" + e.message);
+    }
+  };
+
+  const handleDeleteRead = async () => {
+    try {
+      const res = await deleteReadNotificationUsingPost();
+      message.success(`已清理 ${res.data ?? 0} 条已读通知`);
+      setCurrent(1);
+      void loadData(1);
+    } catch (e: any) {
+      message.error("清理失败：" + e.message);
     }
   };
 
@@ -163,13 +197,30 @@ const UserNotificationsPage: React.FC = () => {
           <Title level={3} style={{ margin: 0 }}>我的通知</Title>
         </Space>
         {total > 0 && (
-          <Button 
-            icon={<CheckCheck size={16} />} 
-            onClick={handleReadAll}
-            disabled={loading}
-          >
-            全部标记已读
-          </Button>
+          <Space wrap>
+            <Popconfirm
+              title="确认清空已读通知吗？"
+              description="仅会删除已经读过的通知。"
+              onConfirm={handleDeleteRead}
+              okText="清空"
+              cancelText="取消"
+              disabled={readCount === 0}
+            >
+              <Button
+                icon={<Trash2 size={16} />}
+                disabled={loading || readCount === 0}
+              >
+                清空已读
+              </Button>
+            </Popconfirm>
+            <Button
+              icon={<CheckCheck size={16} />}
+              onClick={handleReadAll}
+              disabled={loading}
+            >
+              全部标记已读
+            </Button>
+          </Space>
         )}
       </div>
 
@@ -210,7 +261,25 @@ const UserNotificationsPage: React.FC = () => {
               className="hover:bg-gray-50 transition-colors cursor-pointer"
               style={{ padding: "20px 24px", opacity: item.status === 1 ? 0.7 : 1 }}
               onClick={() => handleRead(item)}
-              extra={<ChevronRight size={18} className="text-gray-300" />}
+              extra={(
+                <Space size={8}>
+                  <Popconfirm
+                    title="确认删除这条通知吗？"
+                    description="删除后将无法恢复。"
+                    onConfirm={() => handleDelete(item.id)}
+                    okText="删除"
+                    cancelText="取消"
+                  >
+                    <Button
+                      type="text"
+                      danger
+                      icon={<Trash2 size={16} />}
+                      onClick={(event) => event.stopPropagation()}
+                    />
+                  </Popconfirm>
+                  <ChevronRight size={18} className="text-gray-300" />
+                </Space>
+              )}
             >
               <List.Item.Meta
                 avatar={

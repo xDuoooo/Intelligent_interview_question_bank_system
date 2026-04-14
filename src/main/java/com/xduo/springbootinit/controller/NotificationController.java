@@ -136,6 +136,27 @@ public class NotificationController {
     }
 
     /**
+     * 删除当前用户全部已读通知
+     *
+     * @param request 请求
+     * @return 删除数量
+     */
+    @PostMapping("/delete/read")
+    public BaseResponse<Long> deleteReadNotification(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        QueryWrapper<Notification> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", loginUser.getId());
+        queryWrapper.eq("status", 1);
+        long count = notificationService.count(queryWrapper);
+        if (count <= 0) {
+            return ResultUtils.success(0L);
+        }
+        boolean result = notificationService.remove(queryWrapper);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "清空已读通知失败");
+        return ResultUtils.success(count);
+    }
+
+    /**
      * 更新通知（仅管理员）
      *
      * @param notification

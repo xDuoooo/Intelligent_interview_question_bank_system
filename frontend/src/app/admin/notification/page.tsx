@@ -55,6 +55,41 @@ const DEFAULT_QUERY: NotificationQueryState = {
   pageSize: 10,
 };
 
+const NOTIFICATION_TEMPLATES = [
+  {
+    key: "feature",
+    label: "功能上新",
+    type: "system_announcement",
+    title: "系统功能更新通知",
+    content:
+      "平台已上线新的功能模块，欢迎前往体验。若你在使用中遇到任何问题，也欢迎通过站内反馈告知我们，我们会持续优化体验。",
+  },
+  {
+    key: "maintenance",
+    label: "维护提醒",
+    type: "operation_notice",
+    title: "系统维护提醒",
+    content:
+      "平台将在近期进行功能维护和体验优化，维护期间部分功能可能短暂不可用。请提前保存重要内容，感谢理解与支持。",
+  },
+  {
+    key: "activity",
+    label: "活动通知",
+    type: "activity_notice",
+    title: "学习活动提醒",
+    content:
+      "新的学习活动已经开启，欢迎前往题库、社区或模拟面试模块参与。坚持打卡和练习，也许会解锁新的成长成就。",
+  },
+  {
+    key: "learning",
+    label: "学习鼓励",
+    type: "learning_notice",
+    title: "继续保持学习节奏",
+    content:
+      "你最近的学习状态很不错，继续保持刷题、复盘和模拟面试的节奏，会更快形成稳定的面试表达和知识掌握。",
+  },
+];
+
 export default function AdminNotificationPage() {
   const [sendForm] = Form.useForm();
   const [queryForm] = Form.useForm();
@@ -134,6 +169,14 @@ export default function AdminNotificationPage() {
     } catch (error: any) {
       message.error(error?.message || "删除通知失败");
     }
+  };
+
+  const applyTemplate = (template: (typeof NOTIFICATION_TEMPLATES)[number]) => {
+    sendForm.setFieldsValue({
+      type: template.type,
+      title: template.title,
+      content: template.content,
+    });
   };
 
   const columns = [
@@ -270,6 +313,23 @@ export default function AdminNotificationPage() {
                 message={scope === "user" ? "会发送给全部普通用户" : "会发送给全站未封禁用户（含管理员）"}
               />
             )}
+
+            <Form.Item label="常用模板">
+              <div className="flex flex-wrap gap-2">
+                {NOTIFICATION_TEMPLATES.map((template) => (
+                  <Button
+                    key={template.key}
+                    onClick={() => applyTemplate(template)}
+                    className="rounded-2xl font-bold"
+                  >
+                    {template.label}
+                  </Button>
+                ))}
+              </div>
+              <div className="mt-2 text-xs leading-6 text-slate-400">
+                选择模板后会自动回填标题、类型和内容，你仍然可以继续手动修改。
+              </div>
+            </Form.Item>
 
             <Form.Item label="通知标题" name="title" rules={[{ required: true, message: "请输入通知标题" }]}>
               <Input placeholder="例如：系统功能更新通知" maxLength={80} />

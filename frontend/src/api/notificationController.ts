@@ -47,6 +47,14 @@ export async function deleteNotificationUsingPost(
   });
 }
 
+/** deleteReadNotification POST /api/notification/delete/read */
+export async function deleteReadNotificationUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseLong_>('/api/notification/delete/read', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
 /** updateNotification POST /api/notification/update */
 export async function updateNotificationUsingPost(
   body: API.NotificationVO,
