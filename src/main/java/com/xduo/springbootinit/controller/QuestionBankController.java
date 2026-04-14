@@ -96,7 +96,7 @@ public class QuestionBankController {
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteQuestionBank(@RequestBody DeleteRequest deleteRequest,
                                                     HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        if (deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getLoginUser(request);
@@ -163,7 +163,7 @@ public class QuestionBankController {
     @PostMapping("/update")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateQuestionBank(@RequestBody QuestionBankUpdateRequest questionBankUpdateRequest) {
-        if (questionBankUpdateRequest == null || questionBankUpdateRequest.getId() <= 0) {
+        if (questionBankUpdateRequest == null || questionBankUpdateRequest.getId() == null || questionBankUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         QuestionBank questionBank = new QuestionBank();
@@ -184,7 +184,7 @@ public class QuestionBankController {
     public BaseResponse<QuestionBankVO> getQuestionBankVOById(QuestionBankQueryRequest questionBankQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
         Long id = questionBankQueryRequest.getId();
-        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
         // 查询数据库
         QuestionBank questionBank = questionBankService.getById(id);
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR);

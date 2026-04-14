@@ -3,8 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { getQuestionBankLeaderboardUsingGet } from "@/api/leaderboardController";
 import { getQuestionBankVoByIdUsingGet } from "@/api/questionBankController";
+import { getLoginUserUsingGet } from "@/api/userController";
 import QuestionList from "@/components/QuestionList";
 import QuestionBankLeaderboardCard from "@/components/QuestionBankLeaderboardCard";
+import QuestionBankOwnerPanel from "./QuestionBankOwnerPanel";
 import { Play, BookOpen, Clock, Users, Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 import { cn, validateImageSrc } from "@/lib/utils";
@@ -17,45 +19,60 @@ export const dynamic = "force-dynamic";
  */
 export default async function BankPage({ params }: { params: { questionBankId: string } }) {
   const { questionBankId } = params;
-  // 获取题库详情
   let bank: API.QuestionBankVO | undefined = undefined;
   let leaderboard: API.QuestionBankLeaderboardVO | undefined = undefined;
-  let isNotLogin = false;
+  let loginUser: API.LoginUserVO | undefined = undefined;
 
-  try {
-    const res = (await getQuestionBankVoByIdUsingGet({
-      id: questionBankId,
-      needQueryQuestionList: true,
-      pageSize: 20,
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponseQuestionBankVO_;
+  const cookie = headers().get("cookie") || "";
+  const requestOptions = {
+    headers: {
+      cookie,
+    },
+  };
 
-    if (res.code === 40100) {
-      isNotLogin = true;
-    } else {
-      bank = res.data;
-    }
-  } catch (e) {
-    console.error("获取题库详情失败", e);
+  const [bankResult, leaderboardResult, loginUserResult] = await Promise.allSettled([
+    getQuestionBankVoByIdUsingGet(
+      {
+        id: questionBankId,
+        needQueryQuestionList: true,
+        pageSize: 20,
+      },
+      requestOptions,
+    ),
+    getQuestionBankLeaderboardUsingGet(
+      {
+        questionBankId: questionBankId as any,
+      },
+      requestOptions,
+    ),
+    getLoginUserUsingGet(requestOptions),
+  ]);
+
+  if (bankResult.status === "fulfilled") {
+    const res = bankResult.value as unknown as API.BaseResponseQuestionBankVO_;
+    bank = res.data;
+  } else {
+    console.error("获取题库详情失败", bankResult.reason);
   }
 
-  try {
-    const leaderboardRes = (await getQuestionBankLeaderboardUsingGet({
-      questionBankId: questionBankId as any,
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponseQuestionBankLeaderboardVO_;
+  if (leaderboardResult.status === "fulfilled") {
+    const leaderboardRes = leaderboardResult.value as unknown as API.BaseResponseQuestionBankLeaderboardVO_;
     leaderboard = leaderboardRes.data;
-  } catch (e) {
-    console.error("获取题库榜单失败", e);
+  } else {
+    console.error("获取题库榜单失败", leaderboardResult.reason);
+  }
+
+  if (loginUserResult.status === "fulfilled") {
+    const loginUserRes = loginUserResult.value as unknown as API.BaseResponseLoginUserVO_;
+    loginUser = loginUserRes.data;
   }
 
   if (!bank) {
+    const bankErrorMessage =
+      bankResult.status === "rejected"
+        ? String((bankResult.reason as Error | undefined)?.message || "")
+        : "";
+    const isNotLogin = !loginUser?.id && /401|登录|未登录/i.test(bankErrorMessage);
     const errorTitle = isNotLogin ? "您还没有登录" : "获取题库详情失败";
     const errorDesc = isNotLogin ? "请先登录后再查看题库详情" : "该题库可能已被移除或权限不足";
 
@@ -76,6 +93,8 @@ export default async function BankPage({ params }: { params: { questionBankId: s
     );
   }
 
+  const isOwner = Boolean(loginUser?.id) && String(loginUser?.id) === String(bank.userId);
+  const isAdmin = loginUser?.userRole === "admin";
   const firstQuestionId = bank.questionPage?.records?.[0]?.id;
 
   return (
@@ -132,6 +151,17 @@ export default async function BankPage({ params }: { params: { questionBankId: s
           </div>
         </div>
       </section>
+
+      {isOwner || isAdmin ? (
+        <QuestionBankOwnerPanel
+          questionBankId={questionBankId}
+          reviewStatus={bank.reviewStatus}
+          reviewMessage={bank.reviewMessage}
+          reviewTime={bank.reviewTime}
+          isOwner={isOwner}
+          isAdmin={isAdmin}
+        />
+      ) : null}
 
       <QuestionBankLeaderboardCard leaderboard={leaderboard} />
 
