@@ -7,6 +7,7 @@ import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
+import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.QuestionBankVO;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,4 +50,13 @@ public interface QuestionBankService extends IService<QuestionBank> {
      * @return
      */
     Page<QuestionBankVO> getQuestionBankVOPage(Page<QuestionBank> questionBankPage, HttpServletRequest request);
+
+    /**
+     * 当前用户是否可查看题库
+     *
+     * @param questionBank 题库
+     * @param loginUser 当前登录用户，可为空
+     * @return 是否可查看
+     */
+    boolean canViewQuestionBank(QuestionBank questionBank, User loginUser);
 }

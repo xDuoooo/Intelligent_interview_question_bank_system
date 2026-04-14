@@ -168,4 +168,19 @@ public class QuestionBankServiceImpl extends ServiceImpl<QuestionBankMapper, Que
         questionBankVOPage.setRecords(questionBankVOList);
         return questionBankVOPage;
     }
+
+    @Override
+    public boolean canViewQuestionBank(QuestionBank questionBank, User loginUser) {
+        if (questionBank == null) {
+            return false;
+        }
+        Integer reviewStatus = questionBank.getReviewStatus();
+        if (reviewStatus == null || QuestionBankConstant.REVIEW_STATUS_APPROVED == reviewStatus) {
+            return true;
+        }
+        if (loginUser == null) {
+            return false;
+        }
+        return userService.isAdmin(loginUser) || loginUser.getId().equals(questionBank.getUserId());
+    }
 }

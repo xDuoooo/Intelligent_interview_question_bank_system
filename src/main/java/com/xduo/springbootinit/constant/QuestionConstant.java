@@ -7,6 +7,11 @@ import java.util.Set;
  */
 public interface QuestionConstant {
 
+    /**
+     * 私有 / 草稿
+     */
+    int REVIEW_STATUS_PRIVATE = 3;
+
     String DIFFICULTY_EASY = "简单";
 
     String DIFFICULTY_MEDIUM = "中等";
@@ -32,6 +37,7 @@ public interface QuestionConstant {
      * 允许的审核状态集合
      */
     Set<Integer> ALLOWED_REVIEW_STATUS_SET = Set.of(
+            REVIEW_STATUS_PRIVATE,
             REVIEW_STATUS_PENDING,
             REVIEW_STATUS_APPROVED,
             REVIEW_STATUS_REJECTED

@@ -132,7 +132,7 @@ public class QuestionController {
         question.setUserId(loginUser.getId());
         question.setReviewStatus(userService.isAdmin(loginUser)
                 ? QuestionConstant.REVIEW_STATUS_APPROVED
-                : QuestionConstant.REVIEW_STATUS_PENDING);
+                : QuestionConstant.REVIEW_STATUS_PRIVATE);
         // 写入数据库
         boolean result = questionService.save(question);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -458,6 +458,7 @@ public class QuestionController {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         boolean isAdmin = userService.isAdmin(loginUser);
+        int oldReviewStatus = getQuestionReviewStatus(oldQuestion);
         LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(Question::getId, id)
                 .set(Question::getTitle, question.getTitle())
@@ -465,14 +466,46 @@ public class QuestionController {
                 .set(Question::getTags, question.getTags())
                 .set(Question::getAnswer, question.getAnswer());
         if (!isAdmin) {
-            updateWrapper.set(Question::getReviewStatus, QuestionConstant.REVIEW_STATUS_PENDING)
-                    .set(Question::getReviewMessage, null)
-                    .set(Question::getReviewUserId, null)
-                    .set(Question::getReviewTime, null);
+            if (QuestionConstant.REVIEW_STATUS_APPROVED == oldReviewStatus) {
+                updateWrapper.set(Question::getReviewStatus, QuestionConstant.REVIEW_STATUS_PENDING)
+                        .set(Question::getReviewMessage, null)
+                        .set(Question::getReviewUserId, null)
+                        .set(Question::getReviewTime, null);
+            }
         }
         boolean result = questionService.update(null, updateWrapper);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Question latestQuestion = questionService.getById(id);
+        questionService.syncQuestionToEs(latestQuestion);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 用户主动提交题目审核
+     */
+    @PostMapping("/submit/review")
+    public BaseResponse<Boolean> submitQuestionReview(@RequestBody QuestionSubmitReviewRequest submitReviewRequest,
+                                                      HttpServletRequest request) {
+        ThrowUtils.throwIf(submitReviewRequest == null || submitReviewRequest.getId() == null || submitReviewRequest.getId() <= 0,
+                ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Question oldQuestion = questionService.getById(submitReviewRequest.getId());
+        ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
+        if (!oldQuestion.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        int reviewStatus = getQuestionReviewStatus(oldQuestion);
+        ThrowUtils.throwIf(QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus, ErrorCode.OPERATION_ERROR, "题目已公开，无需重复提交审核");
+        ThrowUtils.throwIf(QuestionConstant.REVIEW_STATUS_PENDING == reviewStatus, ErrorCode.OPERATION_ERROR, "题目已在审核中，请耐心等待");
+        LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Question::getId, oldQuestion.getId())
+                .set(Question::getReviewStatus, QuestionConstant.REVIEW_STATUS_PENDING)
+                .set(Question::getReviewMessage, null)
+                .set(Question::getReviewUserId, null)
+                .set(Question::getReviewTime, null);
+        boolean result = questionService.update(null, updateWrapper);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        Question latestQuestion = questionService.getById(oldQuestion.getId());
         questionService.syncQuestionToEs(latestQuestion);
         return ResultUtils.success(true);
     }
@@ -533,6 +566,9 @@ public class QuestionController {
         ThrowUtils.throwIf(StringUtils.length(reviewMessage) > 512, ErrorCode.PARAMS_ERROR, "审核意见过长");
         Question oldQuestion = questionService.getById(questionReviewRequest.getId());
         ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(QuestionConstant.REVIEW_STATUS_PRIVATE == getQuestionReviewStatus(oldQuestion),
+                ErrorCode.OPERATION_ERROR,
+                "作者尚未提交公开审核");
 
         User loginUser = userService.getLoginUser(request);
         LambdaUpdateWrapper<Question> updateWrapper = new LambdaUpdateWrapper<>();
