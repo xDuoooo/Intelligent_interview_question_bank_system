@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.UUID;
+import cn.hutool.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,7 +91,8 @@ public class GoogleController {
                 .execute();
         
         String tokenBody = tokenResponse.body();
-        String accessToken = JSONUtil.parseObj(tokenBody).getStr("access_token");
+        JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
+        String accessToken = StringUtils.trimToNull(tokenObject.getStr("access_token"));
         if (StringUtils.isBlank(accessToken)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Google Access Token 失败");
         }
@@ -102,12 +105,12 @@ public class GoogleController {
                 .execute();
         
         String userBody = userResponse.body();
-        Map<String, Object> userInfo = JSONUtil.parseObj(userBody);
+        JSONObject userInfo = JSONUtil.parseObj(userBody);
         
         // Google 使用 'sub' 作为唯一标识
-        String googleId = String.valueOf(userInfo.get("sub"));
-        String userName = (String) userInfo.get("name");
-        String userAvatar = (String) userInfo.get("picture");
+        String googleId = StringUtils.trimToNull(userInfo.getStr("sub"));
+        String userName = StringUtils.trimToNull(userInfo.getStr("name"));
+        String userAvatar = StringUtils.trimToNull(userInfo.getStr("picture"));
 
         if (StringUtils.isBlank(googleId)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Google 用户资料失败");

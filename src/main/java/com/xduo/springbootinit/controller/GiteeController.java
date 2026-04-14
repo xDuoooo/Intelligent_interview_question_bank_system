@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.UUID;
+import cn.hutool.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -88,7 +90,8 @@ public class GiteeController {
                 .execute();
         
         String tokenBody = tokenResponse.body();
-        String accessToken = JSONUtil.parseObj(tokenBody).getStr("access_token");
+        JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
+        String accessToken = StringUtils.trimToNull(tokenObject.getStr("access_token"));
         if (StringUtils.isBlank(accessToken)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Gitee Access Token 失败");
         }
@@ -99,13 +102,13 @@ public class GiteeController {
         HttpResponse userResponse = HttpRequest.get(userUrl).execute();
         
         String userBody = userResponse.body();
-        Map<String, Object> userInfo = JSONUtil.parseObj(userBody);
-        String giteeId = String.valueOf(userInfo.get("id"));
-        String userName = (String) userInfo.get("name");
+        JSONObject userInfo = JSONUtil.parseObj(userBody);
+        String giteeId = StringUtils.trimToNull(userInfo.getStr("id"));
+        String userName = StringUtils.trimToNull(userInfo.getStr("name"));
         if (StringUtils.isBlank(userName)) {
-            userName = (String) userInfo.get("login");
+            userName = StringUtils.trimToNull(userInfo.getStr("login"));
         }
-        String userAvatar = (String) userInfo.get("avatar_url");
+        String userAvatar = StringUtils.trimToNull(userInfo.getStr("avatar_url"));
 
         if (StringUtils.isBlank(giteeId)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 Gitee 用户资料失败");

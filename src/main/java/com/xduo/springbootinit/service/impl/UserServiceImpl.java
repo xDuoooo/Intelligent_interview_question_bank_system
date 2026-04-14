@@ -507,6 +507,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void bindPhone(String target, String code, User loginUser) {
         target = normalizePhoneTarget(target);
+        validateVerificationTargetFormat(target, 2);
         // 1. 校验验证码
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
@@ -535,6 +536,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void bindEmail(String target, String code, User loginUser) {
         target = normalizeEmailTarget(target);
+        validateVerificationTargetFormat(target, 1);
         // 1. 校验验证码
         String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
         String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);

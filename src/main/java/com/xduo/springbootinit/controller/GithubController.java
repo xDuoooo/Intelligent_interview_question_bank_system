@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.util.UUID;
+import cn.hutool.json.JSONObject;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -89,7 +91,8 @@ public class GithubController {
                 .execute();
         
         String tokenBody = tokenResponse.body();
-        String accessToken = JSONUtil.parseObj(tokenBody).getStr("access_token");
+        JSONObject tokenObject = JSONUtil.parseObj(tokenBody);
+        String accessToken = StringUtils.trimToNull(tokenObject.getStr("access_token"));
         if (StringUtils.isBlank(accessToken)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub Access Token 失败");
         }
@@ -102,10 +105,10 @@ public class GithubController {
                 .execute();
         
         String userBody = userResponse.body();
-        Map<String, Object> userInfo = JSONUtil.parseObj(userBody);
-        String githubId = String.valueOf(userInfo.get("id"));
-        String userName = (String) userInfo.get("login");
-        String userAvatar = (String) userInfo.get("avatar_url");
+        JSONObject userInfo = JSONUtil.parseObj(userBody);
+        String githubId = StringUtils.trimToNull(userInfo.getStr("id"));
+        String userName = StringUtils.trimToNull(userInfo.getStr("login"));
+        String userAvatar = StringUtils.trimToNull(userInfo.getStr("avatar_url"));
 
         if (StringUtils.isBlank(githubId)) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取 GitHub 用户资料失败");
