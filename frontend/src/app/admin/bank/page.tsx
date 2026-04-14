@@ -5,11 +5,18 @@ import dynamic from "next/dynamic";
 import {
   deleteQuestionBankUsingPost,
   listQuestionBankByPageUsingPost,
+  reviewQuestionBankUsingPost,
 } from "@/api/questionBankController";
 import { Plus, Trash2, Edit3, Briefcase } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { message, Space, Image } from "antd";
+import { message, Space, Image, Input, Modal, Radio, Tag } from "antd";
+import {
+  QUESTION_REVIEW_STATUS_COLOR_MAP,
+  QUESTION_REVIEW_STATUS_ENUM,
+  QUESTION_REVIEW_STATUS_TEXT_MAP,
+  QUESTION_REVIEW_STATUS_VALUE_ENUM,
+} from "@/constants/question";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
@@ -21,6 +28,9 @@ const UpdateModal = dynamic(() => import("./components/UpdateModal"));
 const QuestionBankAdminPage: React.FC = () => {
   const [createModalVisible, setCreateModalVisible] = useState<boolean>(false);
   const [updateModalVisible, setUpdateModalVisible] = useState<boolean>(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState<boolean>(false);
+  const [reviewStatus, setReviewStatus] = useState<number>(QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+  const [reviewMessage, setReviewMessage] = useState("");
   const actionRef = useRef<ActionType>();
   const [currentRow, setCurrentRow] = useState<API.QuestionBank>();
 
@@ -40,6 +50,30 @@ const QuestionBankAdminPage: React.FC = () => {
       hide();
       message.error("删除失败，" + error.message);
       return false;
+    }
+  };
+
+  const handleReview = async () => {
+    if (!currentRow?.id) {
+      return;
+    }
+    const hide = message.loading("正在提交审核");
+    try {
+      await reviewQuestionBankUsingPost({
+        id: currentRow.id,
+        reviewStatus,
+        reviewMessage,
+      });
+      hide();
+      message.success("题库审核结果已保存");
+      setReviewModalVisible(false);
+      setCurrentRow(undefined);
+      setReviewStatus(QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+      setReviewMessage("");
+      actionRef?.current?.reload();
+    } catch (error: any) {
+      hide();
+      message.error("审核失败，" + (error?.message || "请稍后重试"));
     }
   };
 
@@ -65,6 +99,36 @@ const QuestionBankAdminPage: React.FC = () => {
       dataIndex: "description",
       valueType: "text",
       ellipsis: true,
+    },
+    {
+      title: "审核状态",
+      dataIndex: "reviewStatus",
+      valueType: "select",
+      valueEnum: QUESTION_REVIEW_STATUS_VALUE_ENUM,
+      width: 120,
+      render: (_, record) => {
+        const reviewStatus = Number(record.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+        return (
+          <Tag color={QUESTION_REVIEW_STATUS_COLOR_MAP[reviewStatus] || "default"} className="rounded-full px-3 py-1 font-semibold">
+            {QUESTION_REVIEW_STATUS_TEXT_MAP[reviewStatus] || "未知状态"}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: "审核意见",
+      dataIndex: "reviewMessage",
+      valueType: "textarea",
+      hideInSearch: true,
+      ellipsis: true,
+      render: (text) => text || <span className="text-slate-300">-</span>,
+    },
+    {
+      title: "审核时间",
+      dataIndex: "reviewTime",
+      valueType: "dateTime",
+      hideInSearch: true,
+      hideInForm: true,
     },
     {
       title: "图片",
@@ -106,6 +170,25 @@ const QuestionBankAdminPage: React.FC = () => {
             <Edit3 className="h-4 w-4" />
             修改
           </button>
+          {Number(record.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) !== QUESTION_REVIEW_STATUS_ENUM.PRIVATE ? (
+            <button
+              onClick={() => {
+                setCurrentRow(record);
+                setReviewStatus(
+                  Number(record.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.REJECTED
+                    ? QUESTION_REVIEW_STATUS_ENUM.REJECTED
+                    : QUESTION_REVIEW_STATUS_ENUM.APPROVED,
+                );
+                setReviewMessage(record.reviewMessage || "");
+                setReviewModalVisible(true);
+              }}
+              className="flex items-center gap-1.5 text-emerald-600 hover:text-emerald-700 font-bold transition-colors"
+            >
+              审核
+            </button>
+          ) : (
+            <span className="text-slate-300 font-bold">待用户提交</span>
+          )}
           <button
             onClick={() => handleDelete(record)}
             className="flex items-center gap-1.5 text-red-500 hover:text-red-600 font-bold transition-colors"
@@ -208,6 +291,39 @@ const QuestionBankAdminPage: React.FC = () => {
           onCancel={() => setUpdateModalVisible(false)}
         />
       )}
+      <Modal
+        title={`审核题库${currentRow?.title ? `：${currentRow.title}` : ""}`}
+        open={reviewModalVisible}
+        onCancel={() => {
+          setReviewModalVisible(false);
+          setCurrentRow(undefined);
+          setReviewStatus(QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+          setReviewMessage("");
+        }}
+        onOk={handleReview}
+        okText="提交审核"
+        cancelText="取消"
+        destroyOnClose
+      >
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-500">审核结果</div>
+            <Radio.Group value={reviewStatus} onChange={(event) => setReviewStatus(event.target.value)} className="flex gap-4">
+              <Radio value={QUESTION_REVIEW_STATUS_ENUM.APPROVED}>通过</Radio>
+              <Radio value={QUESTION_REVIEW_STATUS_ENUM.REJECTED}>驳回</Radio>
+            </Radio.Group>
+          </div>
+          <div>
+            <div className="mb-2 text-sm font-semibold text-slate-500">审核意见</div>
+            <Input.TextArea
+              rows={4}
+              value={reviewMessage}
+              onChange={(event) => setReviewMessage(event.target.value)}
+              placeholder={reviewStatus === QUESTION_REVIEW_STATUS_ENUM.REJECTED ? "驳回时请填写审核意见" : "通过时可留空，也可以补充审核备注"}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

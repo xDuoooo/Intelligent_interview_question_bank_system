@@ -113,6 +113,11 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         Long targetId = notification.getTargetId();
 
         switch (type) {
+            case "question_bank_review":
+                if (title.contains("未通过") || content.contains("未通过")) {
+                    return "/user/center?tab=banks";
+                }
+                return targetId != null && targetId > 0 ? "/bank/" + targetId : "/user/center?tab=banks";
             case "post_review":
                 if (title.contains("未通过") || content.contains("未通过")) {
                     return "/user/center?tab=posts";

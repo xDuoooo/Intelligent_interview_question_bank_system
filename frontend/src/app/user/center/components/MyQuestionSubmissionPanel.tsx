@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Alert, Button, Card, Empty, Form, Input, List, message, Modal, Pagination, Select, Space, Tag, Typography } from "antd";
-import { addQuestionUsingPost, deleteQuestionUsingPost, editQuestionUsingPost, listMyQuestionVoByPageUsingPost } from "@/api/questionController";
+import { addQuestionUsingPost, deleteQuestionUsingPost, editQuestionUsingPost, listMyQuestionVoByPageUsingPost, submitQuestionReviewUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import {
   QUESTION_DIFFICULTY_COLOR_MAP,
@@ -86,7 +86,15 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({ open, question, onCan
         await addQuestionUsingPost(values);
       }
       hide();
-      message.success(isEdit ? "修改已提交，题目会重新进入审核" : "题目提交成功，等待管理员审核");
+      if (isEdit) {
+        message.success(
+          Number(question?.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.APPROVED
+            ? "修改已保存，题目已重新进入审核"
+            : "修改已保存",
+        );
+      } else {
+        message.success("题目已保存到我的题目，准备公开时可再提交审核");
+      }
       onSuccess();
     } catch (error: any) {
       hide();
@@ -102,7 +110,7 @@ const SubmissionModal: React.FC<SubmissionModalProps> = ({ open, question, onCan
       open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
-      okText={isEdit ? "保存并重新提交审核" : "提交审核"}
+      okText={isEdit ? "保存修改" : "保存为私有"}
       cancelText="取消"
       confirmLoading={submitting}
       destroyOnClose
@@ -177,9 +185,30 @@ const MyQuestionSubmissionPanel: React.FC = () => {
   }, []);
 
   const reviewSummary = useMemo(() => {
+    const privateCount = questionList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.PRIVATE).length;
     const pendingCount = questionList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.PENDING).length;
-    return pendingCount > 0 ? `当前页还有 ${pendingCount} 道题目正在等待管理员审核。` : "新增题目后默认进入待审核，审核通过后才会在公开题库里展示。";
+    const rejectedCount = questionList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.REJECTED).length;
+    if (privateCount > 0 || pendingCount > 0 || rejectedCount > 0) {
+      return `当前页有 ${privateCount} 道私有题目、${pendingCount} 道待审核题目、${rejectedCount} 道已驳回题目。准备公开时再主动提交审核会更稳。`;
+    }
+    return "新增题目默认先保存为私有，只有审核通过的题目才会出现在公开题库与题目列表里。";
   }, [questionList]);
+
+  const handleSubmitReview = async (questionId?: string | number) => {
+    if (!questionId) {
+      return;
+    }
+    const hide = message.loading("正在提交审核");
+    try {
+      await submitQuestionReviewUsingPost({ id: questionId });
+      hide();
+      message.success("题目已提交审核");
+      await loadData(current, pageSize, filters);
+    } catch (error: any) {
+      hide();
+      message.error("提交审核失败，" + (error?.message || "请稍后重试"));
+    }
+  };
 
   const handleDelete = async (questionId?: string | number) => {
     if (!questionId) {
@@ -207,7 +236,7 @@ const MyQuestionSubmissionPanel: React.FC = () => {
               我的题目
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              可以自己新增题目和题解，管理员审核通过后才会出现在公开题库与题目列表里。
+              题目默认先保存在你自己的空间里，准备公开时再主动提交审核，审核通过后才会出现在公开题库与题目列表里。
             </Paragraph>
           </div>
           <Button
@@ -312,6 +341,8 @@ const MyQuestionSubmissionPanel: React.FC = () => {
             dataSource={questionList}
             renderItem={(item) => {
               const reviewStatus = Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+              const canSubmitReview =
+                reviewStatus === QUESTION_REVIEW_STATUS_ENUM.PRIVATE || reviewStatus === QUESTION_REVIEW_STATUS_ENUM.REJECTED;
               return (
                 <List.Item className="px-0 py-4">
                   <Card className="w-full rounded-[1.5rem] border border-slate-100 shadow-sm">
@@ -342,6 +373,15 @@ const MyQuestionSubmissionPanel: React.FC = () => {
                           <Link href={`/question/${item.id}`}>
                             <Button>预览</Button>
                           </Link>
+                          {canSubmitReview ? (
+                            <Button
+                              type="primary"
+                              ghost
+                              onClick={() => void handleSubmitReview(item.id)}
+                            >
+                              {reviewStatus === QUESTION_REVIEW_STATUS_ENUM.REJECTED ? "重新提交审核" : "提交审核"}
+                            </Button>
+                          ) : null}
                           <Button
                             onClick={() => {
                               setCurrentQuestion(item);

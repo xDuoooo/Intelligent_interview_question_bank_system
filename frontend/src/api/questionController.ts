@@ -224,6 +224,21 @@ export async function reviewQuestionUsingPost(
   });
 }
 
+/** submitQuestionReview POST /api/question/submit/review */
+export async function submitQuestionReviewUsingPost(
+  body: API.QuestionSubmitReviewRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/question/submit/review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** listQuestionByPage POST /api/question/list/page */
 export async function listQuestionByPageUsingPost(
   body: API.QuestionQueryRequest,

@@ -881,6 +881,10 @@ declare namespace API {
     id?: string | number;
     isDelete?: number;
     picture?: string;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
+    reviewUserId?: string | number;
     title?: string;
     updateTime?: string;
     userId?: string | number;
@@ -907,11 +911,22 @@ declare namespace API {
     notId?: string | number;
     pageSize?: number;
     picture?: string;
+    reviewStatus?: number;
     searchText?: string;
     sortField?: string;
     sortOrder?: string;
     title?: string;
     userId?: string | number;
+  };
+
+  type QuestionBankReviewRequest = {
+    id?: string | number;
+    reviewMessage?: string;
+    reviewStatus?: number;
+  };
+
+  type QuestionBankSubmitReviewRequest = {
+    id?: string | number;
   };
 
   type QuestionBankQuestion = {
@@ -985,6 +1000,10 @@ declare namespace API {
     id?: string | number;
     picture?: string;
     questionPage?: PageQuestionVO_;
+    reviewMessage?: string;
+    reviewStatus?: number;
+    reviewTime?: string;
+    reviewUserId?: string | number;
     title?: string;
     updateTime?: string;
     user?: UserVO;
@@ -1026,6 +1045,10 @@ declare namespace API {
     id?: string | number;
     reviewMessage?: string;
     reviewStatus?: number;
+  };
+
+  type QuestionSubmitReviewRequest = {
+    id?: string | number;
   };
 
   type QuestionResumeRecommendRequest = {

@@ -25,6 +25,7 @@ const STATUS_FILTER_OPTIONS = [
 const TYPE_FILTER_OPTIONS = [
   { label: "全部类型", value: "all" },
   { label: "题目通知", value: "question_review" },
+  { label: "题库通知", value: "question_bank_review" },
   { label: "评论互动", value: "reply" },
   { label: "点赞提醒", value: "like" },
   { label: "关注提醒", value: "user_follow" },
@@ -35,6 +36,7 @@ const TYPE_FILTER_OPTIONS = [
 
 const TYPE_LABEL_MAP: Record<string, string> = {
   question_review: "题目审核",
+  question_bank_review: "题库审核",
   comment_review: "评论审核",
   reply: "评论回复",
   like: "点赞提醒",
@@ -47,6 +49,7 @@ const TYPE_LABEL_MAP: Record<string, string> = {
 
 const TYPE_COLOR_MAP: Record<string, string> = {
   question_review: "blue",
+  question_bank_review: "cyan",
   comment_review: "purple",
   reply: "cyan",
   like: "magenta",

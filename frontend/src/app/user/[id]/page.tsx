@@ -2,7 +2,9 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame, MapPin, NotebookPen, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
+import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
+import QuestionBankList from "@/components/QuestionBankList";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
 import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
@@ -44,9 +46,19 @@ export default async function PublicUserProfilePage({
     },
   };
 
-  const [profileResult, questionResult] = await Promise.allSettled([
+  const [profileResult, questionResult, questionBankResult] = await Promise.allSettled([
     getUserProfileVoByIdUsingGet({ id: userId }, requestOptions),
     listQuestionVoByPageUsingPost(
+      {
+        userId: userId as any,
+        reviewStatus: 1,
+        pageSize: 6,
+        sortField: "createTime",
+        sortOrder: "descend",
+      },
+      requestOptions,
+    ),
+    listQuestionBankVoByPageUsingPost(
       {
         userId: userId as any,
         reviewStatus: 1,
@@ -60,6 +72,7 @@ export default async function PublicUserProfilePage({
 
   let profile: API.UserProfileVO | undefined;
   let questionList: API.QuestionVO[] = [];
+  let questionBankList: API.QuestionBankVO[] = [];
 
   if (profileResult.status === "fulfilled") {
     const res = profileResult.value as API.BaseResponseUserProfileVO_;
@@ -69,6 +82,11 @@ export default async function PublicUserProfilePage({
   if (questionResult.status === "fulfilled") {
     const res = questionResult.value as API.BaseResponsePageQuestionVO_;
     questionList = res.data?.records || [];
+  }
+
+  if (questionBankResult.status === "fulfilled") {
+    const res = questionBankResult.value as API.BaseResponsePageQuestionBankVO_;
+    questionBankList = res.data?.records || [];
   }
 
   if (!profile?.user) {
@@ -272,6 +290,26 @@ export default async function PublicUserProfilePage({
       </section>
 
       <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
+        {questionBankList.length ? (
+          <div className="mb-10 space-y-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                  Public Banks
+                </div>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
+                  公开题库
+                </h2>
+              </div>
+              <div className="text-sm text-slate-400">
+                只展示通过审核后对外公开的题库
+              </div>
+            </div>
+            <QuestionBankList questionBankList={questionBankList} />
+          </div>
+        ) : null}
+
+        <div className={questionBankList.length ? "border-t border-slate-100 pt-10" : ""}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
@@ -332,6 +370,7 @@ export default async function PublicUserProfilePage({
               这位用户暂时还没有公开题目。
             </div>
           )}
+        </div>
         </div>
       </section>
     </div>

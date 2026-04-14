@@ -62,7 +62,13 @@ const ReviewModal: React.FC<Props> = ({ open, question, onCancel, onSuccess }) =
           name="reviewStatus"
           rules={[{ required: true, message: "请选择审核结果" }]}
         >
-          <Select options={QUESTION_REVIEW_STATUS_OPTIONS.filter((item) => item.value !== QUESTION_REVIEW_STATUS_ENUM.PENDING)} />
+          <Select
+            options={QUESTION_REVIEW_STATUS_OPTIONS.filter(
+              (item) =>
+                item.value !== QUESTION_REVIEW_STATUS_ENUM.PENDING &&
+                item.value !== QUESTION_REVIEW_STATUS_ENUM.PRIVATE,
+            )}
+          />
         </Form.Item>
         <Form.Item
           label="审核意见"

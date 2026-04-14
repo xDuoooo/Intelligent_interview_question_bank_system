@@ -107,6 +107,36 @@ export async function listMyQuestionBankVoByPageUsingPost(
   });
 }
 
+/** reviewQuestionBank POST /api/questionBank/review */
+export async function reviewQuestionBankUsingPost(
+  body: API.QuestionBankReviewRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/questionBank/review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** submitQuestionBankReview POST /api/questionBank/submit/review */
+export async function submitQuestionBankReviewUsingPost(
+  body: API.QuestionBankSubmitReviewRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/questionBank/submit/review', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** updateQuestionBank POST /api/questionBank/update */
 export async function updateQuestionBankUsingPost(
   body: API.QuestionBankUpdateRequest,

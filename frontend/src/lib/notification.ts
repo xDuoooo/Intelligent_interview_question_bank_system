@@ -18,6 +18,11 @@ export function getNotificationTargetUrl(item?: {
   const hasTargetId = /^[1-9]\d*$/.test(targetId);
 
   switch (type) {
+    case "question_bank_review":
+      if (title.includes("未通过") || content.includes("未通过")) {
+        return "/user/center?tab=banks";
+      }
+      return hasTargetId ? `/bank/${targetId}` : "/user/center?tab=banks";
     case "post_review":
       if (title.includes("未通过") || content.includes("未通过")) {
         return "/user/center?tab=posts";

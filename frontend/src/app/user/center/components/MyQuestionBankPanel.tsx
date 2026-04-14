@@ -16,6 +16,7 @@ import {
   Popconfirm,
   Select,
   Space,
+  Tag,
   Typography,
 } from "antd";
 import {
@@ -23,10 +24,17 @@ import {
   deleteQuestionBankUsingPost,
   editQuestionBankUsingPost,
   listMyQuestionBankVoByPageUsingPost,
+  submitQuestionBankReviewUsingPost,
 } from "@/api/questionBankController";
 import { BookOpen, Image as ImageIcon, PencilLine, Plus, Trash2 } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import ManageQuestionBankQuestionsModal from "./ManageQuestionBankQuestionsModal";
+import {
+  QUESTION_REVIEW_STATUS_COLOR_MAP,
+  QUESTION_REVIEW_STATUS_ENUM,
+  QUESTION_REVIEW_STATUS_OPTIONS,
+  QUESTION_REVIEW_STATUS_TEXT_MAP,
+} from "@/constants/question";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -38,6 +46,7 @@ type QuestionBankFormValues = {
 
 type FilterState = {
   searchText?: string;
+  reviewStatus?: number;
   sortKey: string;
 };
 
@@ -99,7 +108,15 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
         await addQuestionBankUsingPost(values);
       }
       hide();
-      message.success(isEdit ? "题库修改成功" : "题库创建成功");
+      if (isEdit) {
+        message.success(
+          Number(questionBank?.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.APPROVED
+            ? "题库修改成功，已重新进入审核"
+            : "题库修改成功",
+        );
+      } else {
+        message.success("题库已创建为私有，你可以先慢慢整理，再决定是否公开");
+      }
       onSuccess();
     } catch (error: any) {
       hide();
@@ -115,7 +132,7 @@ const QuestionBankModal: React.FC<QuestionBankModalProps> = ({
       open={open}
       onCancel={onCancel}
       onOk={handleSubmit}
-      okText={isEdit ? "保存修改" : "创建题库"}
+      okText={isEdit ? "保存修改" : "保存为私有"}
       cancelText="取消"
       confirmLoading={submitting}
       destroyOnClose
@@ -181,6 +198,7 @@ const MyQuestionBankPanel: React.FC = () => {
         current: nextCurrent,
         pageSize: nextPageSize,
         searchText: nextFilters.searchText?.trim() || undefined,
+        reviewStatus: nextFilters.reviewStatus,
         sortField,
         sortOrder,
       });
@@ -204,11 +222,27 @@ const MyQuestionBankPanel: React.FC = () => {
     if (!questionBankList.length) {
       return "你还没有创建自己的题库，可以先新建一个方向题库，把相关题目慢慢沉淀进去。";
     }
-    const withCoverCount = questionBankList.filter((item) => item.picture).length;
-    return withCoverCount > 0
-      ? `当前页有 ${withCoverCount} 个题库已经设置封面图，后续浏览和管理会更清晰。`
-      : "给重点题库补上封面和简介，会更方便后续区分不同方向的内容。";
+    const privateCount = questionBankList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.PRIVATE).length;
+    const pendingCount = questionBankList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.PENDING).length;
+    const rejectedCount = questionBankList.filter((item) => Number(item.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED) === QUESTION_REVIEW_STATUS_ENUM.REJECTED).length;
+    return `当前页有 ${privateCount} 个私有题库、${pendingCount} 个待审核题库、${rejectedCount} 个已驳回题库。公开题库只有审核通过后才会在首页和题库列表里出现。`;
   }, [questionBankList]);
+
+  const handleSubmitReview = async (id?: string | number) => {
+    if (!id) {
+      return;
+    }
+    const hide = message.loading("正在提交题库审核");
+    try {
+      await submitQuestionBankReviewUsingPost({ id });
+      hide();
+      message.success("题库已提交审核");
+      await loadData(current, pageSize, filters);
+    } catch (error: any) {
+      hide();
+      message.error("提交审核失败，" + (error?.message || "请稍后重试"));
+    }
+  };
 
   const handleDelete = async (id?: string | number) => {
     if (!id) {
@@ -240,7 +274,7 @@ const MyQuestionBankPanel: React.FC = () => {
               我的题库
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-              这里适合沉淀你自己整理的专项题库，后续可以继续往题库里补题、补封面和补说明。
+              这里适合先沉淀你自己整理的专项题库，准备公开时再主动提交审核，审核通过后才会出现在公共题库里。
             </Paragraph>
           </div>
           <Button
@@ -264,12 +298,12 @@ const MyQuestionBankPanel: React.FC = () => {
                 排序与筛选
               </Title>
               <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                支持按关键词查找题库，并切换列表排序方式。
+                支持按关键词、审核状态查找题库，并切换列表排序方式。
               </Paragraph>
             </div>
             <Text type="secondary">共 {total} 个题库</Text>
           </div>
-          <div className="grid gap-3 xl:grid-cols-[1.6fr_1fr_auto]">
+          <div className="grid gap-3 xl:grid-cols-[1.4fr_1fr_1fr_auto_auto]">
             <Input
               allowClear
               placeholder="搜索题库标题或简介"
@@ -281,6 +315,18 @@ const MyQuestionBankPanel: React.FC = () => {
                 }));
               }}
               onPressEnter={() => void loadData(1, pageSize, filters)}
+            />
+            <Select
+              allowClear
+              placeholder="审核状态"
+              value={filters.reviewStatus}
+              options={QUESTION_REVIEW_STATUS_OPTIONS}
+              onChange={(value) => {
+                setFilters((prev) => ({
+                  ...prev,
+                  reviewStatus: value,
+                }));
+              }}
             />
             <Select
               value={filters.sortKey}
@@ -299,6 +345,17 @@ const MyQuestionBankPanel: React.FC = () => {
               loading={loading}
             >
               搜索
+            </Button>
+            <Button
+              onClick={() => {
+                const nextFilters: FilterState = {
+                  sortKey: "createTime_desc",
+                };
+                setFilters(nextFilters);
+                void loadData(1, pageSize, nextFilters);
+              }}
+            >
+              重置
             </Button>
           </div>
         </div>
@@ -324,7 +381,11 @@ const MyQuestionBankPanel: React.FC = () => {
             ),
           }}
           dataSource={questionBankList}
-          renderItem={(questionBank) => (
+          renderItem={(questionBank) => {
+            const reviewStatus = Number(questionBank.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED);
+            const canSubmitReview =
+              reviewStatus === QUESTION_REVIEW_STATUS_ENUM.PRIVATE || reviewStatus === QUESTION_REVIEW_STATUS_ENUM.REJECTED;
+            return (
             <List.Item className="!px-0">
               <Card className="w-full rounded-[1.75rem] border border-slate-100 shadow-sm shadow-slate-200/30">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -343,9 +404,14 @@ const MyQuestionBankPanel: React.FC = () => {
                     </div>
                     <div className="min-w-0 flex-1 space-y-3">
                       <div className="space-y-2">
-                        <Title level={5} style={{ margin: 0 }}>
-                          {questionBank.title}
-                        </Title>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Title level={5} style={{ margin: 0 }}>
+                            {questionBank.title}
+                          </Title>
+                          <Tag color={QUESTION_REVIEW_STATUS_COLOR_MAP[reviewStatus] || "default"} className="rounded-full px-3 py-1 font-semibold">
+                            {QUESTION_REVIEW_STATUS_TEXT_MAP[reviewStatus] || "未知状态"}
+                          </Tag>
+                        </div>
                         <Paragraph type="secondary" className="!mb-0">
                           {questionBank.description || "这个题库还没有补充简介，后续可以补充适用方向和内容范围。"}
                         </Paragraph>
@@ -358,13 +424,31 @@ const MyQuestionBankPanel: React.FC = () => {
                             <ImageIcon className="h-3.5 w-3.5" /> 已配置封面
                           </Text>
                         ) : null}
+                        {questionBank.reviewTime ? (
+                          <Text type="secondary">审核于 {formatDateTime(questionBank.reviewTime)}</Text>
+                        ) : null}
                       </Space>
+                      {questionBank.reviewMessage ? (
+                        <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-800">
+                          <div className="mb-1 font-semibold">审核意见</div>
+                          <div>{questionBank.reviewMessage}</div>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   <Space wrap>
                     <Link href={`/bank/${questionBank.id}`}>
                       <Button>查看题库</Button>
                     </Link>
+                    {canSubmitReview ? (
+                      <Button
+                        type="primary"
+                        ghost
+                        onClick={() => void handleSubmitReview(questionBank.id)}
+                      >
+                        {reviewStatus === QUESTION_REVIEW_STATUS_ENUM.REJECTED ? "重新提交审核" : "提交审核"}
+                      </Button>
+                    ) : null}
                     <Button
                       type="primary"
                       ghost
@@ -399,7 +483,7 @@ const MyQuestionBankPanel: React.FC = () => {
                 </div>
               </Card>
             </List.Item>
-          )}
+          )}}
         />
 
         {total > pageSize ? (
