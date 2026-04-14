@@ -17,6 +17,7 @@ import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankAddRequest;
+import com.xduo.springbootinit.model.dto.questionbank.QuestionBankEditRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankUpdateRequest;
 import com.xduo.springbootinit.model.entity.Question;
@@ -97,6 +98,33 @@ public class QuestionBankController {
         }
         // 操作数据库
         boolean result = questionBankService.removeById(id);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 编辑题库（用户使用）
+     *
+     * @param questionBankEditRequest 编辑请求
+     * @param request 请求
+     * @return 是否成功
+     */
+    @PostMapping("/edit")
+    public BaseResponse<Boolean> editQuestionBank(@RequestBody QuestionBankEditRequest questionBankEditRequest,
+                                                  HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankEditRequest == null || questionBankEditRequest.getId() == null
+                || questionBankEditRequest.getId() <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        long id = questionBankEditRequest.getId();
+        QuestionBank oldQuestionBank = questionBankService.getById(id);
+        ThrowUtils.throwIf(oldQuestionBank == null, ErrorCode.NOT_FOUND_ERROR);
+        if (!oldQuestionBank.getUserId().equals(loginUser.getId()) && !userService.isAdmin(request)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        QuestionBank questionBank = new QuestionBank();
+        BeanUtils.copyProperties(questionBankEditRequest, questionBank);
+        questionBankService.validQuestionBank(questionBank, false);
+        boolean result = questionBankService.updateById(questionBank);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
@@ -212,5 +240,27 @@ public class QuestionBankController {
                 entry.exit(1, remoteAddr);
             }
         }
+    }
+
+    /**
+     * 分页获取当前用户创建的题库列表
+     *
+     * @param questionBankQueryRequest 查询请求
+     * @param request 请求
+     * @return 题库分页
+     */
+    @PostMapping("/my/list/page/vo")
+    public BaseResponse<Page<QuestionBankVO>> listMyQuestionBankVOByPage(
+            @RequestBody QuestionBankQueryRequest questionBankQueryRequest,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        questionBankQueryRequest.setUserId(loginUser.getId());
+        long current = questionBankQueryRequest.getCurrent();
+        long size = questionBankQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        Page<QuestionBank> questionBankPage = questionBankService.page(new Page<>(current, size),
+                questionBankService.getQueryWrapper(questionBankQueryRequest));
+        return ResultUtils.success(questionBankService.getQuestionBankVOPage(questionBankPage, request));
     }
 }

@@ -6,6 +6,9 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.xduo.springbootinit.model.dto.questionbankquestion.QuestionBankQuestionQueryRequest;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.QuestionBankQuestionVO;
+
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -42,4 +45,23 @@ public interface QuestionBankQuestionService extends IService<QuestionBankQuesti
 
     @Transactional(rollbackFor = Exception.class)
     void batchAddQuestionsToBankInner(List<QuestionBankQuestion> questionBankQuestions);
+
+    /**
+     * 获取题库题目关联视图
+     *
+     * @param questionBankQuestion 关联
+     * @param request 请求
+     * @return 视图
+     */
+    QuestionBankQuestionVO getQuestionBankQuestionVO(QuestionBankQuestion questionBankQuestion, HttpServletRequest request);
+
+    /**
+     * 分页获取题库题目关联视图
+     *
+     * @param questionBankQuestionPage 分页
+     * @param request 请求
+     * @return 视图分页
+     */
+    Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionBankQuestionPage,
+                                                               HttpServletRequest request);
 }

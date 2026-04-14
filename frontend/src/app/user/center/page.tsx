@@ -57,6 +57,10 @@ const MyQuestionSubmissionPanel = dynamic(() => import("@/app/user/center/compon
   loading: () => <div className="py-8 text-center text-slate-400">正在加载题目记录...</div>,
 });
 
+const MyQuestionBankPanel = dynamic(() => import("@/app/user/center/components/MyQuestionBankPanel"), {
+  loading: () => <div className="py-8 text-center text-slate-400">正在加载我的题库...</div>,
+});
+
 const MyQuestionNoteList = dynamic(() => import("@/app/user/center/components/MyQuestionNoteList"), {
   loading: () => <div className="py-8 text-center text-slate-400">正在加载我的笔记...</div>,
 });
@@ -90,6 +94,7 @@ function UserCenterContent() {
       "overview",
       "record",
       "favourite",
+      "banks",
       "submission",
       "submissions",
       "security",
@@ -268,6 +273,7 @@ function UserCenterContent() {
             tabList={[
               { key: "overview", label: <span className="flex items-center gap-2"><LayoutDashboard size={16} />个人概览</span> },
               { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
+              { key: "banks", label: <span className="flex items-center gap-2"><BookOpen size={16} />我的题库</span> },
               { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的题目</span> },
               { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
               { key: "comments", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />评论足迹</span> },
@@ -298,6 +304,9 @@ function UserCenterContent() {
                         </Button>
                         <Button onClick={() => setActiveTabKey("submission")}>
                           我的题目
+                        </Button>
+                        <Button onClick={() => setActiveTabKey("banks")}>
+                          我的题库
                         </Button>
                         <Button onClick={() => setActiveTabKey("notes")}>
                           我的笔记
@@ -423,6 +432,11 @@ function UserCenterContent() {
             {activeTabKey === "submission" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <MyQuestionSubmissionPanel />
+              </div>
+            )}
+            {activeTabKey === "banks" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <MyQuestionBankPanel />
               </div>
             )}
             {activeTabKey === "notes" && (

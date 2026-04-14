@@ -1,5 +1,6 @@
 package com.xduo.springbootinit.service.impl;
 
+import cn.hutool.json.JSONUtil;
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -16,11 +17,14 @@ import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.QuestionBankQuestionVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionBankService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.aop.framework.AopContext;
@@ -31,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,6 +53,9 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
     @Resource
     @Lazy
     private QuestionService questionService;
+
+    @Resource
+    private UserService userService;
 
     /**
      * 获取查询条件
@@ -200,6 +208,69 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         }
     }
 
+    @Override
+    public QuestionBankQuestionVO getQuestionBankQuestionVO(QuestionBankQuestion questionBankQuestion, HttpServletRequest request) {
+        QuestionBankQuestionVO questionBankQuestionVO = QuestionBankQuestionVO.objToVo(questionBankQuestion);
+        if (questionBankQuestionVO == null) {
+            return null;
+        }
+        Long userId = questionBankQuestionVO.getUserId();
+        if (userId != null && userId > 0) {
+            questionBankQuestionVO.setUser(userService.getUserVO(userService.getById(userId)));
+        }
+        Long questionId = questionBankQuestionVO.getQuestionId();
+        if (questionId != null && questionId > 0) {
+            Question question = questionService.getById(questionId);
+            if (question != null && question.getTags() != null) {
+                questionBankQuestionVO.setTagList(JSONUtil.toList(question.getTags(), String.class));
+            }
+        }
+        return questionBankQuestionVO;
+    }
 
+    @Override
+    public Page<QuestionBankQuestionVO> getQuestionBankQuestionVOPage(Page<QuestionBankQuestion> questionBankQuestionPage,
+                                                                      HttpServletRequest request) {
+        List<QuestionBankQuestion> questionBankQuestionList = questionBankQuestionPage.getRecords();
+        Page<QuestionBankQuestionVO> questionBankQuestionVOPage = new Page<>(
+                questionBankQuestionPage.getCurrent(),
+                questionBankQuestionPage.getSize(),
+                questionBankQuestionPage.getTotal()
+        );
+        if (CollUtil.isEmpty(questionBankQuestionList)) {
+            return questionBankQuestionVOPage;
+        }
+        List<QuestionBankQuestionVO> questionBankQuestionVOList = questionBankQuestionList.stream()
+                .map(QuestionBankQuestionVO::objToVo)
+                .collect(Collectors.toList());
+
+        Set<Long> userIdSet = questionBankQuestionList.stream()
+                .map(QuestionBankQuestion::getUserId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        Map<Long, User> userMap = userIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : userService.listByIds(userIdSet).stream()
+                .collect(Collectors.toMap(User::getId, user -> user, (existing, replacement) -> existing));
+
+        Set<Long> questionIdSet = questionBankQuestionList.stream()
+                .map(QuestionBankQuestion::getQuestionId)
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toSet());
+        Map<Long, Question> questionMap = questionIdSet.isEmpty()
+                ? java.util.Collections.emptyMap()
+                : questionService.listByIds(questionIdSet).stream()
+                .collect(Collectors.toMap(Question::getId, question -> question, (existing, replacement) -> existing));
+
+        questionBankQuestionVOList.forEach(questionBankQuestionVO -> {
+            questionBankQuestionVO.setUser(userService.getUserVO(userMap.get(questionBankQuestionVO.getUserId())));
+            Question question = questionMap.get(questionBankQuestionVO.getQuestionId());
+            if (question != null && question.getTags() != null) {
+                questionBankQuestionVO.setTagList(JSONUtil.toList(question.getTags(), String.class));
+            }
+        });
+        questionBankQuestionVOPage.setRecords(questionBankQuestionVOList);
+        return questionBankQuestionVOPage;
+    }
 
 }

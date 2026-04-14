@@ -8,11 +8,15 @@ import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
+import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.model.entity.Question;
+import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.dto.question.QuestionBatchDeleteRequest;
 import com.xduo.springbootinit.model.dto.questionbankquestion.*;
 import com.xduo.springbootinit.model.entity.QuestionBankQuestion;
 import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.vo.QuestionBankQuestionVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionBankService;
 import com.xduo.springbootinit.service.QuestionService;
@@ -24,6 +28,8 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 题库题目关联接口
@@ -53,7 +59,6 @@ public class QuestionBankQuestionController {
      * @return
      */
     @PostMapping("/add")
-    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Long> addQuestionBankQuestion(
             @RequestBody QuestionBankQuestionAddRequest questionBankQuestionAddRequest,
             HttpServletRequest request) {
@@ -62,12 +67,13 @@ public class QuestionBankQuestionController {
         Long questionId = questionBankQuestionAddRequest.getQuestionId();
         ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR);
-        // 判断题库是否存在
-        ThrowUtils.throwIf(questionBankService.getById(questionBankId) == null, ErrorCode.NOT_FOUND_ERROR, "题库不存在");
         // 判断题目是否存在
-        ThrowUtils.throwIf(questionService.getById(questionId) == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        Question question = questionService.getById(questionId);
+        ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
         // 获取当前登录用户
         User loginUser = userService.getLoginUser(request);
+        ensureCanManageQuestionBank(questionBankId, loginUser, request);
+        ensureCanManageQuestion(question, loginUser, request);
         QuestionBankQuestion questionBankQuestion = new QuestionBankQuestion();
         questionBankQuestion.setQuestionBankId(questionBankId);
         questionBankQuestion.setQuestionId(questionId);
@@ -93,8 +99,43 @@ public class QuestionBankQuestionController {
         return ResultUtils.success(page);
     }
 
-    @PostMapping("/add/batch")
+    /**
+     * 分页获取题库题目关联列表（封装类，仅管理员）
+     */
+    @PostMapping("/list/page/vo")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<QuestionBankQuestionVO>> listQuestionBankQuestionVOByPage(
+            @RequestBody QuestionBankQuestionQueryRequest questionBankQuestionQueryRequest,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQuestionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        long current = questionBankQuestionQueryRequest.getCurrent();
+        long size = questionBankQuestionQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 100, ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        Page<QuestionBankQuestion> page = questionBankQuestionService.listQuestionBankQuestionByPage(questionBankQuestionQueryRequest);
+        return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVOPage(page, request));
+    }
+
+    /**
+     * 分页获取当前用户可管理的题库题目关联列表
+     */
+    @PostMapping("/my/list/page/vo")
+    public BaseResponse<Page<QuestionBankQuestionVO>> listMyQuestionBankQuestionVOByPage(
+            @RequestBody QuestionBankQuestionQueryRequest questionBankQuestionQueryRequest,
+            HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankQuestionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        Long questionBankId = questionBankQuestionQueryRequest.getQuestionBankId();
+        ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "请选择题库");
+        ensureCanManageQuestionBank(questionBankId, loginUser, request);
+        questionBankQuestionQueryRequest.setUserId(loginUser.getId());
+        long current = questionBankQuestionQueryRequest.getCurrent();
+        long size = questionBankQuestionQueryRequest.getPageSize();
+        ThrowUtils.throwIf(current < 1 || size < 1 || size > 200, ErrorCode.PARAMS_ERROR, "分页参数不合法");
+        Page<QuestionBankQuestion> page = questionBankQuestionService.listQuestionBankQuestionByPage(questionBankQuestionQueryRequest);
+        return ResultUtils.success(questionBankQuestionService.getQuestionBankQuestionVOPage(page, request));
+    }
+
+    @PostMapping("/add/batch")
     public BaseResponse<Boolean> batchAddQuestionsToBank(
             @RequestBody QuestionBankQuestionBatchAddRequest questionBankQuestionBatchAddRequest,
             HttpServletRequest request
@@ -104,34 +145,39 @@ public class QuestionBankQuestionController {
         User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionBatchAddRequest.getQuestionBankId();
         List<Long> questionIdList = questionBankQuestionBatchAddRequest.getQuestionIdList();
+        ensureCanManageQuestionBank(questionBankId, loginUser, request);
+        ensureCanManageQuestionList(questionIdList, loginUser, request);
         questionBankQuestionService.batchAddQuestionsToBank(questionIdList, questionBankId, loginUser);
         return ResultUtils.success(true);
     }
 
     @PostMapping("/remove/batch")
-    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> batchRemoveQuestionsFromBank(
             @RequestBody QuestionBankQuestionBatchRemoveRequest questionBankQuestionBatchRemoveRequest,
             HttpServletRequest request
     ) {
         // 参数校验
         ThrowUtils.throwIf(questionBankQuestionBatchRemoveRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionBatchRemoveRequest.getQuestionBankId();
         List<Long> questionIdList = questionBankQuestionBatchRemoveRequest.getQuestionIdList();
+        ensureCanManageQuestionBank(questionBankId, loginUser, request);
         questionBankQuestionService.batchRemoveQuestionsFromBank(questionIdList, questionBankId);
         return ResultUtils.success(true);
     }
 
     @PostMapping("/remove")
-    @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> removeQuestionBankQuestion(
-            @RequestBody QuestionBankQuestionRemoveRequest questionBankQuestionRemoveRequest
+            @RequestBody QuestionBankQuestionRemoveRequest questionBankQuestionRemoveRequest,
+            HttpServletRequest request
     ) {
         // 参数校验
         ThrowUtils.throwIf(questionBankQuestionRemoveRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionRemoveRequest.getQuestionBankId();
         Long questionId = questionBankQuestionRemoveRequest.getQuestionId();
         ThrowUtils.throwIf(questionBankId == null || questionId == null, ErrorCode.PARAMS_ERROR);
+        ensureCanManageQuestionBank(questionBankId, loginUser, request);
         // 构造查询
         LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
                 .eq(QuestionBankQuestion::getQuestionId, questionId)
@@ -146,5 +192,35 @@ public class QuestionBankQuestionController {
         ThrowUtils.throwIf(questionBatchDeleteRequest == null, ErrorCode.PARAMS_ERROR);
         questionService.batchDeleteQuestions(questionBatchDeleteRequest.getQuestionIdList());
         return ResultUtils.success(true);
+    }
+
+    private void ensureCanManageQuestionBank(Long questionBankId, User loginUser, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "题库非法");
+        QuestionBank questionBank = questionBankService.getById(questionBankId);
+        ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR, "题库不存在");
+        if (!userService.isAdmin(request) && !questionBank.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "只能管理自己的题库");
+        }
+    }
+
+    private void ensureCanManageQuestion(Question question, User loginUser, HttpServletRequest request) {
+        ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        if (!userService.isAdmin(request) && !question.getUserId().equals(loginUser.getId())) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "只能把自己的题目加入题库");
+        }
+    }
+
+    private void ensureCanManageQuestionList(List<Long> questionIdList, User loginUser, HttpServletRequest request) {
+        ThrowUtils.throwIf(questionIdList == null || questionIdList.isEmpty(), ErrorCode.PARAMS_ERROR, "题目列表为空");
+        if (userService.isAdmin(request)) {
+            return;
+        }
+        List<Question> questionList = questionService.listByIds(questionIdList);
+        ThrowUtils.throwIf(questionList.isEmpty(), ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        Set<Long> ownedQuestionIdSet = questionList.stream()
+                .filter(question -> question.getUserId() != null && question.getUserId().equals(loginUser.getId()))
+                .map(Question::getId)
+                .collect(Collectors.toSet());
+        ThrowUtils.throwIf(ownedQuestionIdSet.size() != questionIdList.size(), ErrorCode.NO_AUTH_ERROR, "只能管理自己创建的题目");
     }
 }
