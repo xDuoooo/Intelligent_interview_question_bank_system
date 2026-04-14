@@ -1,9 +1,11 @@
 import React from "react";
 import { getQuestionVoByIdUsingGet } from "@/api/questionController";
+import { getLoginUserUsingGet } from "@/api/userController";
 import QuestionCard from "@/components/QuestionCard";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
+import QuestionOwnerPanel from "./QuestionOwnerPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -13,31 +15,44 @@ export const dynamic = "force-dynamic";
  */
 export default async function QuestionPage({ params }: { params: { questionId: string } }) {
   const { questionId } = params;
-
-  // 获取题目详情
   let question: API.QuestionVO | undefined = undefined;
-  let isNotLogin = false;
-  
-  try {
-    const res = (await getQuestionVoByIdUsingGet({
-      id: questionId,
-    }, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponseQuestionVO_;
-    
-    if (res.code === 40100) {
-      isNotLogin = true;
-    } else {
-      question = res.data;
-    }
-  } catch (e) {
-    console.error("获取题目详情失败", e);
+  let loginUser: API.LoginUserVO | undefined = undefined;
+  const cookie = headers().get("cookie") || "";
+  const requestOptions = {
+    headers: {
+      cookie,
+    },
+  };
+
+  const [questionResult, loginUserResult] = await Promise.allSettled([
+    getQuestionVoByIdUsingGet(
+      {
+        id: questionId,
+      },
+      requestOptions,
+    ),
+    getLoginUserUsingGet(requestOptions),
+  ]);
+
+  if (questionResult.status === "fulfilled") {
+    const res = questionResult.value as unknown as API.BaseResponseQuestionVO_;
+    question = res.data;
+  } else {
+    console.error("获取题目详情失败", questionResult.reason);
+  }
+
+  if (loginUserResult.status === "fulfilled") {
+    const loginUserRes = loginUserResult.value as unknown as API.BaseResponseLoginUserVO_;
+    loginUser = loginUserRes.data;
   }
   
   // 错误处理
   if (!question) {
+    const questionErrorMessage =
+      questionResult.status === "rejected"
+        ? String((questionResult.reason as Error | undefined)?.message || "")
+        : "";
+    const isNotLogin = !loginUser?.id && /401|登录|未登录/i.test(questionErrorMessage);
     const errorTitle = isNotLogin ? "您还没有登录" : "获取题目详情失败";
     const errorDesc = isNotLogin ? "请先登录后再查看题目详情" : "该题目可能已被移除或权限不足";
     
@@ -58,8 +73,23 @@ export default async function QuestionPage({ params }: { params: { questionId: s
     );
   }
 
+  const isOwner = Boolean(loginUser?.id) && String(loginUser?.id) === String(question.userId);
+  const isAdmin = loginUser?.userRole === "admin";
+
   return (
     <div id="questionPage" className="max-w-5xl mx-auto pb-20">
+      {isOwner || isAdmin ? (
+        <div className="mb-8">
+          <QuestionOwnerPanel
+            questionId={questionId}
+            reviewStatus={question.reviewStatus}
+            reviewMessage={question.reviewMessage}
+            reviewTime={question.reviewTime}
+            isOwner={isOwner}
+            isAdmin={isAdmin}
+          />
+        </div>
+      ) : null}
       <QuestionCard question={question} />
     </div>
   );

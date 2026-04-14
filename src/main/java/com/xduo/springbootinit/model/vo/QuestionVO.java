@@ -51,7 +51,7 @@ public class QuestionVO implements Serializable {
     private Long userId;
 
     /**
-     * 审核状态：0-待审核 1-已通过 2-已驳回
+     * 审核状态：0-待审核 1-已通过 2-已驳回 3-私有
      */
     private Integer reviewStatus;
 
