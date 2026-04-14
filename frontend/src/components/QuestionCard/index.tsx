@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import TagList from "@/components/TagList";
-import MdViewer from "@/components/MdViewer";
 import useAddUserSignInRecord from "@/hooks/useAddUserSignInRecord";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
@@ -14,6 +13,14 @@ import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
 import { buildApiUrl } from "@/libs/request";
 
 const { Text } = Typography;
+
+const MdViewer = dynamic(() => import("@/components/MdViewer"), {
+  loading: () => (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50/60 p-6 text-sm text-slate-400">
+      正在渲染内容...
+    </div>
+  ),
+});
 
 const QuestionRecommendPanel = dynamic(() => import("@/components/QuestionRecommendPanel"), {
   loading: () => (

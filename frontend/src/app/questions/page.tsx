@@ -1,9 +1,36 @@
-import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import Link from "next/link";
+import { listMyQuestionVoByPageUsingPost, searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import { getLoginUserUsingGet } from "@/api/userController";
 import QuestionTable from "@/components/QuestionTable";
+import {
+  QUESTION_REVIEW_STATUS_ENUM,
+  QUESTION_REVIEW_STATUS_TEXT_MAP,
+} from "@/constants/question";
 import { Sparkles } from "lucide-react";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
+
+const MY_DRAFT_SECTIONS = [
+  {
+    status: QUESTION_REVIEW_STATUS_ENUM.PRIVATE,
+    title: "我保存的私有题目",
+    description: "这些题目只有你自己和管理员可见，准备好后再提交审核。",
+    accentClassName: "border-slate-200 bg-slate-50/80",
+  },
+  {
+    status: QUESTION_REVIEW_STATUS_ENUM.PENDING,
+    title: "我提交审核中的题目",
+    description: "这些题目已经进入审核流程，审核通过后会进入公开题目列表。",
+    accentClassName: "border-amber-200 bg-amber-50/80",
+  },
+  {
+    status: QUESTION_REVIEW_STATUS_ENUM.REJECTED,
+    title: "我被驳回的题目",
+    description: "可以根据审核意见修改后重新提交，让公开质量更稳一些。",
+    accentClassName: "border-rose-200 bg-rose-50/80",
+  },
+] as const;
 
 function getSingleParam(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -35,6 +62,29 @@ function normalizeSortOrder(value?: string | string[]) {
   return sortOrder === "ascend" ? "ascend" : "descend";
 }
 
+async function loadMyDraftQuestions(requestOptions: { headers: { cookie: string } }) {
+  const sectionResults = await Promise.all(
+    MY_DRAFT_SECTIONS.map(async (section) => {
+      const res = (await listMyQuestionVoByPageUsingPost(
+        {
+          current: 1,
+          pageSize: 3,
+          reviewStatus: section.status,
+          sortField: "updateTime",
+          sortOrder: "descend",
+        },
+        requestOptions,
+      )) as API.BaseResponsePageQuestionVO_;
+      return {
+        ...section,
+        records: res.data?.records || [],
+        total: Number(res.data?.total) || 0,
+      };
+    }),
+  );
+  return sectionResults.filter((section) => section.total > 0);
+}
+
 /**
  * 题目列表页面
  * @constructor
@@ -54,6 +104,12 @@ export default async function QuestionsPage({
     page?: string | string[];
   };
 }) {
+  const cookieHeader = headers().get("cookie") || "";
+  const requestOptions = {
+    headers: {
+      cookie: cookieHeader,
+    },
+  };
   const defaultSearchParams: API.QuestionQueryRequest = {
     searchText: getSingleParam(searchParams.q),
     title: getSingleParam(searchParams.title),
@@ -69,15 +125,24 @@ export default async function QuestionsPage({
   // 题目列表和总数
   let questionList: API.QuestionVO[] = [];
   let total = 0;
+  let myDraftSections: Array<
+    (typeof MY_DRAFT_SECTIONS)[number] & { records: API.QuestionVO[]; total: number }
+  > = [];
 
   try {
-    const res = (await searchQuestionVoByPageUsingPost(defaultSearchParams, {
-      headers: {
-        cookie: headers().get("cookie") || "",
-      }
-    })) as unknown as API.BaseResponsePageQuestionVO_;
-    questionList = res.data?.records ?? [];
-    total = res.data?.total ?? 0;
+    const [publicRes, loginRes] = await Promise.allSettled([
+      searchQuestionVoByPageUsingPost(defaultSearchParams, requestOptions),
+      getLoginUserUsingGet(requestOptions),
+    ]);
+    const res =
+      publicRes.status === "fulfilled"
+        ? (publicRes.value as unknown as API.BaseResponsePageQuestionVO_)
+        : undefined;
+    questionList = res?.data?.records ?? [];
+    total = res?.data?.total ?? 0;
+    if (loginRes.status === "fulfilled" && loginRes.value?.data?.id) {
+      myDraftSections = await loadMyDraftQuestions(requestOptions);
+    }
   } catch (e) {
     console.error("获取题目列表失败", e);
   }
@@ -100,6 +165,78 @@ export default async function QuestionsPage({
             </p>
          </div>
       </section>
+
+      {myDraftSections.length ? (
+        <section className="rounded-[3rem] border border-blue-100 bg-blue-50/70 p-6 sm:p-8 shadow-xl shadow-blue-100/40">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="space-y-2">
+              <div className="text-sm font-black uppercase tracking-[0.32em] text-blue-500">
+                My Workspace
+              </div>
+              <h2 className="text-2xl font-black text-slate-900">我自己的未公开题目</h2>
+              <p className="max-w-2xl text-sm font-medium text-slate-500">
+                公开题目列表只展示审核通过的内容。你已登录时，这里会额外展示自己的私有、待审核和已驳回题目，方便继续完善。
+              </p>
+            </div>
+            <Link
+              href="/user/center?tab=submission"
+              className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+            >
+              去我的题目管理
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-3">
+            {myDraftSections.map((section) => (
+              <div
+                key={section.status}
+                className={`rounded-[2rem] border p-5 shadow-sm shadow-slate-200/40 ${section.accentClassName}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-base font-black text-slate-900">{section.title}</div>
+                    <div className="mt-1 text-sm text-slate-500">{section.description}</div>
+                  </div>
+                  <div className="rounded-2xl bg-white/90 px-3 py-2 text-center shadow-sm">
+                    <div className="text-lg font-black text-slate-900">{section.total}</div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">当前数量</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {section.records.map((question) => (
+                    <Link
+                      key={question.id}
+                      href={`/question/${question.id}`}
+                      className="block rounded-[1.5rem] border border-white/90 bg-white/85 p-4 transition hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-lg hover:shadow-slate-200/50"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-black text-slate-900">{question.title}</div>
+                          <div className="mt-1 text-xs font-medium text-slate-500">
+                            {QUESTION_REVIEW_STATUS_TEXT_MAP[Number(question.reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED)] || "未知状态"}
+                            {question.updateTime ? ` · ${new Date(question.updateTime).toLocaleDateString("zh-CN")}` : ""}
+                          </div>
+                        </div>
+                        {question.difficulty ? (
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                            {question.difficulty}
+                          </span>
+                        ) : null}
+                      </div>
+                      {Number(question.reviewStatus) === QUESTION_REVIEW_STATUS_ENUM.REJECTED && question.reviewMessage ? (
+                        <div className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-medium text-rose-600">
+                          驳回原因：{question.reviewMessage}
+                        </div>
+                      ) : null}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Main Content Area */}
       <section className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-6 sm:p-10 border border-white shadow-2xl shadow-slate-200/50">

@@ -197,6 +197,10 @@ public class QuestionBankController {
         if (needQueryQuestionList) {
             QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
             questionQueryRequest.setQuestionBankId(id);
+            questionQueryRequest.setCurrent(questionBankQueryRequest.getCurrent());
+            questionQueryRequest.setPageSize(questionBankQueryRequest.getPageSize());
+            questionQueryRequest.setSortField(questionBankQueryRequest.getSortField());
+            questionQueryRequest.setSortOrder(questionBankQueryRequest.getSortOrder());
             if (loginUser == null || (!userService.isAdmin(loginUser) && !loginUser.getId().equals(questionBank.getUserId()))) {
                 questionQueryRequest.setReviewStatus(com.xduo.springbootinit.constant.QuestionConstant.REVIEW_STATUS_APPROVED);
             }

@@ -108,7 +108,8 @@ export default function MyPostList() {
       await deletePostUsingPost({ id });
       hide();
       message.success("删除成功");
-      await fetchPostList(Math.max(1, current));
+      const nextCurrent = postList.length === 1 && current > 1 ? current - 1 : current;
+      await fetchPostList(nextCurrent, keyword, reviewStatus, sortKey);
     } catch (error: any) {
       hide();
       message.error(error?.message || "删除失败");
@@ -264,8 +265,8 @@ export default function MyPostList() {
                 pageSize={pageSize}
                 total={total}
                 showSizeChanger={false}
-                onChange={(page) => {
-                  void fetchPostList(page);
+              onChange={(page) => {
+                  void fetchPostList(page, keyword, reviewStatus, sortKey);
                 }}
               />
             </div>
@@ -325,7 +326,7 @@ export default function MyPostList() {
                 });
                 message.success("帖子更新成功");
                 setEditingPost(undefined);
-                await fetchPostList(current);
+                await fetchPostList(current, keyword, reviewStatus, sortKey);
               } catch (error: any) {
                 message.error(error?.message || "更新失败");
               } finally {

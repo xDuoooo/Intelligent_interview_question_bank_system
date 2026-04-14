@@ -254,11 +254,7 @@ const MyQuestionBankPanel: React.FC = () => {
       hide();
       message.success("题库已删除");
       const nextCurrent = questionBankList.length === 1 && current > 1 ? current - 1 : current;
-      if (nextCurrent !== current) {
-        setCurrent(nextCurrent);
-      } else {
-        void loadData(nextCurrent, pageSize, filters);
-      }
+      await loadData(nextCurrent, pageSize, filters);
     } catch (error: any) {
       hide();
       message.error("删除失败，" + (error?.message || "请稍后重试"));

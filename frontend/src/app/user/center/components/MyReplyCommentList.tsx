@@ -151,7 +151,7 @@ export default function MyReplyCommentList() {
               total={total}
               showSizeChanger={false}
               onChange={(page) => {
-                void fetchCommentList(page);
+                void fetchCommentList(page, keyword, statusFilter);
               }}
             />
           </div>

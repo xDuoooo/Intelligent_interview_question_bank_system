@@ -40,19 +40,33 @@ const ManageQuestionBankQuestionsModal: React.FC<Props> = ({ open, questionBank,
       return;
     }
     try {
-      const res = await listMyQuestionBankQuestionVoByPageUsingPost({
-        current: 1,
-        pageSize: 200,
-        questionBankId,
-        sortField: "createTime",
-        sortOrder: "descend",
-      });
-      const nextIdSet = new Set(
-        (res.data?.records || [])
+      const nextIdSet = new Set<string>();
+      const pageSize = 200;
+      let page = 1;
+      let total = 0;
+      let loadedCount = 0;
+
+      do {
+        const res = await listMyQuestionBankQuestionVoByPageUsingPost({
+          current: page,
+          pageSize,
+          questionBankId,
+          sortField: "createTime",
+          sortOrder: "descend",
+        });
+        const records = res.data?.records || [];
+        total = Number(res.data?.total) || 0;
+        records
           .map((item) => item.questionId)
           .filter((id): id is string | number => id !== null && id !== undefined)
-          .map((id) => String(id)),
-      );
+          .forEach((id) => nextIdSet.add(String(id)));
+        loadedCount += records.length;
+        page += 1;
+        if (!records.length) {
+          break;
+        }
+      } while (loadedCount < total);
+
       setJoinedQuestionIdSet(nextIdSet);
     } catch (error: any) {
       message.error("加载题库内题目失败，" + (error?.message || "请稍后重试"));

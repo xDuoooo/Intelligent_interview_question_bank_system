@@ -1,14 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Tag } from "antd";
 import { CalendarClock, Heart, ThumbsUp } from "lucide-react";
-import MdViewer from "@/components/MdViewer";
-import PostActionBar from "@/components/PostActionBar";
-import PostList from "@/components/PostList";
-import PostCommentSection from "@/components/PostCommentSection";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
+
+const MdViewer = dynamic(() => import("@/components/MdViewer"), {
+  loading: () => (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50/60 p-6 text-sm text-slate-400">
+      正在渲染帖子内容...
+    </div>
+  ),
+});
+
+const PostActionBar = dynamic(() => import("@/components/PostActionBar"), {
+  loading: () => (
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="h-11 w-24 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="h-11 w-24 animate-pulse rounded-2xl bg-slate-100" />
+      <div className="h-11 w-28 animate-pulse rounded-2xl bg-slate-100" />
+    </div>
+  ),
+});
+
+const PostList = dynamic(() => import("@/components/PostList"), {
+  loading: () => (
+    <div className="grid gap-4">
+      <div className="h-28 animate-pulse rounded-[2rem] bg-slate-100" />
+      <div className="h-28 animate-pulse rounded-[2rem] bg-slate-100" />
+    </div>
+  ),
+});
+
+const PostCommentSection = dynamic(() => import("@/components/PostCommentSection"), {
+  loading: () => (
+    <section className="rounded-[2rem] border border-slate-100 bg-white p-8 text-sm text-slate-400 shadow-xl shadow-slate-200/30">
+      正在加载评论区...
+    </section>
+  ),
+});
 
 interface Props {
   post: API.PostVO;

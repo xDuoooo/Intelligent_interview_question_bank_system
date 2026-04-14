@@ -154,7 +154,6 @@ public class QuestionBankQuestionController {
         Long questionBankId = questionBankQuestionQueryRequest.getQuestionBankId();
         ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "请选择题库");
         ensureCanManageQuestionBank(questionBankId, loginUser, request);
-        questionBankQuestionQueryRequest.setUserId(loginUser.getId());
         long current = questionBankQuestionQueryRequest.getCurrent();
         long size = questionBankQuestionQueryRequest.getPageSize();
         ThrowUtils.throwIf(current < 1 || size < 1 || size > 200, ErrorCode.PARAMS_ERROR, "分页参数不合法");

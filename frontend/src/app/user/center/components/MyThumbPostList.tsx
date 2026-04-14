@@ -140,7 +140,7 @@ export default function MyThumbPostList() {
               total={total}
               showSizeChanger={false}
               onChange={(page) => {
-                void fetchPostList(page);
+                void fetchPostList(page, keyword, sortKey);
               }}
             />
           </div>
