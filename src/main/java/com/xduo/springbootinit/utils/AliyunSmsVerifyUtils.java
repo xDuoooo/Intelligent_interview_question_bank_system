@@ -7,6 +7,7 @@ import com.aliyun.dypnsapi20170525.models.CheckSmsVerifyCodeRequest;
 import com.aliyun.dypnsapi20170525.models.CheckSmsVerifyCodeResponse;
 import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeRequest;
 import com.aliyun.dypnsapi20170525.models.SendSmsVerifyCodeResponse;
+import com.aliyun.tea.TeaException;
 import com.aliyun.teaopenapi.models.Config;
 import com.aliyun.teautil.models.RuntimeOptions;
 import jakarta.annotation.PostConstruct;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -195,6 +197,15 @@ public class AliyunSmsVerifyUtils {
             boolean verified = body.getModel() != null
                     && "PASS".equalsIgnoreCase(body.getModel().getVerifyResult());
             return new SmsCheckResult(true, verified, verified ? null : "验证码错误或已过期");
+        } catch (TeaException e) {
+            if (isVerifyCodeBusinessFailure(e)) {
+                log.info("阿里云短信验证码核验未通过：phone={}, statusCode={}, code={}, message={}",
+                        maskPhone(normalizedPhone), e.getStatusCode(), e.getCode(), e.getMessage());
+                return new SmsCheckResult(true, false, "验证码错误或已过期");
+            }
+            log.error("阿里云短信认证核验接口调用异常：phone={}, statusCode={}, code={}, data={}",
+                    maskPhone(normalizedPhone), e.getStatusCode(), e.getCode(), e.getData(), e);
+            return new SmsCheckResult(false, false, StringUtils.defaultIfBlank(e.getMessage(), e.getCode()));
         } catch (Exception e) {
             log.error("阿里云短信认证核验接口调用异常", e);
             return new SmsCheckResult(false, false, e.getMessage());
@@ -225,6 +236,22 @@ public class AliyunSmsVerifyUtils {
 
     private String normalizePhone(String phone) {
         return StringUtils.trimToEmpty(phone);
+    }
+
+    private boolean isVerifyCodeBusinessFailure(TeaException e) {
+        if (e == null) {
+            return false;
+        }
+        String code = StringUtils.trimToEmpty(e.getCode());
+        String message = StringUtils.trimToEmpty(e.getMessage());
+        if (StringUtils.containsIgnoreCase(message, "验证失败")
+                || StringUtils.containsIgnoreCase(message, "smscodeverifyfail")
+                || StringUtils.containsIgnoreCase(message, "verify fail")
+                || StringUtils.containsIgnoreCase(message, "invalid")) {
+            return true;
+        }
+        return Objects.equals(e.getStatusCode(), 400)
+                && (StringUtils.equals(code, "400") || StringUtils.isBlank(code));
     }
 
     private String randomOutId() {
