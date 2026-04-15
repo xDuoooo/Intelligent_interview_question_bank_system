@@ -15,7 +15,7 @@ export default function MyLikedCommentList() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const fetchCommentList = useCallback(async (page = current) => {
+  const fetchCommentList = useCallback(async (page = 1) => {
     setLoading(true);
     try {
       const res = await listMyLikedCommentsByPage({
@@ -30,7 +30,7 @@ export default function MyLikedCommentList() {
     } finally {
       setLoading(false);
     }
-  }, [current, pageSize]);
+  }, [pageSize]);
 
   useEffect(() => {
     void fetchCommentList(1);

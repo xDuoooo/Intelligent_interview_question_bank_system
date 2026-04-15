@@ -51,7 +51,7 @@ public class PostFavourController {
     @PostMapping("/")
     public BaseResponse<Integer> doPostFavour(@RequestBody PostFavourAddRequest postFavourAddRequest,
             HttpServletRequest request) {
-        if (postFavourAddRequest == null || postFavourAddRequest.getPostId() <= 0) {
+        if (postFavourAddRequest == null || postFavourAddRequest.getPostId() == null || postFavourAddRequest.getPostId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 登录才能操作
@@ -77,7 +77,7 @@ public class PostFavourController {
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current <= 0 || size <= 0 || size > 20, ErrorCode.PARAMS_ERROR);
         Page<Post> postPage = postFavourService.listFavourPostByPage(new Page<>(current, size),
                 postService.getQueryWrapper(postQueryRequest), loginUser.getId());
         return ResultUtils.success(postService.getPostVOPage(postPage, request));
@@ -99,7 +99,8 @@ public class PostFavourController {
         long size = postFavourQueryRequest.getPageSize();
         Long userId = postFavourQueryRequest.getUserId();
         // 限制爬虫
-        ThrowUtils.throwIf(size > 20 || userId == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(current <= 0 || size <= 0 || size > 20 || userId == null || userId <= 0,
+                ErrorCode.PARAMS_ERROR);
         Page<Post> postPage = postFavourService.listFavourPostByPage(new Page<>(current, size),
                 postService.getQueryWrapper(postFavourQueryRequest.getPostQueryRequest()), userId);
         return ResultUtils.success(postService.getPostVOPage(postPage, request));

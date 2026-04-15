@@ -89,6 +89,8 @@ tencent:
     region: ap-guangzhou
     fromEmailAddress: notice@example.com
     replyToAddresses: ""
+    verificationTemplateId: your_tencent_email_verification_template_id
+    learningReminderTemplateId: ""
   sms:
     secretId: your_tencent_sms_secret_id
     secretKey: your_tencent_sms_secret_key

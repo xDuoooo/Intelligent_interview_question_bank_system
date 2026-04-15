@@ -28,6 +28,8 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -170,7 +172,7 @@ public class QuestionBankQuestionController {
         ThrowUtils.throwIf(questionBankQuestionBatchAddRequest == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionBatchAddRequest.getQuestionBankId();
-        List<Long> questionIdList = questionBankQuestionBatchAddRequest.getQuestionIdList();
+        List<Long> questionIdList = normalizeQuestionIdList(questionBankQuestionBatchAddRequest.getQuestionIdList());
         ensureCanManageQuestionBank(questionBankId, loginUser, request);
         ensureCanManageQuestionList(questionIdList, loginUser, request);
         questionBankQuestionService.batchAddQuestionsToBank(questionIdList, questionBankId, loginUser);
@@ -186,7 +188,7 @@ public class QuestionBankQuestionController {
         ThrowUtils.throwIf(questionBankQuestionBatchRemoveRequest == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionBatchRemoveRequest.getQuestionBankId();
-        List<Long> questionIdList = questionBankQuestionBatchRemoveRequest.getQuestionIdList();
+        List<Long> questionIdList = normalizeQuestionIdList(questionBankQuestionBatchRemoveRequest.getQuestionIdList());
         ensureCanManageQuestionBank(questionBankId, loginUser, request);
         questionBankQuestionService.batchRemoveQuestionsFromBank(questionIdList, questionBankId);
         return ResultUtils.success(true);
@@ -202,7 +204,8 @@ public class QuestionBankQuestionController {
         User loginUser = userService.getLoginUser(request);
         Long questionBankId = questionBankQuestionRemoveRequest.getQuestionBankId();
         Long questionId = questionBankQuestionRemoveRequest.getQuestionId();
-        ThrowUtils.throwIf(questionBankId == null || questionId == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0 || questionId == null || questionId <= 0,
+                ErrorCode.PARAMS_ERROR);
         ensureCanManageQuestionBank(questionBankId, loginUser, request);
         // 构造查询
         LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
@@ -248,5 +251,14 @@ public class QuestionBankQuestionController {
                 .map(Question::getId)
                 .collect(Collectors.toSet());
         ThrowUtils.throwIf(ownedQuestionIdSet.size() != questionIdList.size(), ErrorCode.NO_AUTH_ERROR, "只能管理自己创建的题目");
+    }
+
+    private List<Long> normalizeQuestionIdList(List<Long> questionIdList) {
+        ThrowUtils.throwIf(questionIdList == null || questionIdList.isEmpty(), ErrorCode.PARAMS_ERROR, "题目列表为空");
+        LinkedHashSet<Long> normalizedIdSet = questionIdList.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        ThrowUtils.throwIf(normalizedIdSet.isEmpty(), ErrorCode.PARAMS_ERROR, "题目列表为空");
+        return new ArrayList<>(normalizedIdSet);
     }
 }

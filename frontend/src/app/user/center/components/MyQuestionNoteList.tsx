@@ -18,7 +18,7 @@ export default function MyQuestionNoteList() {
   const [pageSize] = useState(10);
   const [notePage, setNotePage] = useState<API.PageUserQuestionNoteVO_>();
 
-  const loadData = useCallback(async (nextCurrent = current) => {
+  const loadData = useCallback(async (nextCurrent = 1) => {
     setLoading(true);
     try {
       const res = await listMyNoteByPageUsingPost({
@@ -30,7 +30,7 @@ export default function MyQuestionNoteList() {
     } finally {
       setLoading(false);
     }
-  }, [current, pageSize]);
+  }, [pageSize]);
 
   useEffect(() => {
     void loadData(1);

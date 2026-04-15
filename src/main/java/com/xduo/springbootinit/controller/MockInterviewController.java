@@ -130,6 +130,7 @@ public class MockInterviewController {
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Page<MockInterview>> listMockInterviewByPage(@RequestBody MockInterviewQueryRequest queryRequest) {
         ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        validatePageRequest(queryRequest.getCurrent(), queryRequest.getPageSize());
         Page<MockInterview> page = mockInterviewService.page(new Page<>(queryRequest.getCurrent(), queryRequest.getPageSize()),
                 mockInterviewService.getQueryWrapper(queryRequest));
         return ResultUtils.success(page);
@@ -139,11 +140,17 @@ public class MockInterviewController {
     public BaseResponse<Page<MockInterview>> listMyMockInterviewByPage(@RequestBody MockInterviewQueryRequest queryRequest,
                                                                        HttpServletRequest request) {
         ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        validatePageRequest(queryRequest.getCurrent(), queryRequest.getPageSize());
         User loginUser = userService.getLoginUser(request);
         queryRequest.setUserId(loginUser.getId());
         Page<MockInterview> page = mockInterviewService.page(new Page<>(queryRequest.getCurrent(), queryRequest.getPageSize()),
                 mockInterviewService.getQueryWrapper(queryRequest));
         return ResultUtils.success(page);
+    }
+
+    private void validatePageRequest(long current, long pageSize) {
+        ThrowUtils.throwIf(current < 1 || pageSize < 1 || pageSize > 50,
+                ErrorCode.PARAMS_ERROR, "分页参数不合法");
     }
 
     private MockInterview getOwnedMockInterview(Long id, User loginUser, HttpServletRequest request) {

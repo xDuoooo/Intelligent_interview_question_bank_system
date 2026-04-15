@@ -106,8 +106,7 @@ public class LearningGoalReminderJob {
             return;
         }
         try {
-            boolean sent = tencentEmailUtils.sendTextEmail(user.getEmail(), "智面平台 - 学习目标提醒",
-                    title + "\n\n" + content + "\n\n现在继续刷题，保持今天的学习节奏。");
+            boolean sent = tencentEmailUtils.sendLearningReminderEmail(user.getEmail(), title, content);
             if (!sent) {
                 log.warn("发送学习目标提醒邮件失败,userId={}", user.getId());
             }

@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, Input, message, Modal, Popconfirm, Radio, Switch, Tag } from "antd";
+import { Button, Input, message, Modal, Popconfirm, Radio, Skeleton, Switch, Tag } from "antd";
 import Link from "next/link";
 import { AlertTriangle, CheckCheck, Edit3, FilePlus2, ShieldCheck, Sparkles, Trash2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
-import PostEditorForm from "@/components/PostEditorForm";
 import {
   addPostUsingPost,
   deletePostUsingPost,
@@ -19,7 +19,29 @@ import {
   reviewPostUsingPost,
 } from "@/api/postController";
 import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
-import PostCommentModerationPanel from "./components/PostCommentModerationPanel";
+
+const PostEditorForm = dynamic(() => import("@/components/PostEditorForm"), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-[2rem] border border-slate-100 bg-slate-50 p-6">
+      <Skeleton active paragraph={{ rows: 10 }} />
+    </div>
+  ),
+});
+
+const PostCommentModerationPanel = dynamic(() => import("./components/PostCommentModerationPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-6">
+      <div className="rounded-[2.2rem] border border-slate-100 bg-slate-50/70 p-5">
+        <Skeleton active paragraph={{ rows: 2 }} title={{ width: 180 }} />
+      </div>
+      <div className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/40">
+        <Skeleton active paragraph={{ rows: 10 }} />
+      </div>
+    </div>
+  ),
+});
 
 const PostAdminPage: React.FC = () => {
   const searchParams = useSearchParams();

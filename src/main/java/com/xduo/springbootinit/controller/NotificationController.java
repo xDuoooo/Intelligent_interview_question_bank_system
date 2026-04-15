@@ -119,7 +119,7 @@ public class NotificationController {
      */
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteNotification(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        if (deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getLoginUser(request);
@@ -165,7 +165,7 @@ public class NotificationController {
     @PostMapping("/update")
     @SaCheckRole(UserConstant.ADMIN_ROLE)
     public BaseResponse<Boolean> updateNotification(@RequestBody Notification notification) {
-        if (notification == null || notification.getId() <= 0) {
+        if (notification == null || notification.getId() == null || notification.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         boolean b = notificationService.updateById(notification);

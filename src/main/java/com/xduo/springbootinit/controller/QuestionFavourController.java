@@ -41,7 +41,8 @@ public class QuestionFavourController {
     @PostMapping("/")
     public BaseResponse<Integer> doQuestionFavour(@RequestBody QuestionFavourAddRequest questionFavourAddRequest,
                                                  HttpServletRequest request) {
-        if (questionFavourAddRequest == null || questionFavourAddRequest.getQuestionId() <= 0) {
+        if (questionFavourAddRequest == null || questionFavourAddRequest.getQuestionId() == null
+                || questionFavourAddRequest.getQuestionId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 登录才能操作

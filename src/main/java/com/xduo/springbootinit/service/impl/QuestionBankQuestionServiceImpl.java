@@ -161,17 +161,18 @@ public class QuestionBankQuestionServiceImpl extends ServiceImpl<QuestionBankQue
         // 参数校验
         ThrowUtils.throwIf(CollUtil.isEmpty(questionIdList), ErrorCode.PARAMS_ERROR, "题目列表为空");
         ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "题库非法");
-        // 执行删除关联
-        for (Long questionId : questionIdList) {
-            // 构造查询
-            LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
-                    .eq(QuestionBankQuestion::getQuestionId, questionId)
-                    .eq(QuestionBankQuestion::getQuestionBankId, questionBankId);
-            boolean result = this.remove(lambdaQueryWrapper);
-            if (!result) {
-                throw new BusinessException(ErrorCode.OPERATION_ERROR, "从题库移除题目失败");
-            }
-        }
+        List<Long> normalizedQuestionIdList = questionIdList.stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        ThrowUtils.throwIf(CollUtil.isEmpty(normalizedQuestionIdList), ErrorCode.PARAMS_ERROR, "题目列表为空");
+        LambdaQueryWrapper<QuestionBankQuestion> lambdaQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId)
+                .in(QuestionBankQuestion::getQuestionId, normalizedQuestionIdList);
+        long existCount = this.count(lambdaQueryWrapper);
+        ThrowUtils.throwIf(existCount <= 0, ErrorCode.NOT_FOUND_ERROR, "题目不在当前题库中");
+        boolean result = this.remove(lambdaQueryWrapper);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "从题库移除题目失败");
     }
 
     @Override

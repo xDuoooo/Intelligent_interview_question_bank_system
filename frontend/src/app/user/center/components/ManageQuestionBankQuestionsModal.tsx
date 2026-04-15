@@ -75,7 +75,7 @@ const ManageQuestionBankQuestionsModal: React.FC<Props> = ({ open, questionBank,
 
   const loadQuestionList = useCallback(async (
     page = 1,
-    keyword = searchText,
+    keyword = "",
   ) => {
     setLoading(true);
     try {
@@ -94,15 +94,15 @@ const ManageQuestionBankQuestionsModal: React.FC<Props> = ({ open, questionBank,
     } finally {
       setLoading(false);
     }
-  }, [searchText]);
+  }, []);
 
   useEffect(() => {
     if (!open || !questionBank?.id) {
       return;
     }
+    setSearchText("");
     void loadJoinedQuestionIds(questionBank.id);
     void loadQuestionList(1, "");
-    setSearchText("");
   }, [loadJoinedQuestionIds, loadQuestionList, open, questionBank?.id]);
 
   const joinedCount = joinedQuestionIdSet.size;

@@ -1,5 +1,6 @@
 package com.xduo.springbootinit.utils;
 
+import cn.hutool.json.JSONUtil;
 import com.tencentcloudapi.common.Credential;
 import com.tencentcloudapi.common.exception.TencentCloudSDKException;
 import com.tencentcloudapi.common.profile.ClientProfile;
@@ -8,6 +9,7 @@ import com.tencentcloudapi.ses.v20201002.SesClient;
 import com.tencentcloudapi.ses.v20201002.models.SendEmailRequest;
 import com.tencentcloudapi.ses.v20201002.models.SendEmailResponse;
 import com.tencentcloudapi.ses.v20201002.models.Simple;
+import com.tencentcloudapi.ses.v20201002.models.Template;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -44,6 +48,12 @@ public class TencentEmailUtils {
 
     @Value("${tencent.email.replyToAddresses:}")
     private String replyToAddresses;
+
+    @Value("${tencent.email.verificationTemplateId:}")
+    private String verificationTemplateId;
+
+    @Value("${tencent.email.learningReminderTemplateId:}")
+    private String learningReminderTemplateId;
 
     @Value("${app.email.mock-enabled:true}")
     private boolean mockEnabled;
@@ -83,6 +93,38 @@ public class TencentEmailUtils {
     }
 
     public boolean sendTextEmail(String email, String subject, String content) {
+        return sendEmail(email, subject, content, null, null);
+    }
+
+    public boolean sendVerificationCodeEmail(String email, String code) {
+        Long templateId = resolveTemplateId(verificationTemplateId, "验证码邮件");
+        if (templateId == null) {
+            log.warn("未配置验证码邮件模板 ID，将尝试使用自定义正文发送，若腾讯云账号未开通特殊权限会失败");
+            return sendTextEmail(email, "智面平台 - 验证码",
+                    "您的验证码为：" + code + "，5 分钟内有效。如非本人操作请忽略。");
+        }
+        Map<String, Object> templateData = new LinkedHashMap<>();
+        templateData.put("code", StringUtils.defaultString(code));
+        return sendTemplateEmail(email, "智面平台 - 验证码", templateId, JSONUtil.toJsonStr(templateData));
+    }
+
+    public boolean sendLearningReminderEmail(String email, String title, String content) {
+        Long templateId = resolveTemplateId(learningReminderTemplateId, "学习提醒邮件");
+        if (templateId == null) {
+            return sendTextEmail(email, "智面平台 - 学习目标提醒",
+                    title + "\n\n" + content + "\n\n现在继续刷题，保持今天的学习节奏。");
+        }
+        Map<String, Object> templateData = new LinkedHashMap<>();
+        templateData.put("title", StringUtils.defaultString(title));
+        templateData.put("content", StringUtils.defaultString(content));
+        return sendTemplateEmail(email, "智面平台 - 学习目标提醒", templateId, JSONUtil.toJsonStr(templateData));
+    }
+
+    private boolean sendTemplateEmail(String email, String subject, Long templateId, String templateData) {
+        return sendEmail(email, subject, null, templateId, templateData);
+    }
+
+    private boolean sendEmail(String email, String subject, String content, Long templateId, String templateData) {
         if (credential == null || clientProfile == null) {
             if (!mockEnabled) {
                 log.error("邮件发送失败：腾讯云邮件未正确配置，email={}", maskEmail(email));
@@ -91,7 +133,7 @@ public class TencentEmailUtils {
             log.info("模拟发送邮件：email={}, subject={}, content={}", maskEmail(email), subject, content);
             return true;
         }
-        SendEmailRequest request = buildSendEmailRequest(email, subject, content);
+        SendEmailRequest request = buildSendEmailRequest(email, subject, content, templateId, templateData);
         TencentCloudSDKException lastException = null;
         String lastTriedRegion = null;
         try {
@@ -151,7 +193,8 @@ public class TencentEmailUtils {
         return Base64.getEncoder().encodeToString(safeContent.getBytes(StandardCharsets.UTF_8));
     }
 
-    private SendEmailRequest buildSendEmailRequest(String email, String subject, String content) {
+    private SendEmailRequest buildSendEmailRequest(String email, String subject, String content,
+                                                   Long templateId, String templateData) {
         SendEmailRequest request = new SendEmailRequest();
         request.setFromEmailAddress(fromEmailAddress);
         request.setDestination(new String[]{StringUtils.trimToEmpty(email)});
@@ -159,9 +202,16 @@ public class TencentEmailUtils {
         if (StringUtils.isNotBlank(replyToAddresses)) {
             request.setReplyToAddresses(replyToAddresses);
         }
-        Simple simple = new Simple();
-        simple.setText(encodeBase64Utf8(content));
-        request.setSimple(simple);
+        if (templateId != null) {
+            Template template = new Template();
+            template.setTemplateID(templateId);
+            template.setTemplateData(StringUtils.defaultIfBlank(templateData, "{}"));
+            request.setTemplate(template);
+        } else {
+            Simple simple = new Simple();
+            simple.setText(encodeBase64Utf8(content));
+            request.setSimple(simple);
+        }
         return request;
     }
 
@@ -197,11 +247,33 @@ public class TencentEmailUtils {
         return StringUtils.defaultIfBlank(StringUtils.trimToNull(targetRegion), "ap-guangzhou");
     }
 
+    private Long resolveTemplateId(String rawTemplateId, String scene) {
+        String normalizedTemplateId = StringUtils.trimToNull(rawTemplateId);
+        if (normalizedTemplateId == null) {
+            return null;
+        }
+        try {
+            return Long.valueOf(normalizedTemplateId);
+        } catch (NumberFormatException e) {
+            log.error("{}模板 ID 配置非法：{}", scene, rawTemplateId, e);
+            return null;
+        }
+    }
+
     private void logTencentEmailFailure(String email, String targetRegion, TencentCloudSDKException e) {
         String message = StringUtils.defaultString(e.getMessage());
         if (StringUtils.containsIgnoreCase(message, "ses:SendEmail")) {
             log.error("腾讯云邮件发送失败：当前密钥缺少 ses:SendEmail 权限，region={}, email={}",
                     targetRegion, maskEmail(email), e);
+        } else if (StringUtils.contains(message, "未开通自定义发送权限")
+                || StringUtils.contains(message, "必须使用模版发送")) {
+            log.error("腾讯云邮件发送失败：当前账号仅支持模板发送，请配置对应模板 ID，region={}, fromEmailAddress={}, email={}",
+                    targetRegion, fromEmailAddress, maskEmail(email), e);
+        } else if (StringUtils.contains(message, "发件sender没有经过认证")
+                || (StringUtils.containsIgnoreCase(message, "sender")
+                && StringUtils.contains(message, "没有经过认证"))) {
+            log.error("腾讯云邮件发送失败：发件地址 {} 尚未在 SES 完成认证，region={}, email={}",
+                    fromEmailAddress, targetRegion, maskEmail(email), e);
         } else if (StringUtils.containsIgnoreCase(message, "TEXT/HTML")) {
             log.error("腾讯云邮件发送失败：邮件正文编码不符合 SES 要求，region={}, email={}",
                     targetRegion, maskEmail(email), e);

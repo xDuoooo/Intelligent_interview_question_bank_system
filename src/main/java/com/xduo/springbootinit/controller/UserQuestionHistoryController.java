@@ -56,7 +56,7 @@ public class UserQuestionHistoryController {
     @PostMapping("/add")
     public BaseResponse<Boolean> addQuestionHistory(@RequestBody UserQuestionHistoryAddRequest historyAddRequest,
                                                    HttpServletRequest request) {
-        if (historyAddRequest == null || historyAddRequest.getQuestionId() <= 0) {
+        if (historyAddRequest == null || historyAddRequest.getQuestionId() == null || historyAddRequest.getQuestionId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         Integer status = historyAddRequest.getStatus();

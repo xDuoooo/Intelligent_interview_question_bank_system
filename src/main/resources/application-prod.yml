@@ -77,6 +77,8 @@ tencent:
     region: ${TENCENT_EMAIL_REGION:ap-guangzhou}
     fromEmailAddress: ${TENCENT_EMAIL_FROM_ADDRESS:}
     replyToAddresses: ${TENCENT_EMAIL_REPLY_TO:}
+    verificationTemplateId: ${TENCENT_EMAIL_VERIFICATION_TEMPLATE_ID:}
+    learningReminderTemplateId: ${TENCENT_EMAIL_LEARNING_REMINDER_TEMPLATE_ID:}
   sms:
     secretId: ${TENCENT_SMS_SECRET_ID:}
     secretKey: ${TENCENT_SMS_SECRET_KEY:}

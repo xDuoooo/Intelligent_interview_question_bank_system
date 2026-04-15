@@ -11,7 +11,7 @@ import {
 import { Plus, Trash2, Edit3, Database, Wand2, Link2 } from "lucide-react";
 import ProTable from "@/components/DynamicProTable";
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message, Popconfirm, Space, Table, Tag } from "antd";
+import { Button, message, Popconfirm, Skeleton, Space, Table, Tag } from "antd";
 import TagList from "@/components/TagList";
 import Link from "next/link";
 import {
@@ -22,7 +22,6 @@ import {
   QUESTION_REVIEW_STATUS_TEXT_MAP,
   QUESTION_REVIEW_STATUS_VALUE_ENUM,
 } from "@/constants/question";
-import QuestionCommentModerationPanel from "./components/QuestionCommentModerationPanel";
 
 const CreateModal = dynamic(() => import("./components/CreateModal"));
 const UpdateModal = dynamic(() => import("./components/UpdateModal"));
@@ -30,6 +29,19 @@ const UpdateBankModal = dynamic(() => import("./components/UpdateBankModal"));
 const BatchAddQuestionsToBankModal = dynamic(() => import("./components/BatchAddQuestionsToBankModal"));
 const BatchRemoveQuestionsFromBankModal = dynamic(() => import("./components/BatchRemoveQuestionsFromBankModal"));
 const ReviewModal = dynamic(() => import("./components/ReviewModal"));
+const QuestionCommentModerationPanel = dynamic(() => import("./components/QuestionCommentModerationPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-6">
+      <div className="rounded-[2.2rem] border border-slate-100 bg-slate-50/70 p-5">
+        <Skeleton active paragraph={{ rows: 2 }} title={{ width: 160 }} />
+      </div>
+      <div className="rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-2xl shadow-slate-200/40">
+        <Skeleton active paragraph={{ rows: 10 }} />
+      </div>
+    </div>
+  ),
+});
 
 const parseTagList = (tags?: string) => {
   if (!tags) {
@@ -61,7 +73,10 @@ const QuestionAdminPage: React.FC = () => {
 
   const handleDelete = async (row: API.Question) => {
     const hide = message.loading("正在删除");
-    if (!row) return true;
+    if (!row) {
+      hide();
+      return true;
+    }
     try {
       await deleteQuestionUsingPost({ id: row.id as any });
       hide();

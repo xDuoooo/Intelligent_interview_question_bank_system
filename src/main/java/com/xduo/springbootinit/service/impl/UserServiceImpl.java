@@ -238,7 +238,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (type == 1) {
             sendResult = sendEmail(target, code);
             if (!sendResult) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "邮件发送失败，请检查腾讯云邮件推送权限、发信地址和账号配置");
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                        "邮件发送失败，请检查腾讯云邮件模板、发信地址是否已认证及账号配置");
             }
         } else {
             sendResult = tencentSmsUtils.sendMessage(target, code);
@@ -302,8 +303,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     private boolean sendEmail(String email, String code) {
-        return tencentEmailUtils.sendTextEmail(email, "智面平台 - 验证码",
-                "您的验证码为：" + code + "，5 分钟内有效。如非本人操作请忽略。");
+        return tencentEmailUtils.sendVerificationCodeEmail(email, code);
     }
 
     @Override

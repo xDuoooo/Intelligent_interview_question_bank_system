@@ -50,7 +50,7 @@ public class PostThumbController {
     @PostMapping("/")
     public BaseResponse<Integer> doThumb(@RequestBody PostThumbAddRequest postThumbAddRequest,
             HttpServletRequest request) {
-        if (postThumbAddRequest == null || postThumbAddRequest.getPostId() <= 0) {
+        if (postThumbAddRequest == null || postThumbAddRequest.getPostId() == null || postThumbAddRequest.getPostId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 登录才能点赞

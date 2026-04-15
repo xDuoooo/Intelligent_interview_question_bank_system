@@ -60,7 +60,7 @@ public class QuestionCommentController {
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteComment(@RequestBody DeleteRequest deleteRequest,
                                                HttpServletRequest httpRequest) {
-        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+        if (deleteRequest == null || deleteRequest.getId() == null || deleteRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(httpRequest);
