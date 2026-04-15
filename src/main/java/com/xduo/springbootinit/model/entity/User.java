@@ -38,11 +38,6 @@ public class User implements Serializable {
     private Integer passwordConfigured;
 
     /**
-     * 社交平台唯一标识
-     */
-    private String unionId;
-
-    /**
      * 用户昵称
      */
     private String userName;

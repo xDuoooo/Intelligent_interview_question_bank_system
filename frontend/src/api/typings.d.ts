@@ -1152,7 +1152,6 @@ declare namespace API {
     interestTags?: string | string[];
     isDelete?: number;
     phone?: string;
-    unionId?: string;
     updateTime?: string;
     userAccount?: string;
     userAvatar?: string;
@@ -1221,7 +1220,6 @@ declare namespace API {
     pageSize?: number;
     sortField?: string;
     sortOrder?: string;
-    unionId?: string;
     userName?: string;
     userProfile?: string;
     userRole?: string;

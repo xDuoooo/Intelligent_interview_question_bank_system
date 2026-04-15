@@ -193,7 +193,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             ensureRegisterAllowed();
             user = new User();
-            user.setUnionId(normalizedPlatform + ":" + socialId);
             applySocialPlatformId(user, normalizedPlatform, socialId);
             user.setUserAccount("u_" + RandomUtil.randomString(8));
             user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
@@ -391,7 +390,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (userQueryRequest == null)
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long id = userQueryRequest.getId();
-        String unionId = userQueryRequest.getUnionId();
         String mpOpenId = userQueryRequest.getMpOpenId();
         String userName = userQueryRequest.getUserName();
         String userProfile = userQueryRequest.getUserProfile();
@@ -405,7 +403,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.like(StringUtils.isNotBlank(userProfile), "userProfile", userProfile);
         queryWrapper.like(StringUtils.isNotBlank(userName), "userName", userName);
         queryWrapper.like(StringUtils.isNotBlank(careerDirection), "careerDirection", careerDirection);
-        queryWrapper.eq(StringUtils.isNotBlank(unionId), "unionId", unionId);
         queryWrapper.eq(StringUtils.isNotBlank(mpOpenId), "mpOpenId", mpOpenId);
         queryWrapper.orderBy(SqlUtils.validSortField(sortField),
                 sortOrder == null || sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
