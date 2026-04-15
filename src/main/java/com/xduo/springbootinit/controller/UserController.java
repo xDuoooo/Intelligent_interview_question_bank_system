@@ -203,6 +203,13 @@ public class UserController {
         }
         User user = new User();
         BeanUtils.copyProperties(userAddRequest, user);
+        String userAccount = StringUtils.trimToNull(userAddRequest.getUserAccount());
+        ThrowUtils.throwIf(userAccount == null, ErrorCode.PARAMS_ERROR, "账号不能为空");
+        userService.checkUserAccountUnique(userAccount, null);
+        user.setUserAccount(userAccount);
+        String userName = normalizeOptionalUserName(userAddRequest.getUserName());
+        userService.checkUserNameUnique(userName, null);
+        user.setUserName(userName);
         user.setCity(normalizeOptionalSupportedCity(userAddRequest.getCity(), false));
         user.setCareerDirection(normalizeCareerDirection(userAddRequest.getCareerDirection()));
         user.setInterestTags(normalizeInterestTags(userAddRequest.getInterestTags()));
@@ -256,8 +263,21 @@ public class UserController {
         if (userUpdateRequest == null || userUpdateRequest.getId() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        User oldUser = userService.getById(userUpdateRequest.getId());
+        ThrowUtils.throwIf(oldUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
         User user = new User();
         BeanUtils.copyProperties(userUpdateRequest, user);
+        if (userUpdateRequest.getUserAccount() != null) {
+            String userAccount = StringUtils.trimToNull(userUpdateRequest.getUserAccount());
+            ThrowUtils.throwIf(userAccount == null, ErrorCode.PARAMS_ERROR, "账号不能为空");
+            userService.checkUserAccountUnique(userAccount, userUpdateRequest.getId());
+            user.setUserAccount(userAccount);
+        }
+        if (userUpdateRequest.getUserName() != null) {
+            String userName = normalizeOptionalUserName(userUpdateRequest.getUserName());
+            userService.checkUserNameUnique(userName, userUpdateRequest.getId());
+            user.setUserName(userName);
+        }
         user.setCity(normalizeOptionalSupportedCity(userUpdateRequest.getCity(), false));
         user.setCareerDirection(normalizeCareerDirection(userUpdateRequest.getCareerDirection()));
         user.setInterestTags(normalizeInterestTags(userUpdateRequest.getInterestTags()));
@@ -414,12 +434,25 @@ public class UserController {
     }
 
     private String normalizeOptionalSupportedCity(String city, boolean allowEmpty) {
+        if (city == null) {
+            return null;
+        }
         String normalizedCity = CityUtils.normalizeCity(city);
         if (normalizedCity == null) {
-            return allowEmpty ? null : null;
+            ThrowUtils.throwIf(!allowEmpty, ErrorCode.PARAMS_ERROR, "城市不能为空");
+            return null;
         }
         ThrowUtils.throwIf(!CityUtils.isSupportedCity(normalizedCity), ErrorCode.PARAMS_ERROR, "请选择系统支持的城市");
         return normalizedCity;
+    }
+
+    private String normalizeOptionalUserName(String userName) {
+        String normalizedUserName = StringUtils.trimToNull(userName);
+        if (normalizedUserName == null) {
+            return null;
+        }
+        ThrowUtils.throwIf(normalizedUserName.length() > 20, ErrorCode.PARAMS_ERROR, "昵称最多 20 个字符");
+        return normalizedUserName;
     }
 
     private String normalizeCareerDirection(String careerDirection) {

@@ -2,9 +2,39 @@
 /* eslint-disable */
 import request from '@/libs/request';
 
+export type WxMpLoginTicketVO = {
+  ticket?: string;
+  keyword?: string;
+  accountName?: string;
+  qrImageUrl?: string;
+  expireAt?: number;
+};
+
+export type WxMpLoginStatusVO = {
+  status?: string;
+  codeSent?: boolean;
+  message?: string;
+  expireAt?: number;
+};
+
+export type WxMpCodeLoginRequest = {
+  code?: string;
+};
+
+export type BaseResponseWxMpLoginTicketVO = {
+  code?: number;
+  data?: WxMpLoginTicketVO;
+  message?: string;
+};
+
+export type BaseResponseWxMpLoginStatusVO = {
+  code?: number;
+  data?: WxMpLoginStatusVO;
+  message?: string;
+};
+
 /** check GET /api/ */
 export async function checkUsingGet(
-  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
   params: API.checkUsingGETParams,
   options?: { [key: string]: any },
 ) {
@@ -29,6 +59,37 @@ export async function receiveMessageUsingPost(options?: { [key: string]: any }) 
 export async function setMenuUsingGet(options?: { [key: string]: any }) {
   return request<string>('/api/setMenu', {
     method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** createWxMpLoginTicket POST /api/wx/mp/login/ticket */
+export async function createWxMpLoginTicketUsingPost(options?: { [key: string]: any }) {
+  return request<BaseResponseWxMpLoginTicketVO>('/api/wx/mp/login/ticket', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** getWxMpLoginStatus GET /api/wx/mp/login/status */
+export async function getWxMpLoginStatusUsingGet(options?: { [key: string]: any }) {
+  return request<BaseResponseWxMpLoginStatusVO>('/api/wx/mp/login/status', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** loginByWxMpCode POST /api/wx/mp/login/code */
+export async function loginByWxMpCodeUsingPost(
+  body: WxMpCodeLoginRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseLoginUserVO_>('/api/wx/mp/login/code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
     ...(options || {}),
   });
 }

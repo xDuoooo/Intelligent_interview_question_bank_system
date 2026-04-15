@@ -58,6 +58,11 @@ public interface RedisConstant {
     String SYSTEM_CONFIG_CACHE_KEY = "system:config:current";
 
     /**
+     * 微信公众号网页登录票据 Redis Key 前缀
+     */
+    String WX_MP_LOGIN_TICKET_KEY_PREFIX = "wxmp:login:ticket:";
+
+    /**
      * 获取用户登录验证码 Redis Key
      */
     static String getUserLoginCodeRedisKey(String target) {
@@ -111,5 +116,12 @@ public interface RedisConstant {
      */
     static String getSystemConfigCacheKey() {
         return SYSTEM_CONFIG_CACHE_KEY;
+    }
+
+    /**
+     * 获取微信公众号网页登录票据 Redis Key
+     */
+    static String getWxMpLoginTicketRedisKey(String ticket) {
+        return WX_MP_LOGIN_TICKET_KEY_PREFIX + ticket;
     }
 }

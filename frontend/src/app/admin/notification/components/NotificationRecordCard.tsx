@@ -5,6 +5,11 @@ import {
   deleteNotificationUsingPost,
   listNotificationByPageUsingPost,
 } from "@/api/notificationController";
+import {
+  getNotificationTypeLabel,
+  NOTIFICATION_TYPE_COLOR_MAP,
+  NOTIFICATION_TYPE_OPTIONS,
+} from "@/lib/notification";
 import { formatDateTime } from "@/lib/utils";
 import {
   Button,
@@ -136,7 +141,11 @@ export default function NotificationRecordCard({ refreshToken = 0 }: Props) {
       title: "类型",
       dataIndex: "type",
       width: 150,
-      render: (value: string) => <Tag color="blue">{value || "system"}</Tag>,
+      render: (value: string) => (
+        <Tag color={NOTIFICATION_TYPE_COLOR_MAP[value] || "blue"}>
+          {getNotificationTypeLabel(value)}
+        </Tag>
+      ),
     },
     {
       title: "状态",
@@ -200,7 +209,13 @@ export default function NotificationRecordCard({ refreshToken = 0 }: Props) {
             <Input placeholder="支持模糊搜索" />
           </Form.Item>
           <Form.Item className="mb-0" label="通知类型" name="type">
-            <Input placeholder="如 system_announcement" />
+            <Select
+              allowClear
+              showSearch
+              optionFilterProp="label"
+              options={NOTIFICATION_TYPE_OPTIONS as any}
+              placeholder="全部类型"
+            />
           </Form.Item>
           <Form.Item className="mb-0" label="状态" name="status">
             <Select allowClear options={statusOptions} placeholder="全部状态" />

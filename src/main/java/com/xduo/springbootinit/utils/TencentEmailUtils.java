@@ -108,15 +108,19 @@ public class TencentEmailUtils {
         return sendTemplateEmail(email, "智面平台 - 验证码", templateId, JSONUtil.toJsonStr(templateData));
     }
 
-    public boolean sendLearningReminderEmail(String email, String title, String content) {
+    public boolean sendLearningReminderEmail(String email, long completedCount, long dailyTarget, long remainingCount) {
         Long templateId = resolveTemplateId(learningReminderTemplateId, "学习提醒邮件");
+        String title = "今晚刷题目标还差一点";
+        String content = String.format("你今天已完成 %d/%d 道题，距离目标还差 %d 道，继续加油。",
+                completedCount, dailyTarget, remainingCount);
         if (templateId == null) {
             return sendTextEmail(email, "智面平台 - 学习目标提醒",
                     title + "\n\n" + content + "\n\n现在继续刷题，保持今天的学习节奏。");
         }
         Map<String, Object> templateData = new LinkedHashMap<>();
-        templateData.put("title", StringUtils.defaultString(title));
-        templateData.put("content", StringUtils.defaultString(content));
+        templateData.put("completedCount", completedCount);
+        templateData.put("dailyTarget", dailyTarget);
+        templateData.put("remainingCount", remainingCount);
         return sendTemplateEmail(email, "智面平台 - 学习目标提醒", templateId, JSONUtil.toJsonStr(templateData));
     }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Lock, Mail, Phone, User, ShieldCheck } from "lucide-react";
+import { Lock, Mail, Phone, QrCode, ShieldCheck, User } from "lucide-react";
 import { Alert, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
@@ -13,13 +13,20 @@ import { APP_CONFIG } from "@/config/appConfig";
 import { getSocialAuthUrl, SOCIAL_AUTH_PROVIDERS } from "@/config/auth";
 import { getPublicSystemConfigUsingGet } from "@/api/systemConfigController";
 import {
+  createWxMpLoginTicketUsingPost,
+  getWxMpLoginStatusUsingGet,
+  loginByWxMpCodeUsingPost,
+  type WxMpLoginStatusVO,
+  type WxMpLoginTicketVO,
+} from "@/api/wxMpController";
+import {
   getLoginUserUsingGet,
   sendVerificationCodeUsingPost,
   userCodeLoginUsingPost,
   userLoginUsingPost,
 } from "@/api/userController";
 
-type LoginType = "password" | "code";
+type LoginType = "password" | "code" | "wxMp";
 
 const UserLoginPage: React.FC = () => {
   const [loginType, setLoginType] = useState<LoginType>("code");
@@ -28,28 +35,27 @@ const UserLoginPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const loginUser = useSelector((state: RootState) => state.loginUser);
 
-  // 已登录用户自动重定向
   useEffect(() => {
     if (loginUser && loginUser.id) {
       router.replace("/");
     }
   }, [loginUser, router]);
 
-  // 账号密码登录数据
   const [passwordData, setPasswordData] = useState({
     userAccount: "",
     userPassword: "",
   });
-
-  // 验证码登录数据
   const [target, setTarget] = useState("");
   const [code, setCode] = useState("");
+  const [wxMpCode, setWxMpCode] = useState("");
+  const [wxMpTicketInfo, setWxMpTicketInfo] = useState<WxMpLoginTicketVO | null>(null);
+  const [wxMpStatus, setWxMpStatus] = useState<WxMpLoginStatusVO | null>(null);
+  const [wxMpTicketLoading, setWxMpTicketLoading] = useState(false);
 
-  // 自动检测输入类型 (1-邮件, 2-手机)
   const inputType = useMemo(() => {
     if (target.includes("@")) return 1;
     if (/^\d{11}$/.test(target)) return 2;
-    return 0; // 未识别
+    return 0;
   }, [target]);
 
   const [count, setCount] = useState(0);
@@ -58,7 +64,6 @@ const UserLoginPage: React.FC = () => {
   const [systemConfig, setSystemConfig] = useState<API.SystemConfigVO | null>(null);
   const hasHandledQueryFeedback = useRef(false);
 
-  // 获取图形验证码
   const refreshCaptcha = async () => {
     try {
       const res: any = await request.get("/api/captcha/get");
@@ -85,9 +90,18 @@ const UserLoginPage: React.FC = () => {
   const requireCaptcha = systemConfig?.requireCaptcha ?? true;
   const siteName = systemConfig?.siteName || APP_CONFIG.brand.displayName;
   const announcement = systemConfig?.announcement?.trim();
-  const firstLoginHint = systemConfig?.allowRegister === false
-    ? "当前未开放新账号注册，仅支持已绑定邮箱或手机号的账号使用验证码登录"
-    : APP_CONFIG.auth.firstLoginHint;
+  const firstLoginHint =
+    systemConfig?.allowRegister === false
+      ? "当前未开放新账号注册，仅支持已绑定邮箱或手机号的账号使用验证码登录"
+      : APP_CONFIG.auth.firstLoginHint;
+  const wxMpExpireAt = wxMpStatus?.expireAt ?? wxMpTicketInfo?.expireAt;
+  const wxMpExpireText = wxMpExpireAt
+    ? new Date(wxMpExpireAt).toLocaleTimeString("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
 
   useEffect(() => {
     if (requireCaptcha) {
@@ -122,8 +136,8 @@ const UserLoginPage: React.FC = () => {
         userAccount: account,
       }));
     }
-    if (nextLoginType === "password") {
-      setLoginType("password");
+    if (nextLoginType === "password" || nextLoginType === "wxMp") {
+      setLoginType(nextLoginType);
     }
     if (error) {
       message.error(error);
@@ -133,18 +147,86 @@ const UserLoginPage: React.FC = () => {
     router.replace(window.location.pathname);
   }, [router]);
 
-  // 定时器处理
   useEffect(() => {
-    let timer: any;
+    let timer: number | undefined;
     if (count > 0) {
-      timer = setInterval(() => {
+      timer = window.setInterval(() => {
         setCount((c) => c - 1);
       }, 1000);
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (timer) {
+        window.clearInterval(timer);
+      }
+    };
   }, [count]);
 
-  // 发送验证码
+  const createWxMpTicket = async (silent = false) => {
+    setWxMpTicketLoading(true);
+    try {
+      const res = await createWxMpLoginTicketUsingPost();
+      setWxMpTicketInfo(res.data ?? null);
+      setWxMpStatus({
+        status: "pending",
+        codeSent: false,
+        message: "请在微信中发送页面展示的登录口令，系统会把 6 位验证码回复到公众号会话里。",
+        expireAt: res.data?.expireAt,
+      });
+      setWxMpCode("");
+    } catch (e: any) {
+      setWxMpTicketInfo(null);
+      setWxMpStatus({
+        status: "expired",
+        codeSent: false,
+        message: e.message || "公众号验证码登录暂时不可用，请稍后再试",
+      });
+      if (!silent) {
+        message.error(e.message || "公众号验证码登录暂时不可用，请稍后再试");
+      }
+    } finally {
+      setWxMpTicketLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (loginType !== "wxMp" || wxMpTicketInfo || wxMpTicketLoading || wxMpStatus) {
+      return;
+    }
+    void createWxMpTicket(true);
+  }, [loginType, wxMpTicketInfo, wxMpTicketLoading, wxMpStatus]);
+
+  useEffect(() => {
+    if (loginType !== "wxMp" || !wxMpTicketInfo?.ticket) {
+      return;
+    }
+    let cancelled = false;
+    const syncWxMpStatus = async () => {
+      try {
+        const res = await getWxMpLoginStatusUsingGet();
+        if (!cancelled) {
+          setWxMpStatus(res.data ?? null);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setWxMpStatus((prev) => ({
+            status: prev?.status ?? "pending",
+            codeSent: prev?.codeSent ?? false,
+            message: e.message || prev?.message || "登录状态同步失败，请稍后重试",
+            expireAt: prev?.expireAt ?? wxMpTicketInfo.expireAt,
+          }));
+        }
+      }
+    };
+    void syncWxMpStatus();
+    const timer = window.setInterval(() => {
+      void syncWxMpStatus();
+    }, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [loginType, wxMpTicketInfo?.ticket, wxMpTicketInfo?.expireAt]);
+
   const sendCode = async () => {
     if (!target) {
       message.warning("请输入邮箱或手机号");
@@ -199,7 +281,7 @@ const UserLoginPage: React.FC = () => {
           captcha: requireCaptcha ? captchaInput : undefined,
           captchaUuid: requireCaptcha ? captchaData?.uuid : undefined,
         });
-      } else {
+      } else if (loginType === "code") {
         if (inputType === 0) {
           message.error("请输入有效的手机号或邮箱");
           setLoginLoading(false);
@@ -209,6 +291,15 @@ const UserLoginPage: React.FC = () => {
           target,
           code,
           type: inputType,
+        });
+      } else {
+        if (!wxMpCode) {
+          message.warning("请输入公众号会话里收到的 6 位验证码");
+          setLoginLoading(false);
+          return;
+        }
+        res = await loginByWxMpCodeUsingPost({
+          code: wxMpCode,
         });
       }
 
@@ -222,7 +313,7 @@ const UserLoginPage: React.FC = () => {
       }
     } catch (e: any) {
       message.error(e.message || "认证失败，请检查输入项");
-      if (requireCaptcha) {
+      if (requireCaptcha && loginType === "password") {
         refreshCaptcha();
         setCaptchaInput("");
       }
@@ -232,16 +323,22 @@ const UserLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-64px-160px)] items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-[calc(100vh-64px-160px)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="relative w-full max-w-md">
-        <div className="absolute -top-12 -left-12 h-64 w-64 rounded-full bg-primary/10 blur-3xl animate-pulse" />
-        <div className="absolute -bottom-12 -right-12 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl animate-pulse delay-700" />
+        <div className="absolute -left-12 -top-12 h-64 w-64 animate-pulse rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -bottom-12 -right-12 h-64 w-64 animate-pulse rounded-full bg-blue-500/10 blur-3xl delay-700" />
 
-        <div className="relative overflow-hidden rounded-[2.5rem] border bg-white/60 backdrop-blur-2xl shadow-2xl p-8 sm:p-10">
-          <div className="flex flex-col items-center text-center space-y-4 mb-8">
-            <div className="relative h-20 w-20 rounded-3xl overflow-hidden shadow-lg ring-4 ring-slate-50">
-              <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
-                <Image src="/assets/logo.png" height={64} width={64} alt="Logo" className="object-contain" />
+        <div className="relative overflow-hidden rounded-[2.5rem] border bg-white/60 p-8 shadow-2xl backdrop-blur-2xl sm:p-10">
+          <div className="mb-8 flex flex-col items-center space-y-4 text-center">
+            <div className="relative h-20 w-20 overflow-hidden rounded-3xl shadow-lg ring-4 ring-slate-50">
+              <div className="absolute inset-0 flex items-center justify-center bg-white p-3">
+                <Image
+                  src="/assets/logo.png"
+                  height={64}
+                  width={64}
+                  alt="Logo"
+                  className="object-contain"
+                />
               </div>
             </div>
             <h1 className="text-2xl font-black text-foreground">{siteName}</h1>
@@ -270,22 +367,39 @@ const UserLoginPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex p-1.5 bg-slate-100/80 rounded-2xl mb-8">
+          <div className="mb-8 grid grid-cols-3 gap-1.5 rounded-2xl bg-slate-100/80 p-1.5">
             <button
+              type="button"
               onClick={() => setLoginType("code")}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                loginType === "code" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+                loginType === "code"
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               验证码登录
             </button>
             <button
+              type="button"
               onClick={() => setLoginType("password")}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-                loginType === "password" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"
+              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+                loginType === "password"
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
               }`}
             >
               账号密码
+            </button>
+            <button
+              type="button"
+              onClick={() => setLoginType("wxMp")}
+              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+                loginType === "wxMp"
+                  ? "bg-white text-primary shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              公众号验证码
             </button>
           </div>
 
@@ -293,48 +407,64 @@ const UserLoginPage: React.FC = () => {
             {loginType === "password" ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">账号</label>
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    账号
+                  </label>
                   <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input
                       type="text"
-                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                       placeholder="账号 / 手机号 / 邮箱"
                       value={passwordData.userAccount}
-                      onChange={(e) => setPasswordData({ ...passwordData, userAccount: e.target.value })}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          userAccount: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">密码</label>
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    密码
+                  </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     <input
                       type="password"
-                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                       placeholder="您的登录密码"
                       value={passwordData.userPassword}
-                      onChange={(e) => setPasswordData({ ...passwordData, userPassword: e.target.value })}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          userPassword: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
 
                 {requireCaptcha && (
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
+                    <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      图形验证码
+                    </label>
                     <div className="flex gap-3">
                       <div className="relative flex-1">
-                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <ShieldCheck className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
-                          className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                          className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                           placeholder="请输入右侧验证码"
                           value={captchaInput}
                           onChange={(e) => setCaptchaInput(e.target.value)}
                         />
                       </div>
                       <div
-                        className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
+                        className="flex h-12 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary"
                         onClick={refreshCaptcha}
                         title="点击刷新"
                       >
@@ -345,31 +475,33 @@ const UserLoginPage: React.FC = () => {
                             width={112}
                             height={48}
                             unoptimized
-                            className="h-full w-full object-cover rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                           />
                         ) : (
-                          <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
+                          <div className="h-full w-full animate-pulse rounded-xl bg-slate-100" />
                         )}
                       </div>
                     </div>
                   </div>
                 )}
               </>
-            ) : (
+            ) : loginType === "code" ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">手机号或邮箱</label>
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    手机号或邮箱
+                  </label>
                   <div className="relative transition-all">
                     {inputType === 1 ? (
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-in zoom-in-50 duration-300" />
+                      <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-in zoom-in-50 text-primary duration-300" />
                     ) : inputType === 2 ? (
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary animate-in zoom-in-50 duration-300" />
+                      <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-in zoom-in-50 text-primary duration-300" />
                     ) : (
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                     )}
                     <input
                       type="text"
-                      className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                      className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                       placeholder="输入手机号或邮箱"
                       value={target}
                       onChange={(e) => setTarget(e.target.value.trim())}
@@ -379,20 +511,22 @@ const UserLoginPage: React.FC = () => {
 
                 {requireCaptcha && (
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">图形验证码</label>
+                    <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      图形验证码
+                    </label>
                     <div className="flex gap-3">
                       <div className="relative flex-1">
-                        <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                        <ShieldCheck className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
-                          className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                          className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                           placeholder="请输入右侧验证码"
                           value={captchaInput}
                           onChange={(e) => setCaptchaInput(e.target.value)}
                         />
                       </div>
                       <div
-                        className="h-12 w-28 rounded-2xl border-2 border-slate-100 overflow-hidden cursor-pointer hover:border-primary transition-all bg-white flex items-center justify-center p-1"
+                        className="flex h-12 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary"
                         onClick={refreshCaptcha}
                         title="点击刷新"
                       >
@@ -403,10 +537,10 @@ const UserLoginPage: React.FC = () => {
                             width={112}
                             height={48}
                             unoptimized
-                            className="h-full w-full object-cover rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                           />
                         ) : (
-                          <div className="animate-pulse h-full w-full bg-slate-100 rounded-xl" />
+                          <div className="h-full w-full animate-pulse rounded-xl bg-slate-100" />
                         )}
                       </div>
                     </div>
@@ -414,13 +548,15 @@ const UserLoginPage: React.FC = () => {
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground ml-1 uppercase tracking-wider">验证码</label>
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    验证码
+                  </label>
                   <div className="flex gap-3">
                     <div className="relative flex-1">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
-                        className="w-full h-12 pl-12 pr-4 rounded-2xl bg-slate-100/50 border-2 border-transparent focus:border-primary focus:bg-white outline-none transition-all font-medium"
+                        className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
                         placeholder="6 位数字"
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
@@ -430,10 +566,104 @@ const UserLoginPage: React.FC = () => {
                       type="button"
                       disabled={count > 0}
                       onClick={sendCode}
-                      className="h-12 px-6 rounded-2xl bg-primary text-white font-bold text-sm shadow-lg shadow-primary/20 hover:brightness-110 active:scale-95 disabled:grayscale disabled:opacity-50 transition-all whitespace-nowrap"
+                      className="h-12 whitespace-nowrap rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95 disabled:grayscale disabled:opacity-50"
                     >
                       {count > 0 ? `${count}s` : "获取验证码"}
                     </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-3xl border border-emerald-100 bg-emerald-50/70 p-4">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
+                      <QrCode className="h-7 w-7" />
+                    </div>
+                    <div className="space-y-1 text-sm text-slate-600">
+                      <div className="font-bold text-slate-900">使用公众号验证码登录</div>
+                      <div>1. 关注公众号，或直接打开已关注的公众号会话</div>
+                      <div>2. 向公众号发送页面里的登录口令</div>
+                      <div>3. 把公众号回复的 6 位数字验证码填回网页</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-100 bg-slate-50/60 p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-400">公众号</div>
+                      <div className="mt-1 text-base font-black text-slate-900">
+                        {wxMpTicketInfo?.accountName || "你的公众号"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void createWxMpTicket();
+                      }}
+                      disabled={wxMpTicketLoading}
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-all hover:border-primary hover:text-primary disabled:opacity-60"
+                    >
+                      {wxMpTicketLoading ? "刷新中..." : "刷新口令"}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+                    <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-3">
+                      {wxMpTicketInfo?.qrImageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={wxMpTicketInfo.qrImageUrl}
+                          alt="公众号二维码"
+                          className="h-full w-full rounded-2xl object-contain"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-400">
+                          <QrCode className="h-10 w-10" />
+                          <span>暂未配置二维码图片，请在微信里搜索公众号名称后发送下方口令</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="w-full space-y-4">
+                      <div className="space-y-2">
+                        <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                          发送给公众号的口令
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3 font-mono text-sm font-bold text-slate-800 shadow-sm ring-1 ring-slate-100">
+                          {wxMpTicketInfo?.keyword || "正在生成登录口令..."}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">
+                        {wxMpStatus?.message || "正在等待公众号回发验证码..."}
+                        {wxMpExpireText ? (
+                          <div className="mt-2 text-xs font-medium text-slate-400">
+                            本次口令预计在 {wxMpExpireText} 前有效
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    公众号验证码
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      className="h-12 w-full rounded-2xl border-2 border-transparent bg-slate-100/50 pl-12 pr-4 font-medium outline-none transition-all focus:border-primary focus:bg-white"
+                      placeholder="请输入公众号回复的 6 位验证码"
+                      value={wxMpCode}
+                      onChange={(e) =>
+                        setWxMpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                    />
                   </div>
                 </div>
               </>
@@ -442,32 +672,44 @@ const UserLoginPage: React.FC = () => {
             <button
               type="submit"
               disabled={loginLoading}
-              className="w-full h-14 mt-4 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center disabled:opacity-70"
+              className="mt-4 flex h-14 w-full items-center justify-center rounded-2xl bg-primary text-lg font-black text-white shadow-xl shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-primary/40 active:translate-y-0 disabled:opacity-70"
             >
-              {loginLoading ? <div className="h-6 w-6 border-4 border-white/30 border-t-white rounded-full animate-spin" /> : APP_CONFIG.auth.loginActionText}
+              {loginLoading ? (
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-white/30 border-t-white" />
+              ) : (
+                APP_CONFIG.auth.loginActionText
+              )}
             </button>
           </form>
 
-          <div className="mt-8 text-center text-slate-400 text-xs font-medium">
-            {firstLoginHint}
+          <div className="mt-8 text-center text-xs font-medium text-slate-400">
+            {loginType === "wxMp"
+              ? "首次通过公众号登录时，系统会自动为你创建一个可继续补充邮箱、手机号和密码的账号。"
+              : firstLoginHint}
           </div>
 
           <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"></div></div>
-            <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-bold"><span className="bg-white px-4 text-slate-300">{APP_CONFIG.auth.socialLoginTitle}</span></div>
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-100"></div>
+            </div>
+            <div className="relative flex justify-center text-[10px] font-bold uppercase tracking-widest">
+              <span className="bg-white px-4 text-slate-300">
+                {APP_CONFIG.auth.socialLoginTitle}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             {SOCIAL_AUTH_PROVIDERS.map((social) => (
-              <button 
+              <button
                 key={social.key}
                 type="button"
                 onClick={() => {
                   window.location.href = getSocialAuthUrl(social.key);
                 }}
-                className="flex flex-col items-center justify-center h-16 rounded-2xl border border-slate-50 bg-slate-50/30 hover:bg-white hover:border-slate-200 hover:shadow-sm transition-all gap-1 group"
+                className="group flex h-16 flex-col items-center justify-center gap-1 rounded-2xl border border-slate-50 bg-slate-50/30 transition-all hover:border-slate-200 hover:bg-white hover:shadow-sm"
               >
-                <div className="group-hover:scale-110 transition-transform">
+                <div className="transition-transform group-hover:scale-110">
                   <Image src={social.iconSrc} width={22} height={22} alt={social.label} />
                 </div>
                 <span className="text-[10px] font-bold text-slate-400">{social.label}</span>

@@ -1,3 +1,50 @@
+export const NOTIFICATION_TYPE_OPTIONS = [
+  { label: "题目审核", value: "question_review" },
+  { label: "题库审核", value: "question_bank_review" },
+  { label: "评论审核", value: "comment_review" },
+  { label: "评论回复", value: "reply" },
+  { label: "点赞提醒", value: "like" },
+  { label: "关注提醒", value: "user_follow" },
+  { label: "帖子审核", value: "post_review" },
+  { label: "帖子回复", value: "post_reply" },
+  { label: "社区回复审核", value: "post_comment_review" },
+  { label: "学习提醒", value: "learning_goal_reminder" },
+  { label: "系统公告", value: "system_announcement" },
+  { label: "运营通知", value: "operation_notice" },
+  { label: "活动提醒", value: "activity_notice" },
+  { label: "学习鼓励", value: "learning_notice" },
+  { label: "自定义通知", value: "custom_notice" },
+] as const;
+
+export const NOTIFICATION_TYPE_LABEL_MAP: Record<string, string> = Object.fromEntries(
+  NOTIFICATION_TYPE_OPTIONS.map((item) => [item.value, item.label]),
+);
+
+export const NOTIFICATION_TYPE_COLOR_MAP: Record<string, string> = {
+  question_review: "blue",
+  question_bank_review: "cyan",
+  comment_review: "purple",
+  reply: "cyan",
+  like: "magenta",
+  user_follow: "gold",
+  post_review: "geekblue",
+  post_reply: "lime",
+  post_comment_review: "purple",
+  learning_goal_reminder: "green",
+  system_announcement: "processing",
+  operation_notice: "orange",
+  activity_notice: "volcano",
+  learning_notice: "green",
+  custom_notice: "default",
+};
+
+export function getNotificationTypeLabel(type?: string) {
+  if (!type) {
+    return "系统通知";
+  }
+  return NOTIFICATION_TYPE_LABEL_MAP[type] || type;
+}
+
 export function getNotificationTargetUrl(item?: {
   targetUrl?: string;
   type?: string;

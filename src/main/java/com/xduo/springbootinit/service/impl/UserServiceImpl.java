@@ -155,6 +155,32 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public LoginUserVO userLoginByMpOpenId(String mpOpenId, HttpServletRequest request) {
+        String normalizedMpOpenId = StringUtils.trimToNull(mpOpenId);
+        ThrowUtils.throwIf(normalizedMpOpenId == null, ErrorCode.PARAMS_ERROR, "公众号身份不能为空");
+        synchronized (("wxmp:" + normalizedMpOpenId).intern()) {
+            User user = this.getOne(new QueryWrapper<User>().eq("mpOpenId", normalizedMpOpenId));
+            if (user == null) {
+                ensureRegisterAllowed();
+                user = new User();
+                user.setMpOpenId(normalizedMpOpenId);
+                user.setUserAccount("wx_" + RandomUtil.randomString(8));
+                user.setUserName("智面微信用户_" + RandomUtil.randomNumbers(4));
+                user.setUserPassword(DigestUtils.md5DigestAsHex((SALT + RandomUtil.randomString(16)).getBytes()));
+                user.setPasswordConfigured(0);
+                user.setUserRole(UserRoleEnum.USER.getValue());
+                this.save(user);
+            }
+            ensureUserAvailable(user);
+            ensureMaintenanceLoginAllowed(user);
+            user = syncUserCityFromRequest(user, request);
+            StpUtil.login(user.getId(), DeviceUtils.getRequestDevice(request));
+            StpUtil.getSession().set(USER_LOGIN_STATE, user);
+            return this.getLoginUserVO(user);
+        }
+    }
+
+    @Override
     public LoginUserVO userLoginBySocial(String platform, String socialId, String nickname, String avatar,
             HttpServletRequest request) {
         String normalizedPlatform = normalizeSocialPlatform(platform);
@@ -366,6 +392,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
         Long id = userQueryRequest.getId();
         String unionId = userQueryRequest.getUnionId();
+        String mpOpenId = userQueryRequest.getMpOpenId();
         String userName = userQueryRequest.getUserName();
         String userProfile = userQueryRequest.getUserProfile();
         String userRole = userQueryRequest.getUserRole();
@@ -379,6 +406,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.like(StringUtils.isNotBlank(userName), "userName", userName);
         queryWrapper.like(StringUtils.isNotBlank(careerDirection), "careerDirection", careerDirection);
         queryWrapper.eq(StringUtils.isNotBlank(unionId), "unionId", unionId);
+        queryWrapper.eq(StringUtils.isNotBlank(mpOpenId), "mpOpenId", mpOpenId);
         queryWrapper.orderBy(SqlUtils.validSortField(sortField),
                 sortOrder == null || sortOrder.equals(CommonConstant.SORT_ORDER_ASC), sortField);
         return queryWrapper;
@@ -838,6 +866,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         return StringUtils.isNotBlank(user.getPhone())
                 || StringUtils.isNotBlank(user.getEmail())
+                || StringUtils.isNotBlank(user.getMpOpenId())
                 || StringUtils.isNotBlank(user.getGithubId())
                 || StringUtils.isNotBlank(user.getGiteeId())
                 || StringUtils.isNotBlank(user.getGoogleId());
@@ -860,7 +889,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (StringUtils.isBlank(userAccount)) {
             return true;
         }
-        return userAccount.matches("^(u|gh|gt|gl)_[A-Za-z0-9]{8}$");
+        return userAccount.matches("^(u|gh|gt|gl|wx)_[A-Za-z0-9]{8}$");
     }
 
     private void ensurePasswordLoginNotBlocked(String loginIdentifier) {

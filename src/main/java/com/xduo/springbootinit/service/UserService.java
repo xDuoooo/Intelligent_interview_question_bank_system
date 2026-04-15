@@ -38,6 +38,15 @@ public interface UserService extends IService<User> {
     LoginUserVO userLogin(String userAccount, String userPassword, String captcha, String captchaUuid, HttpServletRequest request);
 
     /**
+     * 通过公众号 openId 登录 / 注册
+     *
+     * @param mpOpenId 公众号 openId
+     * @param request 请求
+     * @return 登录用户信息
+     */
+    LoginUserVO userLoginByMpOpenId(String mpOpenId, HttpServletRequest request);
+
+    /**
      * 社交登录（通用）
      *
      * @param platform 平台

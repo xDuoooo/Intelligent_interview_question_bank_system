@@ -6,19 +6,32 @@
 <mapper namespace="com.xduo.springbootinit.mapper.UserMapper">
     <resultMap id="BaseResultMap" type="com.xduo.springbootinit.model.entity.User">
         <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="userAccount" column="userAccount" jdbcType="VARCHAR"/>
+        <result property="userPassword" column="userPassword" jdbcType="VARCHAR"/>
+        <result property="passwordConfigured" column="passwordConfigured" jdbcType="TINYINT"/>
         <result property="unionId" column="unionId" jdbcType="VARCHAR"/>
         <result property="userName" column="userName" jdbcType="VARCHAR"/>
         <result property="userAvatar" column="userAvatar" jdbcType="VARCHAR"/>
         <result property="userProfile" column="userProfile" jdbcType="VARCHAR"/>
+        <result property="mpOpenId" column="mpOpenId" jdbcType="VARCHAR"/>
+        <result property="phone" column="phone" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="city" column="city" jdbcType="VARCHAR"/>
+        <result property="careerDirection" column="careerDirection" jdbcType="VARCHAR"/>
+        <result property="interestTags" column="interestTags" jdbcType="VARCHAR"/>
         <result property="userRole" column="userRole" jdbcType="VARCHAR"/>
+        <result property="githubId" column="githubId" jdbcType="VARCHAR"/>
+        <result property="giteeId" column="giteeId" jdbcType="VARCHAR"/>
+        <result property="googleId" column="googleId" jdbcType="VARCHAR"/>
+        <result property="editTime" column="editTime" jdbcType="TIMESTAMP"/>
         <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
         <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
         <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
     </resultMap>
 
     <sql id="Base_Column_List">
-        id,unionId,
-        userName,userAvatar,userProfile,
-        userRole,createTime,updateTime,isDelete
+        id,userAccount,userPassword,passwordConfigured,unionId,
+        userName,userAvatar,userProfile,mpOpenId,phone,email,city,careerDirection,interestTags,
+        userRole,githubId,giteeId,googleId,editTime,createTime,updateTime,isDelete
     </sql>
 </mapper>

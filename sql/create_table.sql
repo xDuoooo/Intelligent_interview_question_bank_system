@@ -11,6 +11,7 @@ create table if not exists user
     userPassword varchar(512)                           not null comment '密码',
     passwordConfigured tinyint                          null comment '是否已设置可用登录密码：0-未设置 1-已设置',
     unionId      varchar(256)                           null comment '社交平台唯一标识',
+    mpOpenId     varchar(128)                           null comment '公众号 openId',
     userName     varchar(256)                           null comment '用户昵称',
     userAvatar   varchar(1024)                          null comment '用户头像',
     userProfile  varchar(512)                           null comment '用户简介',
@@ -33,6 +34,7 @@ create table if not exists user
     index idx_createTime (createTime),
     index idx_phone (phone),
     index idx_email (email),
+    unique key uk_mpOpenId (mpOpenId),
     index idx_githubId (githubId),
     index idx_giteeId (giteeId),
     index idx_googleId (googleId)

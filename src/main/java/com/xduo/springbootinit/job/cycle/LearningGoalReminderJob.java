@@ -81,7 +81,7 @@ public class LearningGoalReminderJob {
             String content = String.format("你今天已完成 %d/%d 道题，距离目标还差 %d 道，继续加油。",
                     todayCount, dailyTarget, dailyTarget - todayCount);
             notificationService.sendNotification(user.getId(), title, content, "learning_goal_reminder", null);
-            sendReminderEmail(user, title, content);
+            sendReminderEmail(user, todayCount, dailyTarget, dailyTarget - todayCount);
             goal.setLastReminderTime(new Date());
             userLearningGoalService.updateById(goal);
         }
@@ -98,7 +98,7 @@ public class LearningGoalReminderJob {
         return lastReminderDate.equals(today);
     }
 
-    private void sendReminderEmail(User user, String title, String content) {
+    private void sendReminderEmail(User user, long completedCount, long dailyTarget, long remainingCount) {
         if (!systemConfigService.isEnableEmailNotification()) {
             return;
         }
@@ -106,7 +106,8 @@ public class LearningGoalReminderJob {
             return;
         }
         try {
-            boolean sent = tencentEmailUtils.sendLearningReminderEmail(user.getEmail(), title, content);
+            boolean sent = tencentEmailUtils.sendLearningReminderEmail(
+                    user.getEmail(), completedCount, dailyTarget, remainingCount);
             if (!sent) {
                 log.warn("发送学习目标提醒邮件失败,userId={}", user.getId());
             }

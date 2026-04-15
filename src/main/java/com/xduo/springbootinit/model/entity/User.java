@@ -58,6 +58,11 @@ public class User implements Serializable {
     private String userProfile;
 
     /**
+     * 公众号 openId
+     */
+    private String mpOpenId;
+
+    /**
      * 手机号
      */
     private String phone;

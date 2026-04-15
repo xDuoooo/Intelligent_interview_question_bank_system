@@ -115,6 +115,21 @@ social:
     secret: your_google_client_secret
     redirect-uri: http://localhost:8101/api/user/login/google/callback
 
+# 微信公众号验证码登录（个人订阅号免费方案）
+# 公众号后台 -> 基本配置 -> 服务器配置：
+# 1. URL 填你的后端公网地址 + /api/
+# 2. Token 与下方保持一致
+# 3. 消息加解密方式请选择“明文模式”
+wechat:
+  mp:
+    enabled: false
+    token: your_wechat_mp_token
+    accountName: 你的公众号名称
+    qrImageUrl: https://your-domain.com/static/wechat-mp-qr.png
+    loginKeyword: 登录
+    ticketExpireSeconds: 600
+    codeExpireSeconds: 300
+
 # AI 模型本地配置
 ai:
   # 本地开发使用的模型服务密钥

@@ -12,7 +12,12 @@ import {
   readNotificationUsingPost,
 } from "@/api/notificationController";
 import dayjs from "dayjs";
-import { getNotificationTargetUrl } from "@/lib/notification";
+import {
+  getNotificationTargetUrl,
+  getNotificationTypeLabel,
+  NOTIFICATION_TYPE_COLOR_MAP,
+  NOTIFICATION_TYPE_OPTIONS,
+} from "@/lib/notification";
 
 const { Title, Text } = Typography;
 
@@ -22,43 +27,7 @@ const STATUS_FILTER_OPTIONS = [
   { label: "已读", value: "read" },
 ] as const;
 
-const TYPE_FILTER_OPTIONS = [
-  { label: "全部类型", value: "all" },
-  { label: "题目通知", value: "question_review" },
-  { label: "题库通知", value: "question_bank_review" },
-  { label: "评论互动", value: "reply" },
-  { label: "点赞提醒", value: "like" },
-  { label: "关注提醒", value: "user_follow" },
-  { label: "帖子审核", value: "post_review" },
-  { label: "帖子互动", value: "post_reply" },
-  { label: "学习提醒", value: "learning_goal_reminder" },
-] as const;
-
-const TYPE_LABEL_MAP: Record<string, string> = {
-  question_review: "题目审核",
-  question_bank_review: "题库审核",
-  comment_review: "评论审核",
-  reply: "评论回复",
-  like: "点赞提醒",
-  user_follow: "关注提醒",
-  post_review: "帖子审核",
-  post_reply: "帖子回复",
-  post_comment_review: "社区回复审核",
-  learning_goal_reminder: "学习提醒",
-};
-
-const TYPE_COLOR_MAP: Record<string, string> = {
-  question_review: "blue",
-  question_bank_review: "cyan",
-  comment_review: "purple",
-  reply: "cyan",
-  like: "magenta",
-  user_follow: "gold",
-  post_review: "geekblue",
-  post_reply: "lime",
-  post_comment_review: "purple",
-  learning_goal_reminder: "green",
-};
+const TYPE_FILTER_OPTIONS = [{ label: "全部类型", value: "all" }, ...NOTIFICATION_TYPE_OPTIONS] as const;
 
 /**
  * 我的通知页面
@@ -68,12 +37,12 @@ const UserNotificationsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [dataList, setDataList] = useState<API.NotificationVO[]>([]);
   const [total, setTotal] = useState(0);
+  const [readTotal, setReadTotal] = useState(0);
   const [current, setCurrent] = useState(1);
   const [statusFilter, setStatusFilter] = useState<"all" | "unread" | "read">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const pageSize = 10;
   const router = useRouter();
-  const readCount = dataList.filter((item) => item.status === 1).length;
 
   // 加载通知数据
   const loadData = useCallback(async (
@@ -83,19 +52,28 @@ const UserNotificationsPage: React.FC = () => {
   ) => {
     setLoading(true);
     try {
-      const res = await listMyNotificationVOByPageUsingPost({
-        current: page,
-        pageSize,
-        sortField: "createTime",
-        sortOrder: "descend",
-        status: nextStatus === "all" ? undefined : nextStatus === "unread" ? 0 : 1,
-        type: nextType === "all" ? undefined : nextType,
-      });
-      if (res.data) {
-        const data = res.data as API.PageNotificationVO_;
-        setDataList(data.records || []);
-        setTotal(data.total || 0);
-      }
+      const [pageRes, readRes] = await Promise.all([
+        listMyNotificationVOByPageUsingPost({
+          current: page,
+          pageSize,
+          sortField: "createTime",
+          sortOrder: "descend",
+          status: nextStatus === "all" ? undefined : nextStatus === "unread" ? 0 : 1,
+          type: nextType === "all" ? undefined : nextType,
+        }),
+        listMyNotificationVOByPageUsingPost({
+          current: 1,
+          pageSize: 1,
+          sortField: "createTime",
+          sortOrder: "descend",
+          status: 1,
+        }),
+      ]);
+      const pageData = pageRes.data as API.PageNotificationVO_ | undefined;
+      const readData = readRes.data as API.PageNotificationVO_ | undefined;
+      setDataList(pageData?.records || []);
+      setTotal(pageData?.total || 0);
+      setReadTotal(readData?.total || 0);
     } catch (e: any) {
       message.error("加载通知失败：" + e.message);
     } finally {
@@ -116,7 +94,7 @@ const UserNotificationsPage: React.FC = () => {
     if (status === 0) {
       try {
         await readNotificationUsingPost({ id });
-        loadData(current);
+        void loadData(current);
       } catch (e) {
         // 忽略错误，优先跳转
       }
@@ -199,7 +177,7 @@ const UserNotificationsPage: React.FC = () => {
           </div>
           <Title level={3} style={{ margin: 0 }}>我的通知</Title>
         </Space>
-        {total > 0 && (
+        {(total > 0 || readTotal > 0) && (
           <Space wrap>
             <Popconfirm
               title="确认清空已读通知吗？"
@@ -207,11 +185,11 @@ const UserNotificationsPage: React.FC = () => {
               onConfirm={handleDeleteRead}
               okText="清空"
               cancelText="取消"
-              disabled={readCount === 0}
+              disabled={readTotal === 0}
             >
               <Button
                 icon={<Trash2 size={16} />}
-                disabled={loading || readCount === 0}
+                disabled={loading || readTotal === 0}
               >
                 清空已读
               </Button>
@@ -305,8 +283,8 @@ const UserNotificationsPage: React.FC = () => {
                   <Space wrap>
                     <Text strong={item.status === 0} style={{ fontSize: 16 }}>{item.title}</Text>
                     {item.type ? (
-                      <Tag color={TYPE_COLOR_MAP[item.type] || "default"} className="rounded-full">
-                        {TYPE_LABEL_MAP[item.type] || item.type}
+                      <Tag color={NOTIFICATION_TYPE_COLOR_MAP[item.type] || "default"} className="rounded-full">
+                        {getNotificationTypeLabel(item.type)}
                       </Tag>
                     ) : null}
                     <Text type="secondary" style={{ fontSize: 13, marginLeft: 8 }}>

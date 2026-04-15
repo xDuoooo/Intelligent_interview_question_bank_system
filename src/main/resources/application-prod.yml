@@ -103,6 +103,17 @@ social:
     secret: ${GOOGLE_CLIENT_SECRET:}
     redirect-uri: ${GOOGLE_REDIRECT_URI:}
 
+# 生产环境公众号验证码登录配置
+wechat:
+  mp:
+    enabled: ${WECHAT_MP_ENABLED:false}
+    token: ${WECHAT_MP_TOKEN:}
+    accountName: ${WECHAT_MP_ACCOUNT_NAME:}
+    qrImageUrl: ${WECHAT_MP_QR_IMAGE_URL:}
+    loginKeyword: ${WECHAT_MP_LOGIN_KEYWORD:登录}
+    ticketExpireSeconds: ${WECHAT_MP_TICKET_EXPIRE_SECONDS:600}
+    codeExpireSeconds: ${WECHAT_MP_CODE_EXPIRE_SECONDS:300}
+
 # 生产环境 AI 配置
 ai:
   api-key: ${AI_API_KEY:}
