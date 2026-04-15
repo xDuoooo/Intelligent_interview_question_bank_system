@@ -22,6 +22,7 @@ spring:
       database: ${REDIS_DATABASE:1}
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
       timeout: 5000
       password: ${REDIS_PASSWORD:}
   # 测试环境 Elasticsearch 连接
