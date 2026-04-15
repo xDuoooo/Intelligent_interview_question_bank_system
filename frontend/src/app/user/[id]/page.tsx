@@ -134,6 +134,12 @@ export default async function PublicUserProfilePage({
       value: profile.approvedQuestionCount || 0,
       icon: <PenSquare className="h-5 w-5 text-amber-500" />,
     },
+    {
+      key: "bank",
+      label: "公开题库",
+      value: profile.approvedQuestionBankCount || 0,
+      icon: <NotebookPen className="h-5 w-5 text-violet-500" />,
+    },
   ];
 
   return (
@@ -205,7 +211,7 @@ export default async function PublicUserProfilePage({
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
           {statCards.map((item) => (
             <div
               key={item.key}
@@ -241,7 +247,7 @@ export default async function PublicUserProfilePage({
             </h2>
           </div>
           <div className="text-sm text-slate-400">
-            公开展示最近刷题与题目动态
+            公开展示最近刷题、题目与题库动态
           </div>
         </div>
 

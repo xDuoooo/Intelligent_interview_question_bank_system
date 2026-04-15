@@ -741,6 +741,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public void bindMpOpenId(long userId, String mpOpenId) {
+        mpOpenId = StringUtils.trimToEmpty(mpOpenId);
+        ThrowUtils.throwIf(StringUtils.isBlank(mpOpenId), ErrorCode.PARAMS_ERROR, "公众号标识不能为空");
+        User currentUser = this.getById(userId);
+        ThrowUtils.throwIf(currentUser == null, ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isNotBlank(currentUser.getMpOpenId()) && !StringUtils.equals(currentUser.getMpOpenId(), mpOpenId)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "当前账号已绑定其他公众号，请先解绑后再试");
+        }
+        long count = this.count(new QueryWrapper<User>().eq("mpOpenId", mpOpenId).ne("id", userId));
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "该公众号已被其他账号绑定");
+        }
+        User user = new User();
+        user.setId(userId);
+        user.setMpOpenId(mpOpenId);
+        this.updateById(user);
+        refreshLoginSession(userId);
+    }
+
+    @Override
     public void unbindPhone(long userId) {
         User user = this.getById(userId);
         if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
@@ -817,6 +837,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public void unbindMpOpenId(long userId) {
+        User user = this.getById(userId);
+        if (user == null) throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        if (StringUtils.isBlank(user.getMpOpenId())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "当前账号尚未绑定公众号");
+        }
+        checkLastLoginMethod(user, "mpOpenId");
+        User updateRes = new User();
+        updateRes.setId(userId);
+        updateRes.setMpOpenId("");
+        this.updateById(updateRes);
+        refreshLoginSession(userId);
+    }
+
+    @Override
     public void deleteMyAccount(long userId) {
         User user = this.getById(userId);
         ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR, "当前账号不存在");
@@ -838,6 +873,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (hasUsablePasswordLogin(user) && !"password".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getPhone()) && !"phone".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getEmail()) && !"email".equals(currentField)) methods++;
+        if (StringUtils.isNotBlank(user.getMpOpenId()) && !"mpOpenId".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGithubId()) && !"githubId".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGiteeId()) && !"giteeId".equals(currentField)) methods++;
         if (StringUtils.isNotBlank(user.getGoogleId()) && !"googleId".equals(currentField)) methods++;

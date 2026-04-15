@@ -66,10 +66,29 @@ public class WxMpController {
         return ResultUtils.success(wxMpService.getLoginStatus(request));
     }
 
+    @PostMapping("/wx/mp/bind/ticket")
+    @Operation(summary = "创建公众号绑定口令")
+    public BaseResponse<WxMpLoginTicketVO> createBindTicket(HttpServletRequest request) {
+        return ResultUtils.success(wxMpService.createBindTicket(request));
+    }
+
+    @GetMapping("/wx/mp/bind/status")
+    @Operation(summary = "查询公众号绑定状态")
+    public BaseResponse<WxMpLoginStatusVO> getBindStatus(HttpServletRequest request) {
+        return ResultUtils.success(wxMpService.getBindStatus(request));
+    }
+
     @PostMapping("/wx/mp/login/code")
     @Operation(summary = "使用公众号验证码登录")
     public BaseResponse<LoginUserVO> loginByCode(@RequestBody WxMpCodeLoginRequest wxMpCodeLoginRequest,
                                                  HttpServletRequest request) {
         return ResultUtils.success(wxMpService.loginByCode(wxMpCodeLoginRequest, request));
+    }
+
+    @PostMapping("/wx/mp/bind/code")
+    @Operation(summary = "使用公众号验证码绑定当前账号")
+    public BaseResponse<LoginUserVO> bindByCode(@RequestBody WxMpCodeLoginRequest wxMpCodeLoginRequest,
+                                                HttpServletRequest request) {
+        return ResultUtils.success(wxMpService.bindByCode(wxMpCodeLoginRequest, request));
     }
 }

@@ -266,6 +266,11 @@ public interface UserService extends IService<User> {
     void bindGoogle(long userId, String googleId);
 
     /**
+     * 绑定公众号 openId
+     */
+    void bindMpOpenId(long userId, String mpOpenId);
+
+    /**
      * 解绑 GitHub
      */
     void unbindGithub(long userId);
@@ -279,6 +284,11 @@ public interface UserService extends IService<User> {
      * 解绑 Google
      */
     void unbindGoogle(long userId);
+
+    /**
+     * 解绑公众号 openId
+     */
+    void unbindMpOpenId(long userId);
 
     /**
      * 注销当前账号

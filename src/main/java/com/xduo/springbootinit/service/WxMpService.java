@@ -32,7 +32,22 @@ public interface WxMpService {
     WxMpLoginStatusVO getLoginStatus(HttpServletRequest request);
 
     /**
+     * 创建公众号绑定口令
+     */
+    WxMpLoginTicketVO createBindTicket(HttpServletRequest request);
+
+    /**
+     * 查询当前会话的公众号绑定状态
+     */
+    WxMpLoginStatusVO getBindStatus(HttpServletRequest request);
+
+    /**
      * 使用公众号验证码登录
      */
     LoginUserVO loginByCode(WxMpCodeLoginRequest request, HttpServletRequest httpServletRequest);
+
+    /**
+     * 使用公众号验证码绑定当前账号
+     */
+    LoginUserVO bindByCode(WxMpCodeLoginRequest request, HttpServletRequest httpServletRequest);
 }

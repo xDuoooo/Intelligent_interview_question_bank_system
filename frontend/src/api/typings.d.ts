@@ -392,6 +392,7 @@ declare namespace API {
     userName?: string;
     userProfile?: string;
     userRole?: string;
+    mpOpenId?: string;
     githubId?: string;
     giteeId?: string;
     googleId?: string;
@@ -1200,11 +1201,6 @@ declare namespace API {
     workExperience?: string;
   };
 
-  type userLoginByWxOpenUsingGETParams = {
-    /** code */
-    code: string;
-  };
-
   type UserLoginRequest = {
     userAccount?: string;
     userPassword?: string;
@@ -1284,6 +1280,7 @@ declare namespace API {
 
   type UserProfileVO = {
     activeDays?: number;
+    approvedQuestionBankCount?: number;
     approvedQuestionCount?: number;
     currentStreak?: number;
     followerCount?: number;

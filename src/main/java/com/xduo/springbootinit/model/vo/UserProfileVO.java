@@ -42,6 +42,11 @@ public class UserProfileVO implements Serializable {
     private Long approvedQuestionCount;
 
     /**
+     * 已通过审核的公开题库数
+     */
+    private Long approvedQuestionBankCount;
+
+    /**
      * 粉丝数
      */
     private Long followerCount;

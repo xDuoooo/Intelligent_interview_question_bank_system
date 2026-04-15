@@ -6,6 +6,7 @@ import {
   Key, 
   Phone, 
   Mail, 
+  MessageCircle,
   Unlink,
   RefreshCw,
   AlertTriangle
@@ -21,9 +22,17 @@ import {
   unbindGithubUsingPost, 
   unbindGiteeUsingPost, 
   unbindGoogleUsingPost,
+  unbindMpUsingPost,
   unbindPhoneUsingPost,
   updateMyUserUsingPost,
 } from "@/api/userController";
+import {
+  bindByWxMpCodeUsingPost,
+  createWxMpBindTicketUsingPost,
+  getWxMpBindStatusUsingGet,
+  type WxMpLoginStatusVO,
+  type WxMpLoginTicketVO,
+} from "@/api/wxMpController";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
@@ -59,7 +68,21 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
   const [accountLoading, setAccountLoading] = useState(false);
   const [unbindLoadingType, setUnbindLoadingType] = useState<string | null>(null);
   const [countdown, setCountdown] = useState(0);
+  const [wxMpBindModalVisible, setWxMpBindModalVisible] = useState(false);
+  const [wxMpBindCode, setWxMpBindCode] = useState("");
+  const [wxMpBindTicketInfo, setWxMpBindTicketInfo] = useState<WxMpLoginTicketVO | null>(null);
+  const [wxMpBindStatus, setWxMpBindStatus] = useState<WxMpLoginStatusVO | null>(null);
+  const [wxMpBindTicketLoading, setWxMpBindTicketLoading] = useState(false);
+  const [wxMpBindLoading, setWxMpBindLoading] = useState(false);
   const hasPasswordConfigured = Number(user.passwordConfigured || 0) === 1;
+  const wxMpBindExpireAt = wxMpBindStatus?.expireAt ?? wxMpBindTicketInfo?.expireAt;
+  const wxMpBindExpireText = wxMpBindExpireAt
+    ? new Date(wxMpBindExpireAt).toLocaleTimeString("zh-CN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    : null;
 
   // 脱敏显示
   const maskPhone = (phone?: string) => phone ? phone.replace(/(\d{3})\d{4}(\d{4})/, "$1****$2") : "未绑定";
@@ -136,10 +159,83 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     setBindModalVisible(true);
   };
 
+  const openWxMpBindModal = () => {
+    setWxMpBindCode("");
+    setWxMpBindTicketInfo(null);
+    setWxMpBindStatus(null);
+    setWxMpBindModalVisible(true);
+  };
+
   const openAccountModal = () => {
     setAccountValue(user.userAccount || "");
     setAccountModalVisible(true);
   };
+
+  const createWxMpBindTicket = async (silent = false) => {
+    setWxMpBindTicketLoading(true);
+    try {
+      const res = await createWxMpBindTicketUsingPost();
+      setWxMpBindTicketInfo(res.data ?? null);
+      setWxMpBindStatus({
+        status: "pending",
+        codeSent: false,
+        message: "请在公众号中发送页面展示的绑定口令",
+        expireAt: res.data?.expireAt,
+      });
+      setWxMpBindCode("");
+    } catch (error: any) {
+      setWxMpBindTicketInfo(null);
+      setWxMpBindStatus({
+        status: "expired",
+        codeSent: false,
+        message: error?.message || "获取绑定口令失败，请稍后重试",
+      });
+      if (!silent) {
+        message.error(error?.message || "获取绑定口令失败");
+      }
+    } finally {
+      setWxMpBindTicketLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!wxMpBindModalVisible || wxMpBindTicketInfo || wxMpBindTicketLoading || wxMpBindStatus) {
+      return;
+    }
+    void createWxMpBindTicket(true);
+  }, [wxMpBindModalVisible, wxMpBindTicketInfo, wxMpBindTicketLoading, wxMpBindStatus]);
+
+  useEffect(() => {
+    if (!wxMpBindModalVisible || !wxMpBindTicketInfo?.ticket) {
+      return;
+    }
+    let stopped = false;
+    const syncWxMpBindStatus = async () => {
+      try {
+        const res = await getWxMpBindStatusUsingGet();
+        if (!stopped) {
+          setWxMpBindStatus(res.data ?? null);
+        }
+      } catch (error: any) {
+        if (!stopped) {
+          setWxMpBindStatus((prev) => ({
+            status: prev?.status || "pending",
+            codeSent: prev?.codeSent || false,
+            message: error?.message || "查询绑定状态失败，请稍后重试",
+            expireAt: prev?.expireAt ?? wxMpBindTicketInfo.expireAt,
+          }));
+        }
+      }
+    };
+    void syncWxMpBindStatus();
+    const timer = window.setInterval(() => {
+      void syncWxMpBindStatus();
+    }, 3000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [wxMpBindModalVisible, wxMpBindTicketInfo?.ticket, wxMpBindTicketInfo?.expireAt]);
 
   const handleSendCode = async () => {
     const target = bindTarget.trim();
@@ -241,6 +337,48 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
     });
   };
 
+  const handleWxMpBindSubmit = async () => {
+    const code = wxMpBindCode.trim();
+    if (!code) {
+      message.warning("请输入公众号验证码");
+      return;
+    }
+    setWxMpBindLoading(true);
+    try {
+      await bindByWxMpCodeUsingPost({ code });
+      await refreshLoginUser();
+      message.success("公众号绑定成功");
+      setWxMpBindModalVisible(false);
+      setWxMpBindCode("");
+      setWxMpBindTicketInfo(null);
+      setWxMpBindStatus(null);
+    } catch (error: any) {
+      message.error(error?.message || "公众号绑定失败");
+    } finally {
+      setWxMpBindLoading(false);
+    }
+  };
+
+  const handleUnbindMp = () => {
+    Modal.confirm({
+      title: "确认解绑公众号",
+      content: "解绑后你将不能再通过公众号验证码登录，请确认当前账号仍保留至少一种其他登录方式。",
+      okButtonProps: { danger: true, loading: unbindLoadingType === "mp" },
+      onOk: async () => {
+        setUnbindLoadingType("mp");
+        try {
+          await unbindMpUsingPost();
+          await refreshLoginUser();
+          message.success("公众号解绑成功");
+        } catch (error: any) {
+          message.error(error?.message || "公众号解绑失败");
+        } finally {
+          setUnbindLoadingType(null);
+        }
+      },
+    });
+  };
+
   const handleUpdateAccount = async () => {
     const nextAccount = accountValue.trim();
     if (!nextAccount) {
@@ -307,6 +445,7 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
             Number(latestUser?.passwordConfigured || 0) === 1 &&
             !latestUser?.phone &&
             !latestUser?.email &&
+            !latestUser?.mpOpenId &&
             !latestUser?.githubId &&
             !latestUser?.giteeId &&
             !latestUser?.googleId;
@@ -423,6 +562,18 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
         <Button title="解绑" type="text" danger icon={<Unlink size={16}/>} onClick={() => handleUnbind("google")} />
       ) : (
         <Button type="link" href={getSocialAuthUrl("google", "bind")}>立即关联</Button>
+      )
+    },
+    {
+      key: "wxMp",
+      title: "公众号登录",
+      description: user.mpOpenId ? "已关联公众号，可通过公众号验证码快捷登录" : "关联后支持公众号验证码快捷登录",
+      status: user.mpOpenId ? <Tag color="success">已关联</Tag> : <Tag>未关联</Tag>,
+      icon: <MessageCircle size={20} className="text-emerald-500" />,
+      action: user.mpOpenId ? (
+        <Button title="解绑" type="text" danger icon={<Unlink size={16}/>} onClick={handleUnbindMp} />
+      ) : (
+        <Button type="link" onClick={openWxMpBindModal}>立即关联</Button>
       )
     },
     {
@@ -578,6 +729,95 @@ const AccountSecurityCenter: React.FC<Props> = ({ user }) => {
 
           <Text type="secondary" className="text-xs">
             绑定后可作为登录方式与安全找回方式使用。
+          </Text>
+        </div>
+      </Modal>
+
+      <Modal
+        title="绑定公众号登录"
+        open={wxMpBindModalVisible}
+        onCancel={() => {
+          setWxMpBindModalVisible(false);
+          setWxMpBindTicketInfo(null);
+          setWxMpBindStatus(null);
+          setWxMpBindCode("");
+        }}
+        onOk={handleWxMpBindSubmit}
+        okText="确认绑定"
+        cancelText="取消"
+        confirmLoading={wxMpBindLoading}
+        destroyOnClose
+        centered
+      >
+        <div className="space-y-4 pt-4">
+          <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            使用你的公众号会话发送页面口令，收到 6 位验证码后回到这里输入，就能把公众号绑定到当前账号。
+          </div>
+
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-800">
+                {wxMpBindTicketInfo?.accountName || "你的公众号"}
+              </div>
+              <Text type="secondary" className="text-xs">
+                若二维码失效，可重新获取绑定口令
+              </Text>
+            </div>
+            <Button
+              type="link"
+              loading={wxMpBindTicketLoading}
+              onClick={() => void createWxMpBindTicket()}
+            >
+              {wxMpBindTicketLoading ? "刷新中..." : "刷新口令"}
+            </Button>
+          </div>
+
+          <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-4 py-6">
+            {wxMpBindTicketInfo?.qrImageUrl ? (
+              <Image
+                src={wxMpBindTicketInfo.qrImageUrl}
+                alt="公众号二维码"
+                width={168}
+                height={168}
+                className="rounded-2xl border border-slate-200 bg-white p-2"
+              />
+            ) : (
+              <div className="flex h-44 w-44 items-center justify-center rounded-2xl border border-slate-200 bg-white text-sm text-slate-400">
+                暂无公众号二维码
+              </div>
+            )}
+
+            <div className="text-center">
+              <Text type="secondary" className="text-xs uppercase tracking-[0.18em]">
+                发送给公众号的口令
+              </Text>
+              <div className="mt-2 rounded-2xl bg-white px-4 py-3 font-mono text-lg font-semibold tracking-[0.18em] text-slate-800 shadow-sm">
+                {wxMpBindTicketInfo?.keyword || "正在生成绑定口令..."}
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-700">
+            {wxMpBindStatus?.message || "正在等待公众号回发验证码..."}
+            {wxMpBindExpireText ? (
+              <div className="mt-1 text-xs text-emerald-600">
+                本次口令预计在 {wxMpBindExpireText} 前有效
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Text strong>公众号验证码</Text>
+            <Input
+              value={wxMpBindCode}
+              placeholder="请输入 6 位验证码"
+              maxLength={6}
+              onChange={(e) => setWxMpBindCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            />
+          </div>
+
+          <Text type="secondary" className="text-xs">
+            绑定成功后，你可以直接通过公众号验证码登录这个账号，也能在保留其他登录方式时安全解绑。
           </Text>
         </div>
       </Modal>

@@ -8,6 +8,7 @@ import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.constant.QuestionBankConstant;
 import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
@@ -18,6 +19,7 @@ import com.xduo.springbootinit.model.dto.user.UserQueryRequest;
 import com.xduo.springbootinit.model.dto.user.UserRegisterRequest;
 import com.xduo.springbootinit.model.dto.user.UserUpdateMyRequest;
 import com.xduo.springbootinit.model.dto.user.UserUpdateRequest;
+import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.entity.UserQuestionHistory;
@@ -25,6 +27,7 @@ import com.xduo.springbootinit.model.vo.LoginUserVO;
 import com.xduo.springbootinit.model.vo.UserActivityVO;
 import com.xduo.springbootinit.model.vo.UserProfileVO;
 import com.xduo.springbootinit.model.vo.UserVO;
+import com.xduo.springbootinit.service.QuestionBankService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.UserFollowService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
@@ -72,6 +75,9 @@ public class UserController {
 
     @Resource
     private QuestionService questionService;
+
+    @Resource
+    private QuestionBankService questionBankService;
 
     @Resource
     private UserFollowService userFollowService;
@@ -425,7 +431,7 @@ public class UserController {
 
         User user = new User();
         // 仅允许修改账号、昵称、头像、简介、城市
-        BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "githubId", "giteeId", "googleId");
+        BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "mpOpenId", "githubId", "giteeId", "googleId");
         user.setInterestTags(normalizeInterestTags(userUpdateMyRequest.getInterestTags()));
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
@@ -634,6 +640,16 @@ public class UserController {
     }
 
     /**
+     * 解绑公众号
+     */
+    @PostMapping("/unbind/mp")
+    public BaseResponse<Boolean> unbindMp(HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        userService.unbindMpOpenId(loginUser.getId());
+        return ResultUtils.success(true);
+    }
+
+    /**
      * 获取公开可见的用户
      */
     private User getPublicUserById(long id) {
@@ -663,6 +679,10 @@ public class UserController {
         questionQueryWrapper.eq("userId", user.getId());
         questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
         userProfileVO.setApprovedQuestionCount(questionService.count(questionQueryWrapper));
+        QueryWrapper<QuestionBank> questionBankQueryWrapper = new QueryWrapper<>();
+        questionBankQueryWrapper.eq("userId", user.getId());
+        questionBankQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionBankConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+        userProfileVO.setApprovedQuestionBankCount(questionBankService.count(questionBankQueryWrapper));
         userProfileVO.setFollowerCount(userFollowService.getFollowerCount(user.getId()));
         userProfileVO.setFollowingCount(userFollowService.getFollowingCount(user.getId()));
         userProfileVO.setHasFollowed(userFollowService.hasFollowed(loginUser == null ? null : loginUser.getId(), user.getId()));
@@ -726,6 +746,24 @@ public class UserController {
             activityVO.setActivityTime(question.getReviewTime() != null ? question.getReviewTime() : question.getCreateTime());
             activityVO.setTitle("发布了一道公开题目");
             activityVO.setDescription("题目《" + question.getTitle() + "》已通过审核并公开展示");
+            activityList.add(activityVO);
+        });
+
+        QueryWrapper<QuestionBank> questionBankQueryWrapper = new QueryWrapper<>();
+        questionBankQueryWrapper.eq("userId", userId);
+        questionBankQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionBankConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+        questionBankQueryWrapper.orderByDesc("reviewTime").orderByDesc("createTime");
+        questionBankQueryWrapper.last("limit 4");
+        List<QuestionBank> approvedQuestionBankList = questionBankService.list(questionBankQueryWrapper);
+        approvedQuestionBankList.forEach(questionBank -> {
+            UserActivityVO activityVO = new UserActivityVO();
+            activityVO.setType("bank_submission");
+            activityVO.setBadge("题库");
+            activityVO.setTargetId(questionBank.getId());
+            activityVO.setTargetUrl("/bank/" + questionBank.getId());
+            activityVO.setActivityTime(questionBank.getReviewTime() != null ? questionBank.getReviewTime() : questionBank.getCreateTime());
+            activityVO.setTitle("发布了一个公开题库");
+            activityVO.setDescription("题库《" + questionBank.getTitle() + "》已通过审核并公开展示");
             activityList.add(activityVO);
         });
 

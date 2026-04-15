@@ -57,6 +57,11 @@ public class LoginUserVO implements Serializable {
     private String email;
 
     /**
+     * 公众号 openId
+     */
+    private String mpOpenId;
+
+    /**
      * 所在城市
      */
     private String city;

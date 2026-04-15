@@ -45,6 +45,17 @@ const UserInfo = (props: Props) => {
     };
   });
 
+  const connectedAccounts = [
+    ...socialAccounts,
+    {
+      key: "wxMp",
+      name: "公众号",
+      icon: <MessageCircle size={20} className="text-green-500" />,
+      isBound: !!user.mpOpenId,
+      label: user.mpOpenId || "未绑定",
+    },
+  ];
+
   return (
     <div className="user-info-container">
       <div className="info-section mb-8">
@@ -91,10 +102,10 @@ const UserInfo = (props: Props) => {
       <div className="social-section">
         <h3 className="flex items-center gap-2 text-lg font-bold mb-6">
           <Globe size={20} className="text-primary" />
-          社交账号绑定
+          社交 / 公众号绑定
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {socialAccounts.map((account) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {connectedAccounts.map((account) => (
             <div 
               key={account.key}
               className="relative flex flex-col items-center p-6 rounded-3xl border-2 border-slate-50 hover:border-primary/20 hover:bg-primary/[0.02] transition-all group overflow-hidden"
@@ -141,7 +152,7 @@ const UserInfo = (props: Props) => {
         <div>
           <h4 className="text-sm font-bold text-blue-900 mb-1">绑定提示</h4>
           <p className="text-xs text-blue-700/80 leading-relaxed">
-            绑定社交账号后，您可以直接通过对应的第三方平台一键登录系统。目前社交登录功能正在内测中，如有疑问请联系管理员。
+            绑定社交账号或公众号后，您可以直接通过对应方式快捷登录系统，并在忘记密码时保留更多找回入口。
           </p>
         </div>
       </div>

@@ -39,10 +39,13 @@ import java.util.Arrays;
 public class WxMpServiceImpl implements WxMpService {
 
     private static final String WX_MP_LOGIN_TICKET_SESSION_KEY = "wx_mp_login_ticket";
+    private static final String WX_MP_BIND_TICKET_SESSION_KEY = "wx_mp_bind_ticket";
     private static final String STATUS_PENDING = "pending";
     private static final String STATUS_CODE_SENT = "code_sent";
     private static final String STATUS_USED = "used";
     private static final String STATUS_EXPIRED = "expired";
+    private static final String SCENE_LOGIN = "login";
+    private static final String SCENE_BIND = "bind";
 
     @Resource
     private WechatMpConfig wechatMpConfig;
@@ -91,42 +94,24 @@ public class WxMpServiceImpl implements WxMpService {
     @Override
     public WxMpLoginTicketVO createLoginTicket(HttpServletRequest request) {
         ensureWechatMpEnabled();
-        String ticket = generateUniqueTicket();
-        long expireAt = System.currentTimeMillis() + Duration.ofSeconds(wechatMpConfig.getTicketExpireSeconds()).toMillis();
-        WxMpLoginTicketState state = new WxMpLoginTicketState();
-        state.setTicket(ticket);
-        state.setStatus(STATUS_PENDING);
-        state.setExpireAt(expireAt);
-        saveTicketState(state, Duration.ofSeconds(wechatMpConfig.getTicketExpireSeconds()));
-        request.getSession(true).setAttribute(WX_MP_LOGIN_TICKET_SESSION_KEY, ticket);
-
-        WxMpLoginTicketVO ticketVO = new WxMpLoginTicketVO();
-        ticketVO.setTicket(ticket);
-        ticketVO.setKeyword(buildLoginKeyword(ticket));
-        ticketVO.setExpireAt(expireAt);
-        ticketVO.setAccountName(StringUtils.defaultIfBlank(wechatMpConfig.getAccountName(), "你的公众号"));
-        ticketVO.setQrImageUrl(wechatMpConfig.getQrImageUrl());
-        return ticketVO;
+        return createTicket(request, WX_MP_LOGIN_TICKET_SESSION_KEY, SCENE_LOGIN, null);
     }
 
     @Override
     public WxMpLoginStatusVO getLoginStatus(HttpServletRequest request) {
-        String ticket = getCurrentTicket(request);
-        if (StringUtils.isBlank(ticket)) {
-            return buildStatus(STATUS_EXPIRED, false, "请先刷新页面获取登录口令", null);
-        }
-        WxMpLoginTicketState state = getTicketState(ticket);
-        if (state == null || isExpired(state)) {
-            clearCurrentTicket(request);
-            return buildStatus(STATUS_EXPIRED, false, "登录口令已过期，请重新获取", null);
-        }
-        if (STATUS_USED.equals(state.getStatus())) {
-            return buildStatus(STATUS_USED, true, "本次公众号验证码已使用，请重新获取新的口令", state.getExpireAt());
-        }
-        if (STATUS_CODE_SENT.equals(state.getStatus())) {
-            return buildStatus(STATUS_CODE_SENT, true, "已向公众号对话发送验证码，请在网页中输入", state.getExpireAt());
-        }
-        return buildStatus(STATUS_PENDING, false, "请在公众号中发送页面展示的口令", state.getExpireAt());
+        return getTicketStatus(request, WX_MP_LOGIN_TICKET_SESSION_KEY, "请先刷新页面获取登录口令", "登录口令已过期，请重新获取");
+    }
+
+    @Override
+    public WxMpLoginTicketVO createBindTicket(HttpServletRequest request) {
+        ensureWechatMpEnabled();
+        Long bindUserId = userService.getLoginUser(request).getId();
+        return createTicket(request, WX_MP_BIND_TICKET_SESSION_KEY, SCENE_BIND, bindUserId);
+    }
+
+    @Override
+    public WxMpLoginStatusVO getBindStatus(HttpServletRequest request) {
+        return getTicketStatus(request, WX_MP_BIND_TICKET_SESSION_KEY, "请先获取公众号绑定口令", "绑定口令已过期，请重新获取");
     }
 
     @Override
@@ -136,13 +121,13 @@ public class WxMpServiceImpl implements WxMpService {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请输入公众号验证码");
         }
-        String ticket = getCurrentTicket(httpServletRequest);
+        String ticket = getCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
         if (StringUtils.isBlank(ticket)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "登录口令不存在或已过期，请重新获取");
         }
         WxMpLoginTicketState state = getTicketState(ticket);
         if (state == null || isExpired(state)) {
-            clearCurrentTicket(httpServletRequest);
+            clearCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "登录口令不存在或已过期，请重新获取");
         }
         if (!STATUS_CODE_SENT.equals(state.getStatus()) || StringUtils.isBlank(state.getCode())) {
@@ -155,8 +140,42 @@ public class WxMpServiceImpl implements WxMpService {
         state.setStatus(STATUS_USED);
         state.setCode(null);
         saveTicketState(state, Duration.ofSeconds(60));
-        clearCurrentTicket(httpServletRequest);
+        clearCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
         return loginUserVO;
+    }
+
+    @Override
+    public LoginUserVO bindByCode(WxMpCodeLoginRequest request, HttpServletRequest httpServletRequest) {
+        ensureWechatMpEnabled();
+        String code = StringUtils.trimToNull(request == null ? null : request.getCode());
+        if (StringUtils.isBlank(code)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请输入公众号验证码");
+        }
+        String ticket = getCurrentTicket(httpServletRequest, WX_MP_BIND_TICKET_SESSION_KEY);
+        if (StringUtils.isBlank(ticket)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "绑定口令不存在或已过期，请重新获取");
+        }
+        WxMpLoginTicketState state = getTicketState(ticket);
+        if (state == null || isExpired(state)) {
+            clearCurrentTicket(httpServletRequest, WX_MP_BIND_TICKET_SESSION_KEY);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "绑定口令不存在或已过期，请重新获取");
+        }
+        if (!STATUS_CODE_SENT.equals(state.getStatus()) || StringUtils.isBlank(state.getCode())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先按页面提示向公众号发送绑定口令");
+        }
+        if (!StringUtils.equals(state.getCode(), code)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "公众号验证码错误或已过期");
+        }
+        Long loginUserId = userService.getLoginUser(httpServletRequest).getId();
+        if (state.getBindUserId() != null && !state.getBindUserId().equals(loginUserId)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "绑定口令不属于当前登录账号，请重新获取");
+        }
+        userService.bindMpOpenId(loginUserId, state.getOpenId());
+        state.setStatus(STATUS_USED);
+        state.setCode(null);
+        saveTicketState(state, Duration.ofSeconds(60));
+        clearCurrentTicket(httpServletRequest, WX_MP_BIND_TICKET_SESSION_KEY);
+        return userService.getLoginUserVO(userService.getById(loginUserId));
     }
 
     private String handleIncomingMessage(WxMpIncomingMessage message) {
@@ -186,8 +205,11 @@ public class WxMpServiceImpl implements WxMpService {
         state.setStatus(STATUS_CODE_SENT);
         state.setExpireAt(expireAt);
         saveTicketState(state, Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()));
-        return String.format("你的智面登录验证码为：%s，%d 分钟内有效。请回到网页输入完成登录。", code,
-                Math.max(1, wechatMpConfig.getCodeExpireSeconds() / 60));
+        return String.format("你的智面%s验证码为：%s，%d 分钟内有效。请回到网页输入完成%s。",
+                SCENE_BIND.equals(state.getScene()) ? "绑定" : "登录",
+                code,
+                Math.max(1, wechatMpConfig.getCodeExpireSeconds() / 60),
+                SCENE_BIND.equals(state.getScene()) ? "绑定" : "登录");
     }
 
     private WxMpIncomingMessage parseIncomingMessage(String requestBody) {
@@ -239,11 +261,11 @@ public class WxMpServiceImpl implements WxMpService {
     }
 
     private String buildWelcomeText() {
-        return "欢迎来到智面公众号登录助手。若你正在网页上登录，请把页面给你的口令发给我，例如：" + buildLoginKeyword("ABC12345");
+        return "欢迎来到智面公众号助手。若你正在网页上登录或绑定账号，请把页面给你的口令发给我，例如：" + buildLoginKeyword("ABC12345");
     }
 
     private String buildHelpText() {
-        return "请先在智面网页登录页获取口令，然后把它发给我，例如：" + buildLoginKeyword("ABC12345");
+        return "请先在智面网页上获取登录或绑定口令，然后把它发给我，例如：" + buildLoginKeyword("ABC12345");
     }
 
     private String buildLoginKeyword(String ticket) {
@@ -322,19 +344,65 @@ public class WxMpServiceImpl implements WxMpService {
         return StringUtils.equalsIgnoreCase(signature, expected);
     }
 
-    private String getCurrentTicket(HttpServletRequest request) {
+    private WxMpLoginTicketVO createTicket(HttpServletRequest request, String sessionKey, String scene, Long bindUserId) {
+        String ticket = generateUniqueTicket();
+        long expireAt = System.currentTimeMillis() + Duration.ofSeconds(wechatMpConfig.getTicketExpireSeconds()).toMillis();
+        WxMpLoginTicketState state = new WxMpLoginTicketState();
+        state.setTicket(ticket);
+        state.setScene(scene);
+        state.setBindUserId(bindUserId);
+        state.setStatus(STATUS_PENDING);
+        state.setExpireAt(expireAt);
+        saveTicketState(state, Duration.ofSeconds(wechatMpConfig.getTicketExpireSeconds()));
+        request.getSession(true).setAttribute(sessionKey, ticket);
+
+        WxMpLoginTicketVO ticketVO = new WxMpLoginTicketVO();
+        ticketVO.setTicket(ticket);
+        ticketVO.setKeyword(buildLoginKeyword(ticket));
+        ticketVO.setExpireAt(expireAt);
+        ticketVO.setAccountName(StringUtils.defaultIfBlank(wechatMpConfig.getAccountName(), "你的公众号"));
+        ticketVO.setQrImageUrl(wechatMpConfig.getQrImageUrl());
+        return ticketVO;
+    }
+
+    private WxMpLoginStatusVO getTicketStatus(HttpServletRequest request, String sessionKey, String emptyMessage, String expiredMessage) {
+        String ticket = getCurrentTicket(request, sessionKey);
+        if (StringUtils.isBlank(ticket)) {
+            return buildStatus(STATUS_EXPIRED, false, emptyMessage, null);
+        }
+        WxMpLoginTicketState state = getTicketState(ticket);
+        if (state == null || isExpired(state)) {
+            clearCurrentTicket(request, sessionKey);
+            return buildStatus(STATUS_EXPIRED, false, expiredMessage, null);
+        }
+        if (STATUS_USED.equals(state.getStatus())) {
+            return buildStatus(STATUS_USED, true,
+                    SCENE_BIND.equals(state.getScene()) ? "本次公众号绑定验证码已使用，请重新获取新的口令" : "本次公众号验证码已使用，请重新获取新的口令",
+                    state.getExpireAt());
+        }
+        if (STATUS_CODE_SENT.equals(state.getStatus())) {
+            return buildStatus(STATUS_CODE_SENT, true,
+                    SCENE_BIND.equals(state.getScene()) ? "已向公众号对话发送绑定验证码，请在网页中输入" : "已向公众号对话发送验证码，请在网页中输入",
+                    state.getExpireAt());
+        }
+        return buildStatus(STATUS_PENDING, false,
+                SCENE_BIND.equals(state.getScene()) ? "请在公众号中发送页面展示的绑定口令" : "请在公众号中发送页面展示的登录口令",
+                state.getExpireAt());
+    }
+
+    private String getCurrentTicket(HttpServletRequest request, String sessionKey) {
         HttpSession session = request == null ? null : request.getSession(false);
         if (session == null) {
             return null;
         }
-        Object ticket = session.getAttribute(WX_MP_LOGIN_TICKET_SESSION_KEY);
+        Object ticket = session.getAttribute(sessionKey);
         return ticket == null ? null : String.valueOf(ticket);
     }
 
-    private void clearCurrentTicket(HttpServletRequest request) {
+    private void clearCurrentTicket(HttpServletRequest request, String sessionKey) {
         HttpSession session = request == null ? null : request.getSession(false);
         if (session != null) {
-            session.removeAttribute(WX_MP_LOGIN_TICKET_SESSION_KEY);
+            session.removeAttribute(sessionKey);
         }
     }
 
@@ -359,6 +427,8 @@ public class WxMpServiceImpl implements WxMpService {
     @Data
     private static class WxMpLoginTicketState {
         private String ticket;
+        private String scene;
+        private Long bindUserId;
         private String openId;
         private String code;
         private String status;

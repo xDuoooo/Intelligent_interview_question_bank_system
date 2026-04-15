@@ -23,7 +23,7 @@ const PasswordChangeForm: React.FC<Props> = ({ onSuccess, passwordConfigured = t
   const dispatch = useDispatch<AppDispatch>();
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const canResetWithoutOldPassword = Boolean(
-    loginUser?.phone || loginUser?.email || loginUser?.githubId || loginUser?.giteeId || loginUser?.googleId
+    loginUser?.phone || loginUser?.email || loginUser?.mpOpenId || loginUser?.githubId || loginUser?.giteeId || loginUser?.googleId
   );
 
   const doSubmit = async (values: API.UserChangePasswordRequest) => {

@@ -79,12 +79,43 @@ export async function getWxMpLoginStatusUsingGet(options?: { [key: string]: any 
   });
 }
 
+/** createWxMpBindTicket POST /api/wx/mp/bind/ticket */
+export async function createWxMpBindTicketUsingPost(options?: { [key: string]: any }) {
+  return request<BaseResponseWxMpLoginTicketVO>('/api/wx/mp/bind/ticket', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** getWxMpBindStatus GET /api/wx/mp/bind/status */
+export async function getWxMpBindStatusUsingGet(options?: { [key: string]: any }) {
+  return request<BaseResponseWxMpLoginStatusVO>('/api/wx/mp/bind/status', {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
 /** loginByWxMpCode POST /api/wx/mp/login/code */
 export async function loginByWxMpCodeUsingPost(
   body: WxMpCodeLoginRequest,
   options?: { [key: string]: any },
 ) {
   return request<API.BaseResponseLoginUserVO_>('/api/wx/mp/login/code', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
+/** bindByWxMpCode POST /api/wx/mp/bind/code */
+export async function bindByWxMpCodeUsingPost(
+  body: WxMpCodeLoginRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseLoginUserVO_>('/api/wx/mp/bind/code', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
