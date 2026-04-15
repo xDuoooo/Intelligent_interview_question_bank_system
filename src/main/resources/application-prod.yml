@@ -80,14 +80,25 @@ tencent:
     replyToAddresses: ${TENCENT_EMAIL_REPLY_TO:}
     verificationTemplateId: ${TENCENT_EMAIL_VERIFICATION_TEMPLATE_ID:}
     learningReminderTemplateId: ${TENCENT_EMAIL_LEARNING_REMINDER_TEMPLATE_ID:}
+
+aliyun:
   sms:
-    secretId: ${TENCENT_SMS_SECRET_ID:}
-    secretKey: ${TENCENT_SMS_SECRET_KEY:}
-    sdkAppId: ${TENCENT_SMS_SDK_APP_ID:}
-    signName: ${TENCENT_SMS_SIGN_NAME:智面平台}
-    templateId: ${TENCENT_SMS_TEMPLATE_ID:}
-    region: ${TENCENT_SMS_REGION:ap-guangzhou}
-    countryCode: ${TENCENT_SMS_COUNTRY_CODE:+86}
+    accessKeyId: ${ALIYUN_SMS_ACCESS_KEY_ID:}
+    accessKeySecret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
+    endpoint: ${ALIYUN_SMS_ENDPOINT:dypnsapi.aliyuncs.com}
+    signName: ${ALIYUN_SMS_SIGN_NAME:}
+    templateCode: ${ALIYUN_SMS_TEMPLATE_CODE:}
+    schemeName: ${ALIYUN_SMS_SCHEME_NAME:}
+    countryCode: ${ALIYUN_SMS_COUNTRY_CODE:86}
+    codeLength: ${ALIYUN_SMS_CODE_LENGTH:6}
+    validTimeSeconds: ${ALIYUN_SMS_VALID_TIME_SECONDS:300}
+    intervalSeconds: ${ALIYUN_SMS_INTERVAL_SECONDS:60}
+    codeType: ${ALIYUN_SMS_CODE_TYPE:1}
+    duplicatePolicy: ${ALIYUN_SMS_DUPLICATE_POLICY:1}
+    caseAuthPolicy: ${ALIYUN_SMS_CASE_AUTH_POLICY:1}
+    codeParamName: ${ALIYUN_SMS_CODE_PARAM_NAME:code}
+    validTimeParamName: ${ALIYUN_SMS_VALID_TIME_PARAM_NAME:min}
+    codePlaceholder: ${ALIYUN_SMS_CODE_PLACEHOLDER:##code##}
 
 # 生产环境第三方登录配置
 social:

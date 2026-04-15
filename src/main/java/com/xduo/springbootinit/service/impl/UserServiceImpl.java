@@ -19,11 +19,11 @@ import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.satoken.DeviceUtils;
 import com.xduo.springbootinit.service.SystemConfigService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.AliyunSmsVerifyUtils;
 import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.utils.NetUtils;
 import com.xduo.springbootinit.utils.SqlUtils;
 import com.xduo.springbootinit.utils.TencentEmailUtils;
-import com.xduo.springbootinit.utils.TencentSmsUtils;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import org.redisson.api.RAtomicLong;
 import cn.hutool.core.util.RandomUtil;
@@ -68,7 +68,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private TencentEmailUtils tencentEmailUtils;
 
     @Resource
-    private TencentSmsUtils tencentSmsUtils;
+    private AliyunSmsVerifyUtils aliyunSmsVerifyUtils;
 
     @Resource
     private SystemConfigService systemConfigService;
@@ -258,24 +258,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // 5. 发送逻辑
-        String code = RandomUtil.randomNumbers(6);
         boolean sendResult;
         if (type == 1) {
+            String code = RandomUtil.randomNumbers(6);
             sendResult = sendEmail(target, code);
             if (!sendResult) {
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR,
                         "邮件发送失败，请检查腾讯云邮件模板、发信地址是否已认证及账号配置");
             }
+            stringRedisTemplate.opsForValue().set(RedisConstant.getUserLoginCodeRedisKey(target), code, 5,
+                    java.util.concurrent.TimeUnit.MINUTES);
         } else {
-            sendResult = tencentSmsUtils.sendMessage(target, code);
+            AliyunSmsVerifyUtils.SmsSendResult smsSendResult = aliyunSmsVerifyUtils.sendVerifyCode(target);
+            sendResult = smsSendResult.success();
             if (!sendResult) {
-                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "短信发送失败，请检查腾讯云短信配置及签名/模板 ID");
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                        "短信发送失败，请检查阿里云号码验证服务配置、签名和模板");
+            }
+            ThrowUtils.throwIf(StringUtils.isBlank(smsSendResult.outId()), ErrorCode.SYSTEM_ERROR,
+                    "短信发送失败，阿里云未返回验证码会话标识");
+            stringRedisTemplate.opsForValue().set(RedisConstant.getUserPhoneVerifyOutIdRedisKey(target),
+                    smsSendResult.outId(), aliyunSmsVerifyUtils.getValidTimeSeconds(),
+                    java.util.concurrent.TimeUnit.SECONDS);
+            if (smsSendResult.mock() && StringUtils.isNotBlank(smsSendResult.localCode())) {
+                stringRedisTemplate.opsForValue().set(RedisConstant.getUserLoginCodeRedisKey(target),
+                        smsSendResult.localCode(), aliyunSmsVerifyUtils.getValidTimeSeconds(),
+                        java.util.concurrent.TimeUnit.SECONDS);
+            } else {
+                stringRedisTemplate.delete(RedisConstant.getUserLoginCodeRedisKey(target));
             }
         }
 
-        // 6. 存入 Redis 并更新限流
-        stringRedisTemplate.opsForValue().set(RedisConstant.getUserLoginCodeRedisKey(target), code, 5,
-                java.util.concurrent.TimeUnit.MINUTES);
+        // 6. 更新限流
         stringRedisTemplate.opsForValue().set(limitKey, "1", 60, java.util.concurrent.TimeUnit.SECONDS);
 
         long secondsToMidnight = DateUtil.between(new Date(), DateUtil.endOfDay(new Date()), DateUnit.SECOND);
@@ -295,12 +309,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         validateLoginTargetType(type);
         target = normalizeCodeLoginTarget(target, type);
 
-        String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
-        String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
-        if (cachedCode == null || !cachedCode.equals(code)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+        if (Objects.equals(type, 1)) {
+            String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
+            String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
+            if (cachedCode == null || !cachedCode.equals(code)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+            }
+            stringRedisTemplate.delete(codeKey);
+        } else {
+            verifyPhoneCodeOrThrow(target, code);
         }
-        stringRedisTemplate.delete(codeKey);
 
         synchronized (target.intern()) {
             User user = this.getOne(new QueryWrapper<User>().eq(type == 1 ? "email" : "phone", target));
@@ -329,6 +347,35 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     private boolean sendEmail(String email, String code) {
         return tencentEmailUtils.sendVerificationCodeEmail(email, code);
+    }
+
+    private void verifyPhoneCodeOrThrow(String target, String code) {
+        String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
+        if (aliyunSmsVerifyUtils.isMockEnabled()) {
+            String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
+            if (cachedCode == null || !cachedCode.equals(code)) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+            }
+            stringRedisTemplate.delete(codeKey);
+            stringRedisTemplate.delete(RedisConstant.getUserPhoneVerifyOutIdRedisKey(target));
+            return;
+        }
+        String outIdKey = RedisConstant.getUserPhoneVerifyOutIdRedisKey(target);
+        String outId = stringRedisTemplate.opsForValue().get(outIdKey);
+        if (StringUtils.isBlank(outId)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
+        }
+        AliyunSmsVerifyUtils.SmsCheckResult smsCheckResult = aliyunSmsVerifyUtils.checkVerifyCode(target, code, outId);
+        if (!smsCheckResult.success()) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,
+                    "短信验证码核验失败，请检查阿里云号码验证服务配置");
+        }
+        if (!smsCheckResult.verified()) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,
+                    StringUtils.defaultIfBlank(smsCheckResult.message(), "验证码错误或已过期"));
+        }
+        stringRedisTemplate.delete(outIdKey);
+        stringRedisTemplate.delete(codeKey);
     }
 
     @Override
@@ -537,12 +584,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         target = normalizePhoneTarget(target);
         validateVerificationTargetFormat(target, 2);
         // 1. 校验验证码
-        String codeKey = RedisConstant.getUserLoginCodeRedisKey(target);
-        String cachedCode = stringRedisTemplate.opsForValue().get(codeKey);
-        if (cachedCode == null || !cachedCode.equals(code)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "验证码错误或已过期");
-        }
-        stringRedisTemplate.delete(codeKey);
+        verifyPhoneCodeOrThrow(target, code);
 
         // 2. 校验手机号是否已被占用
         long count = this.count(new QueryWrapper<User>().eq("phone", target).ne("id", loginUser.getId()));

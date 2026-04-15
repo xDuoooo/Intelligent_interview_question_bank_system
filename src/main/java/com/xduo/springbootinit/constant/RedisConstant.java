@@ -23,6 +23,11 @@ public interface RedisConstant {
     String USER_LOGIN_CODE_KEY_PREFIX = "user:login:code:";
 
     /**
+     * 手机验证码会话 OutId Redis Key 前缀
+     */
+    String USER_PHONE_VERIFY_OUT_ID_KEY_PREFIX = "user:phone:verify:out-id:";
+
+    /**
      * 用户验证码发送频率限制 Redis Key 前缀 (60s)
      */
     String USER_CODE_SEND_LIMIT_KEY_PREFIX = "user:login:limit:";
@@ -67,6 +72,13 @@ public interface RedisConstant {
      */
     static String getUserLoginCodeRedisKey(String target) {
         return USER_LOGIN_CODE_KEY_PREFIX + target;
+    }
+
+    /**
+     * 获取手机号验证码会话 OutId Redis Key
+     */
+    static String getUserPhoneVerifyOutIdRedisKey(String phone) {
+        return USER_PHONE_VERIFY_OUT_ID_KEY_PREFIX + phone;
     }
 
     /**

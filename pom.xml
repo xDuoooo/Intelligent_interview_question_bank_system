@@ -153,11 +153,17 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
         </dependency>
-        <!-- 腾讯云短信 SDK -->
+        <!-- 腾讯云 SDK（邮件仍在使用） -->
         <dependency>
             <groupId>com.tencentcloudapi</groupId>
             <artifactId>tencentcloud-sdk-java</artifactId>
             <version>3.1.270</version>
+        </dependency>
+        <!-- 阿里云号码验证服务 SDK -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>dypnsapi20170525</artifactId>
+            <version>1.2.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.pdfbox</groupId>

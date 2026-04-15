@@ -82,7 +82,11 @@ cos:
 knife4j:
   enable: true
 
-# 腾讯云短信配置
+# 阿里云号码验证服务短信配置
+# 说明：
+# 1. SignName / TemplateCode 请填写号码验证服务可用的签名和模板
+# 2. TemplateParam 会由代码自动组装为 {"code":"##code##","min":"5"} 这种格式
+# 3. 只有当 code 使用 ##code## 占位时，后续 CheckSmsVerifyCode 才能由阿里云完成核验
 tencent:
   email:
     secretId: your_tencent_email_secret_id
@@ -92,14 +96,25 @@ tencent:
     replyToAddresses: ""
     verificationTemplateId: your_tencent_email_verification_template_id
     learningReminderTemplateId: ""
+
+aliyun:
   sms:
-    secretId: your_tencent_sms_secret_id
-    secretKey: your_tencent_sms_secret_key
-    sdkAppId: your_tencent_sms_sdk_app_id
-    signName: 智面平台
-    templateId: your_tencent_sms_template_id
-    region: ap-guangzhou
-    countryCode: +86
+    accessKeyId: your_aliyun_access_key_id
+    accessKeySecret: your_aliyun_access_key_secret
+    endpoint: dypnsapi.aliyuncs.com
+    signName: 阿里云赠送签名
+    templateCode: SMS_123456789
+    schemeName: ""
+    countryCode: 86
+    codeLength: 6
+    validTimeSeconds: 300
+    intervalSeconds: 60
+    codeType: 1
+    duplicatePolicy: 1
+    caseAuthPolicy: 1
+    codeParamName: code
+    validTimeParamName: min
+    codePlaceholder: "##code##"
 
 # 第三方登录本地配置
 social:
