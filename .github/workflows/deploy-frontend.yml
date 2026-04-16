@@ -16,7 +16,7 @@ permissions:
   packages: write
 
 env:
-  ACR_REGISTRY: registry.cn-shanghai.aliyuncs.com
+  ACR_REGISTRY: crpi-ydpr7w8k736zbt54.cn-shanghai.personal.cr.aliyuncs.com
 
 concurrency:
   group: deploy-frontend-${{ github.ref }}
