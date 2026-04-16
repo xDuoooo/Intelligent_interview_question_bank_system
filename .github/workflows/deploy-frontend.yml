@@ -131,7 +131,7 @@ jobs:
           echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
           export FRONTEND_IMAGE
           docker compose pull frontend
-          docker compose up -d frontend
+          docker compose up -d --no-build --no-deps frontend
           docker logout "$ACR_REGISTRY" || true
           docker image prune -f
           EOF

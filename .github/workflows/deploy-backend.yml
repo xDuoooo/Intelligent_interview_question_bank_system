@@ -129,7 +129,7 @@ jobs:
           echo "$ACR_PASSWORD" | docker login "$ACR_REGISTRY" -u "$ACR_USERNAME" --password-stdin
           export BACKEND_IMAGE
           docker compose pull backend
-          docker compose up -d backend
+          docker compose up -d --no-build --no-deps backend
           docker logout "$ACR_REGISTRY" || true
           docker image prune -f
           EOF
