@@ -9,6 +9,9 @@ const apiBaseUrl = rawApiBaseUrl.replace(/\/$/, "");
 const nextConfig = {
     output: "standalone",
     images: {
+        // Production container does not bundle sharp by default in standalone mode.
+        // Disable Next.js runtime image optimization to avoid _next/image 500 errors.
+        unoptimized: true,
         remotePatterns: [
             {
                 protocol: 'https',
