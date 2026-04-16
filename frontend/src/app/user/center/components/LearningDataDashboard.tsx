@@ -4,9 +4,14 @@ import { BookOutlined, CheckCircleOutlined, HeartOutlined } from "@ant-design/ic
 import { FireOutlined, CalendarOutlined, TrophyOutlined } from "@ant-design/icons";
 import {
   getMyLearningGoalUsingGet,
-  getMyQuestionStatsUsingGet,
   updateMyLearningGoalUsingPost
 } from "@/api/userQuestionHistoryController";
+
+interface Props {
+  stats?: Record<string, any>;
+  statsLoading?: boolean;
+  onRefreshStats?: (force?: boolean) => Promise<Record<string, any>>;
+}
 
 function formatDuration(seconds?: number) {
   const totalSeconds = Math.max(0, Number(seconds || 0));
@@ -22,24 +27,15 @@ function formatDuration(seconds?: number) {
  * 学习数据看板
  * @constructor
  */
-const LearningDataDashboard: React.FC = () => {
+const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = false, onRefreshStats }) => {
   const { Text, Title, Paragraph } = Typography;
-  const [stats, setStats] = useState<any>({});
   const [dailyTarget, setDailyTarget] = useState(3);
   const [reminderEnabled, setReminderEnabled] = useState(true);
-  const [loading, setLoading] = useState(true);
+  const [goalLoading, setGoalLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await getMyQuestionStatsUsingGet();
-      setStats(res.data || {});
-    } catch (error) {
-      console.error("获取统计数据失败", error);
-    }
-  }, []);
-
   const fetchGoal = useCallback(async () => {
+    setGoalLoading(true);
     try {
       const res = await getMyLearningGoalUsingGet();
       const data: API.LearningGoalData = res.data ?? {};
@@ -47,18 +43,14 @@ const LearningDataDashboard: React.FC = () => {
       setReminderEnabled(Boolean(data.reminderEnabled));
     } catch (error) {
       console.error("获取学习目标失败", error);
+    } finally {
+      setGoalLoading(false);
     }
   }, []);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    await Promise.allSettled([fetchStats(), fetchGoal()]);
-    setLoading(false);
-  }, [fetchGoal, fetchStats]);
-
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void fetchGoal();
+  }, [fetchGoal]);
 
   const saveGoal = async () => {
     setSaving(true);
@@ -68,7 +60,7 @@ const LearningDataDashboard: React.FC = () => {
         reminderEnabled,
       });
       message.success("学习目标已更新");
-      await loadData();
+      await Promise.allSettled([fetchGoal(), onRefreshStats ? onRefreshStats(true) : Promise.resolve({})]);
     } catch (error: any) {
       message.error("更新失败：" + (error?.message || "请稍后重试"));
     } finally {
@@ -76,6 +68,7 @@ const LearningDataDashboard: React.FC = () => {
     }
   };
 
+  const loading = goalLoading || statsLoading;
   const achievementList = stats.achievementList || [];
   const todayCount = Number(stats.todayCount || 0);
   const target = Number(stats.dailyTarget || dailyTarget || 3);

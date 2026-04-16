@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,9 @@ import java.util.stream.Collectors;
 @Service
 public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHistoryMapper, UserQuestionHistory>
         implements UserQuestionHistoryService {
+
+    private static final ZoneId ZONE_ID = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter SQL_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Resource
     private QuestionFavourService questionFavourService;
@@ -171,18 +175,12 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
     @Override
     public Map<String, Object> getUserQuestionStats(long userId) {
         Map<String, Object> stats = new java.util.HashMap<>();
+        Map<String, Long> questionOverviewStats = getQuestionOverviewStats(userId);
 
-        // 总刷题量
-        QueryWrapper<UserQuestionHistory> totalWrapper = new QueryWrapper<>();
-        totalWrapper.eq("userId", userId);
-        long totalCount = this.count(totalWrapper);
+        // 总刷题量 / 已掌握 / 今日刷题量
+        long totalCount = questionOverviewStats.getOrDefault("totalCount", 0L);
         stats.put("totalCount", totalCount);
-
-        // 已掌握数量 (status = 1)
-        QueryWrapper<UserQuestionHistory> masteredWrapper = new QueryWrapper<>();
-        masteredWrapper.eq("userId", userId);
-        masteredWrapper.eq("status", 1);
-        long masteredCount = this.count(masteredWrapper);
+        long masteredCount = questionOverviewStats.getOrDefault("masteredCount", 0L);
         stats.put("masteredCount", masteredCount);
 
         // 收藏数量
@@ -199,7 +197,7 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         stats.put("currentStreak", currentStreak);
 
         // 今日刷题量与学习目标
-        long todayCount = getTodayQuestionCount(userId);
+        long todayCount = questionOverviewStats.getOrDefault("todayCount", 0L);
         UserLearningGoal learningGoal = userLearningGoalService.getOrInitByUserId(userId);
         int dailyTarget = learningGoal.getDailyTarget() == null ? 3 : learningGoal.getDailyTarget();
         boolean reminderEnabled = learningGoal.getReminderEnabled() != null && learningGoal.getReminderEnabled() == 1;
@@ -210,9 +208,10 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         stats.put("todayProgress", Math.min(todayCount, dailyTarget));
         stats.put("recommendedDifficulty", inferRecommendedDifficulty(userId));
 
-        long totalStudyDurationSeconds = userQuestionStudySessionService.getTotalStudyDurationSeconds(userId);
-        long todayStudyDurationSeconds = userQuestionStudySessionService.getTodayStudyDurationSeconds(userId);
-        long studySessionCount = userQuestionStudySessionService.countStudySessions(userId);
+        Map<String, Long> studyStats = userQuestionStudySessionService.getStudyStats(userId);
+        long totalStudyDurationSeconds = studyStats.getOrDefault("totalDurationSeconds", 0L);
+        long todayStudyDurationSeconds = studyStats.getOrDefault("todayDurationSeconds", 0L);
+        long studySessionCount = studyStats.getOrDefault("sessionCount", 0L);
         long averageStudyDurationSeconds = studySessionCount > 0 ? Math.round((double) totalStudyDurationSeconds / studySessionCount) : 0;
         stats.put("totalStudyDurationSeconds", totalStudyDurationSeconds);
         stats.put("todayStudyDurationSeconds", todayStudyDurationSeconds);
@@ -263,6 +262,25 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         return activeDateList;
     }
 
+    private Map<String, Long> getQuestionOverviewStats(long userId) {
+        LocalDate today = LocalDate.now(ZONE_ID);
+        String todayStart = SQL_DATE_TIME_FORMATTER.format(today.atStartOfDay());
+        String tomorrowStart = SQL_DATE_TIME_FORMATTER.format(today.plusDays(1).atStartOfDay());
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select(
+                "COUNT(*) AS totalCount",
+                "COALESCE(SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END), 0) AS masteredCount",
+                "COALESCE(SUM(CASE WHEN updateTime >= '" + todayStart + "' AND updateTime < '" + tomorrowStart + "' THEN 1 ELSE 0 END), 0) AS todayCount"
+        );
+        queryWrapper.eq("userId", userId);
+        Map<String, Object> result = this.getMap(queryWrapper);
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalCount", parseLong(result == null ? null : result.get("totalCount")));
+        stats.put("masteredCount", parseLong(result == null ? null : result.get("masteredCount")));
+        stats.put("todayCount", parseLong(result == null ? null : result.get("todayCount")));
+        return stats;
+    }
+
     private boolean shouldReplaceStatus(Integer oldStatus, Integer newStatus) {
         return getStatusPriority(newStatus) > getStatusPriority(oldStatus);
     }
@@ -285,7 +303,7 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
 
     private Date toDate(LocalDate localDate, boolean startOfDay) {
         LocalDateTime localDateTime = startOfDay ? localDate.atStartOfDay() : localDate.plusDays(1).atStartOfDay();
-        return Date.from(localDateTime.atZone(ZoneId.of("Asia/Shanghai")).toInstant());
+        return Date.from(localDateTime.atZone(ZONE_ID).toInstant());
     }
 
     private long calculateCurrentStreak(List<LocalDate> activeDateList) {
@@ -482,5 +500,12 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
             return 1;
         }
         return 2;
+    }
+
+    private long parseLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 }

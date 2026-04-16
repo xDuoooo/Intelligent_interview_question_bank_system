@@ -86,9 +86,14 @@ function UserCenterContent() {
   const [activeTabKey, setActiveTabKey] = useState<string>("overview");
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [stats, setStats] = useState<any>({});
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [showRecordExtras, setShowRecordExtras] = useState(false);
 
   const router = useRouter();
   const hasShownMessage = useRef(false);
+  const statsRef = useRef<any>({});
+  const statsLoadedRef = useRef(false);
+  const statsRequestRef = useRef<Promise<Record<string, any>> | null>(null);
   const validTabKeySet = useRef(
     new Set([
       "overview",
@@ -107,14 +112,45 @@ function UserCenterContent() {
   );
 
   // 获取统计数据用于侧边栏快查
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCallback(async (force = false) => {
     if (!user?.id) {
-      return;
+      return {};
     }
+    if (!force && statsLoadedRef.current) {
+      return statsRef.current;
+    }
+    if (!force && statsRequestRef.current) {
+      return statsRequestRef.current;
+    }
+    const request = (async () => {
+      setStatsLoading(true);
+      try {
+        const res = await getMyQuestionStatsUsingGet();
+        const nextStats = res.data || {};
+        statsRef.current = nextStats;
+        setStats(nextStats);
+        statsLoadedRef.current = true;
+        return nextStats;
+      } catch (error) {
+        return {};
+      } finally {
+        setStatsLoading(false);
+        statsRequestRef.current = null;
+      }
+    })();
+    statsRequestRef.current = request;
     try {
-      const res = await getMyQuestionStatsUsingGet();
-      setStats(res.data || {});
-    } catch (error) {}
+      return await request;
+    } catch (error) {
+      return {};
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    statsRef.current = {};
+    statsLoadedRef.current = false;
+    statsRequestRef.current = null;
+    setStats({});
   }, [user?.id]);
 
   useEffect(() => {
@@ -122,6 +158,40 @@ function UserCenterContent() {
       void fetchStats();
     }
   }, [activeTabKey, fetchStats]);
+
+  useEffect(() => {
+    if (activeTabKey !== "record") {
+      setShowRecordExtras(false);
+      return;
+    }
+    if (typeof window === "undefined") {
+      setShowRecordExtras(true);
+      return;
+    }
+    let timeoutId: number | undefined;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: (...args: any[]) => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    let idleId: number | undefined;
+    const revealExtras = () => {
+      setShowRecordExtras(true);
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      idleId = idleWindow.requestIdleCallback(revealExtras, { timeout: 300 });
+      return () => {
+        if (idleId !== undefined && typeof idleWindow.cancelIdleCallback === "function") {
+          idleWindow.cancelIdleCallback(idleId);
+        }
+      };
+    }
+    timeoutId = window.setTimeout(revealExtras, 120);
+    return () => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [activeTabKey]);
 
   // 处理来自三方跳转的提示消息
   useEffect(() => {
@@ -456,17 +526,25 @@ function UserCenterContent() {
             )}
             {activeTabKey === "record" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
-                <LearningDataDashboard />
-                <Title level={5} className="flex items-center gap-2 mb-6">
-                  <Calendar size={18} className="text-primary" /> 刷题热力图
-                </Title>
-                <div className="bg-slate-50/50 p-6 rounded-3xl border border-dashed border-slate-200 mb-8">
-                  <CalendarChart />
-                </div>
-                <Title level={5} className="flex items-center gap-2 mb-6">
-                  <History size={18} className="text-primary" /> 最近刷题
-                </Title>
-                <LearningHistoryList limit={5} />
+                <LearningDataDashboard stats={stats} statsLoading={statsLoading} onRefreshStats={fetchStats} />
+                {showRecordExtras ? (
+                  <>
+                    <Title level={5} className="flex items-center gap-2 mb-6">
+                      <Calendar size={18} className="text-primary" /> 刷题热力图
+                    </Title>
+                    <div className="bg-slate-50/50 p-6 rounded-3xl border border-dashed border-slate-200 mb-8">
+                      <CalendarChart />
+                    </div>
+                    <Title level={5} className="flex items-center gap-2 mb-6">
+                      <History size={18} className="text-primary" /> 最近刷题
+                    </Title>
+                    <LearningHistoryList limit={5} />
+                  </>
+                ) : (
+                  <div className="mb-8 rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-10 text-center text-sm text-slate-400">
+                    正在准备热力图和最近刷题...
+                  </div>
+                )}
               </div>
             )}
             {activeTabKey === "favour" && <MyFavourList />}
