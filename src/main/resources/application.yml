@@ -27,6 +27,8 @@ nacos:
 
 # Web 服务基础配置
 server:
+  # 让 Spring 在 Nginx / 反向代理后正确识别原始协议、域名和端口，避免把 https 外部请求误判成内部 http 跨域请求
+  forward-headers-strategy: framework
   servlet:
     # 所有后端接口统一以 /api 开头
     context-path: /api
