@@ -1,0 +1,90 @@
+# Nacos 应用专属配置示例
+# 对应 spring.config.import -> Intelligent-interview-question-bank-system.yml
+
+server:
+  address: 0.0.0.0
+  port: 8101
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql-host:3306/Intelligent_interview_question_bank_system?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai
+    username: your_db_user
+    password: your_db_password
+  data:
+    redis:
+      database: 1
+      host: redis-host
+      port: 6379
+      username: ""
+      password: your_redis_password
+      timeout: 5000
+  elasticsearch:
+    uris: http://es-host:9200
+    username: elastic
+    password: your_es_password
+
+mybatis-plus:
+  configuration:
+    log-impl: ""
+
+cos:
+  client:
+    accessKey: your_cos_access_key
+    secretKey: your_cos_secret_key
+    region: ap-beijing
+    bucket: your_cos_bucket
+    host: https://your-bucket.cos.ap-beijing.myqcloud.com
+
+tencent:
+  email:
+    secretId: your_tencent_email_secret_id
+    secretKey: your_tencent_email_secret_key
+    fromEmailAddress: notice@example.com
+    replyToAddresses: ""
+    verificationTemplateId: your_tencent_email_verification_template_id
+    learningReminderTemplateId: your_learning_reminder_template_id
+
+aliyun:
+  sms:
+    accessKeyId: your_aliyun_access_key_id
+    accessKeySecret: your_aliyun_access_key_secret
+    signName: your_aliyun_sms_sign_name
+    templateCode: SMS_123456789
+    schemeName: ""
+
+social:
+  github:
+    id: your_github_client_id
+    secret: your_github_client_secret
+    redirect-uri: https://your-domain.com/api/user/login/github/callback
+  gitee:
+    id: your_gitee_client_id
+    secret: your_gitee_client_secret
+    redirect-uri: https://your-domain.com/api/user/login/gitee/callback
+  google:
+    id: your_google_client_id
+    secret: your_google_client_secret
+    redirect-uri: https://your-domain.com/api/user/login/google/callback
+
+wechat:
+  mp:
+    enabled: false
+    token: your_wechat_mp_token
+    accountName: 你的公众号名称
+    qrImageUrl: https://your-domain.com/static/wechat-mp-qr.png
+
+ai:
+  api-key: your_ai_api_key
+
+app:
+  frontend-url: https://your-frontend-domain.com
+  ip-location:
+    dev-city: ""
+
+knife4j:
+  enable: false
+  basic:
+    enable: false
+    username: your_knife4j_username
+    password: your_knife4j_password

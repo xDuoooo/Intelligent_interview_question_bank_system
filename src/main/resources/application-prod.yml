@@ -1,5 +1,7 @@
 # 生产环境配置文件
-# 说明：这里放生产环境连接信息、回调地址、日志级别等环境相关配置
+# 说明：
+# 1. 这里只保留生产环境启动和连接 Nacos 所需的最小配置
+# 2. 数据库、Redis、ES、COS、短信、邮件、OAuth、AI、前端域名等统一放到 Nacos
 
 # 生产环境服务地址
 server:
@@ -10,33 +12,19 @@ spring:
   devtools:
     restart:
       enabled: false
-  # 生产环境数据库连接
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:}
-    username: ${DB_USERNAME:}
-    password: ${DB_PASSWORD:}
-  # 生产环境 Redis 连接
-  data:
-    redis:
-      database: ${REDIS_DATABASE:1}
-      host: ${REDIS_HOST:}
-      port: ${REDIS_PORT:6379}
-      username: ${REDIS_USERNAME:}
-      timeout: 5000
-      password: ${REDIS_PASSWORD:}
-  # 生产环境 Elasticsearch 连接
-  elasticsearch:
-    uris: ${ES_URIS:}
-    username: ${ES_USERNAME:}
-    password: ${ES_PASSWORD:}
   # 生产环境 Spring Cloud 配置
   cloud:
     nacos:
       discovery:
+        enabled: true
         server-addr: ${NACOS_DISCOVERY_SERVER_ADDR:}
+        username: ${NACOS_DISCOVERY_USERNAME:}
+        password: ${NACOS_DISCOVERY_PASSWORD:}
       config:
+        enabled: true
         server-addr: ${NACOS_CONFIG_SERVER_ADDR:}
+        username: ${NACOS_CONFIG_USERNAME:}
+        password: ${NACOS_CONFIG_PASSWORD:}
         file-extension: yml
         shared-configs:
           - data-id: common.yml
@@ -54,102 +42,3 @@ mybatis-plus:
   configuration:
     # 生产环境关闭日志
     log-impl: ''
-
-# 生产环境黑名单配置来源
-nacos:
-  config:
-    data-id: ${NACOS_BLACKLIST_DATA_ID:black-ip-list.yml}
-    group: ${NACOS_BLACKLIST_GROUP:DEFAULT_GROUP}
-
-# 生产环境 COS 配置
-cos:
-  client:
-    accessKey: ${COS_ACCESS_KEY:xxx}
-    secretKey: ${COS_SECRET_KEY:xxx}
-    region: ${COS_REGION:ap-beijing}
-    bucket: ${COS_BUCKET:xxx}
-    host: ${COS_HOST:}
-
-# 生产环境短信配置
-tencent:
-  email:
-    secretId: ${TENCENT_EMAIL_SECRET_ID:}
-    secretKey: ${TENCENT_EMAIL_SECRET_KEY:}
-    region: ${TENCENT_EMAIL_REGION:ap-guangzhou}
-    fromEmailAddress: ${TENCENT_EMAIL_FROM_ADDRESS:}
-    replyToAddresses: ${TENCENT_EMAIL_REPLY_TO:}
-    verificationTemplateId: ${TENCENT_EMAIL_VERIFICATION_TEMPLATE_ID:}
-    learningReminderTemplateId: ${TENCENT_EMAIL_LEARNING_REMINDER_TEMPLATE_ID:}
-
-aliyun:
-  sms:
-    accessKeyId: ${ALIYUN_SMS_ACCESS_KEY_ID:}
-    accessKeySecret: ${ALIYUN_SMS_ACCESS_KEY_SECRET:}
-    endpoint: ${ALIYUN_SMS_ENDPOINT:dypnsapi.aliyuncs.com}
-    signName: ${ALIYUN_SMS_SIGN_NAME:}
-    templateCode: ${ALIYUN_SMS_TEMPLATE_CODE:}
-    schemeName: ${ALIYUN_SMS_SCHEME_NAME:}
-    countryCode: ${ALIYUN_SMS_COUNTRY_CODE:86}
-    codeLength: ${ALIYUN_SMS_CODE_LENGTH:6}
-    validTimeSeconds: ${ALIYUN_SMS_VALID_TIME_SECONDS:300}
-    intervalSeconds: ${ALIYUN_SMS_INTERVAL_SECONDS:60}
-    codeType: ${ALIYUN_SMS_CODE_TYPE:1}
-    duplicatePolicy: ${ALIYUN_SMS_DUPLICATE_POLICY:1}
-    caseAuthPolicy: ${ALIYUN_SMS_CASE_AUTH_POLICY:1}
-    codeParamName: ${ALIYUN_SMS_CODE_PARAM_NAME:code}
-    validTimeParamName: ${ALIYUN_SMS_VALID_TIME_PARAM_NAME:min}
-    codePlaceholder: ${ALIYUN_SMS_CODE_PLACEHOLDER:##code##}
-
-# 生产环境第三方登录配置
-social:
-  github:
-    id: ${GITHUB_CLIENT_ID:}
-    secret: ${GITHUB_CLIENT_SECRET:}
-    redirect-uri: ${GITHUB_REDIRECT_URI:}
-  gitee:
-    id: ${GITEE_CLIENT_ID:}
-    secret: ${GITEE_CLIENT_SECRET:}
-    redirect-uri: ${GITEE_REDIRECT_URI:}
-  google:
-    id: ${GOOGLE_CLIENT_ID:}
-    secret: ${GOOGLE_CLIENT_SECRET:}
-    redirect-uri: ${GOOGLE_REDIRECT_URI:}
-
-# 生产环境公众号验证码登录配置
-wechat:
-  mp:
-    enabled: ${WECHAT_MP_ENABLED:false}
-    token: ${WECHAT_MP_TOKEN:}
-    accountName: ${WECHAT_MP_ACCOUNT_NAME:}
-    qrImageUrl: ${WECHAT_MP_QR_IMAGE_URL:}
-    loginKeyword: ${WECHAT_MP_LOGIN_KEYWORD:登录}
-    ticketExpireSeconds: ${WECHAT_MP_TICKET_EXPIRE_SECONDS:600}
-    codeExpireSeconds: ${WECHAT_MP_CODE_EXPIRE_SECONDS:300}
-
-# 生产环境 AI 配置
-ai:
-  api-key: ${AI_API_KEY:}
-  host: ${AI_HOST:https://api.deepseek.com/v1}
-  model: ${AI_MODEL:deepseek-chat}
-  speech-model: ${AI_SPEECH_MODEL:whisper-1}
-
-# 生产环境前端地址
-app:
-  frontend-url: ${FRONTEND_URL:}
-  sms:
-    # 生产环境严禁短信“假发送”
-    mock-enabled: false
-  email:
-    # 生产环境严禁邮件“假发送”
-    mock-enabled: false
-  upload:
-    # 生产环境默认关闭本地上传兜底，避免误把文件写到应用机器磁盘
-    local-fallback-enabled: false
-
-# 生产环境接口文档与鉴权
-knife4j:
-  enable: ${KNIFE4J_ENABLE:false}
-  basic:
-    enable: ${KNIFE4J_BASIC_ENABLE:false}
-    username: ${KNIFE4J_USERNAME:}
-    password: ${KNIFE4J_PASSWORD:}

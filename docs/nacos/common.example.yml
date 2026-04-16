@@ -1,0 +1,101 @@
+# Nacos shared-configs 示例
+# 对应 spring.cloud.nacos.config.shared-configs -> common.yml
+
+spring:
+  session:
+    timeout: 2592000
+  lettuce:
+    pool:
+      max-active: 200
+      max-wait: -1ms
+      max-idle: 10
+      min-idle: 0
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 16MB
+
+server:
+  servlet:
+    session:
+      cookie:
+        max-age: 2592000
+
+knife4j:
+  openapi:
+    title: "接口文档"
+    version: 1.0
+    group:
+      default:
+        api-rule: package
+        api-rule-resources:
+          - com.xduo.springbootinit.controller
+
+sa-token:
+  token-name: zhimian
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: false
+  is-share: true
+  token-style: uuid
+  is-log: true
+
+app:
+  cors:
+    allowed-origin-patterns: https://your-frontend-domain.com
+  sms:
+    mock-enabled: false
+  email:
+    mock-enabled: false
+  upload:
+    local-fallback-enabled: false
+    local-dir: /app/uploads
+  es-sync:
+    compensation:
+      enabled: true
+      fixed-rate-ms: 60000
+      batch-size: 200
+    question:
+      incremental-enabled: false
+      full-sync-on-start: false
+      incremental-fixed-rate-ms: 60000
+      incremental-lookback-minutes: 5
+    post:
+      incremental-enabled: false
+      full-sync-on-start: false
+      incremental-fixed-rate-ms: 60000
+      incremental-lookback-minutes: 5
+
+aliyun:
+  sms:
+    endpoint: dypnsapi.aliyuncs.com
+    countryCode: 86
+    codeLength: 6
+    validTimeSeconds: 300
+    intervalSeconds: 60
+    codeType: 1
+    duplicatePolicy: 1
+    caseAuthPolicy: 1
+    codeParamName: code
+    validTimeParamName: min
+    codePlaceholder: "##code##"
+
+tencent:
+  email:
+    region: ap-guangzhou
+
+wechat:
+  mp:
+    loginKeyword: 登录
+    ticketExpireSeconds: 600
+    codeExpireSeconds: 300
+
+ai:
+  host: https://api.deepseek.com/v1
+  model: deepseek-chat
+  speech-model: whisper-1
+
+nacos:
+  config:
+    data-id: black-ip-list.yml
+    group: DEFAULT_GROUP

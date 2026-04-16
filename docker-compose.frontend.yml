@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
       args:
         API_BASE_URL: ${API_BASE_URL:-http://host.docker.internal:8101}
-    image: intelligent-interview-frontend:latest
+    image: ${FRONTEND_IMAGE:-intelligent-interview-frontend:latest}
     container_name: intelligent-interview-frontend
     restart: unless-stopped
     ports:
