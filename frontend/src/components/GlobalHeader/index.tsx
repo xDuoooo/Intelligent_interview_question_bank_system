@@ -140,12 +140,6 @@ export default function GlobalHeader() {
                     <Link href="/user/center" className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted transition-colors">
                       <User className="h-4 w-4" /> 个人中心
                     </Link>
-                    <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted transition-colors">
-                      < Crown className="h-4 w-4 text-yellow-500" /> 会员权益
-                    </button>
-                    <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted transition-colors">
-                      <Settings className="h-4 w-4" /> 账号设置
-                    </button>
                     {loginUser.userRole === ACCESS_ENUM.ADMIN && (
                       <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted text-primary transition-colors">
                         <Crown className="h-4 w-4" /> 后台管理
