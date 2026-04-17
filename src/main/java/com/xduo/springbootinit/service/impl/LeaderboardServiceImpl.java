@@ -13,6 +13,7 @@ import com.xduo.springbootinit.model.vo.GlobalLeaderboardVO;
 import com.xduo.springbootinit.model.vo.LeaderboardBoardVO;
 import com.xduo.springbootinit.model.vo.LeaderboardUserVO;
 import com.xduo.springbootinit.model.vo.QuestionBankLeaderboardVO;
+import com.xduo.springbootinit.manager.CosManager;
 import com.xduo.springbootinit.service.LeaderboardService;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.QuestionBankService;
@@ -59,6 +60,9 @@ public class LeaderboardServiceImpl implements LeaderboardService {
 
     @Resource
     private QuestionBankQuestionService questionBankQuestionService;
+
+    @Resource
+    private CosManager cosManager;
 
     @Override
     public GlobalLeaderboardVO getGlobalLeaderboard(Long loginUserId) {
@@ -309,7 +313,7 @@ public class LeaderboardServiceImpl implements LeaderboardService {
         LeaderboardUserVO item = new LeaderboardUserVO();
         item.setUserId(stat.getUser().getId());
         item.setUserName(stat.getUser().getUserName());
-        item.setUserAvatar(stat.getUser().getUserAvatar());
+        item.setUserAvatar(cosManager.resolveSignedUrl(stat.getUser().getUserAvatar()));
         item.setUserRole(stat.getUser().getUserRole());
         item.setRank(rank);
         item.setMetricValue(metricGetter.applyAsLong(stat));

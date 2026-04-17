@@ -10,6 +10,7 @@ import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.constant.CommonConstant;
 import com.xduo.springbootinit.constant.RedisConstant;
 import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.manager.CosManager;
 import com.xduo.springbootinit.mapper.UserMapper;
 import com.xduo.springbootinit.model.dto.user.UserQueryRequest;
 import com.xduo.springbootinit.model.entity.User;
@@ -72,6 +73,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Resource
     private SystemConfigService systemConfigService;
+
+    @Resource
+    private CosManager cosManager;
 
     @Resource
     private IpCityResolver ipCityResolver;
@@ -407,6 +411,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         BeanUtils.copyProperties(user, loginUserVO);
         loginUserVO.setInterestTagList(parseInterestTagList(user.getInterestTags()));
         loginUserVO.setPasswordConfigured(hasUsablePasswordLogin(user) ? 1 : 0);
+        // 对 COS 头像 URL 进行签名，防止永久 URL 暴露
+        loginUserVO.setUserAvatar(cosManager.resolveSignedUrl(user.getUserAvatar()));
         return loginUserVO;
     }
 
@@ -422,6 +428,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         userVO.setInterestTagList(parseInterestTagList(user.getInterestTags()));
+        // 对 COS 头像 URL 进行签名，防止永久 URL 暴露
+        userVO.setUserAvatar(cosManager.resolveSignedUrl(user.getUserAvatar()));
         return userVO;
     }
 

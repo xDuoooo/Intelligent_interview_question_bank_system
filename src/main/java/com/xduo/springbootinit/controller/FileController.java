@@ -67,6 +67,7 @@ public class FileController {
 
     @Value("${cos.client.host:}")
     private String cosHost;
+
     @Value("${cos.client.customizedCosHost:}")
     private String customizedCosHost;
     /**
@@ -116,7 +117,8 @@ public class FileController {
                 file = File.createTempFile(filepath, null);
                 multipartFile.transferTo(file);
                 cosManager.putObject(filepath, file);
-                return ResultUtils.success(buildCosFileUrl(filepath));
+                // 只返回 COS key，签名 URL 在读取时（构建 VO）统一生成
+                return ResultUtils.success(filepath);
             } catch (Exception e) {
                 log.error("COS upload error, filepath = " + filepath, e);
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传至云存储失败");

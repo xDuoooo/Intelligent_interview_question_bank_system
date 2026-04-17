@@ -3,6 +3,7 @@ package com.xduo.springbootinit.controller;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
+import com.xduo.springbootinit.annotation.RateLimit;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.vo.GlobalLeaderboardVO;
@@ -29,12 +30,14 @@ public class LeaderboardController {
     private UserService userService;
 
     @GetMapping("/global")
+    @RateLimit(key = "leaderboard:global", maxRequests = 200, windowSeconds = 60)
     public BaseResponse<GlobalLeaderboardVO> getGlobalLeaderboard(HttpServletRequest request) {
         User loginUser = userService.getLoginUserPermitNull(request);
         return ResultUtils.success(leaderboardService.getGlobalLeaderboard(loginUser == null ? null : loginUser.getId()));
     }
 
     @GetMapping("/bank")
+    @RateLimit(key = "leaderboard:bank", maxRequests = 200, windowSeconds = 60)
     public BaseResponse<QuestionBankLeaderboardVO> getQuestionBankLeaderboard(Long questionBankId,
                                                                               HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR);

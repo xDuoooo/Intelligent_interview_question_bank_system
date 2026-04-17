@@ -11,6 +11,7 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.QuestionBankConstant;
 import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
+import com.xduo.springbootinit.annotation.RateLimit;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.user.UserAddRequest;
@@ -182,6 +183,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/get/login")
+    @RateLimit(key = "user:getLogin", maxRequests = 600, windowSeconds = 60, message = "请求过于频繁，请稍后再试")
     public BaseResponse<LoginUserVO> getLoginUser(HttpServletRequest request) {
         User user = userService.getLoginUserPermitNull(request);
         if (user == null) {
@@ -318,6 +320,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/get/vo")
+    @RateLimit(key = "user:getVO", maxRequests = 600, windowSeconds = 60)
     public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
         User user = getPublicUserById(id);
         return ResultUtils.success(userService.getUserVO(user));
@@ -330,6 +333,7 @@ public class UserController {
      * @return 公开资料与学习摘要
      */
     @GetMapping("/profile/vo")
+    @RateLimit(key = "user:profileVO", maxRequests = 300, windowSeconds = 60)
     public BaseResponse<UserProfileVO> getUserProfileVOById(long id, HttpServletRequest request) {
         User user = getPublicUserById(id);
         User loginUser = userService.getLoginUserPermitNull(request);
@@ -364,6 +368,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/list/page/vo")
+    @RateLimit(key = "user:listPageVO", maxRequests = 300, windowSeconds = 60)
     public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest,
                                                        HttpServletRequest request) {
         if (userQueryRequest == null) {
