@@ -168,6 +168,7 @@ social:
     id: your_google_client_id
     secret: your_google_client_secret
     redirect-uri: http://localhost:8101/api/user/login/google/callback
+    request-timeout-ms: 10000
 
 # 微信公众号验证码登录（个人订阅号免费方案）
 # 公众号后台 -> 基本配置 -> 服务器配置：
@@ -210,6 +211,12 @@ app:
   ip-location:
     # 本地调试“按 IP 自动识别城市”时，可临时指定一个模拟城市（需是系统支持的城市）
     dev-city: 杭州
+    # 是否在未命中 CDN / 网关城市请求头时，再按公网 IP 调第三方接口查询城市
+    lookup-enabled: true
+    # {ip} 会自动替换为客户端公网 IP；如后续你切换为自建服务或别的供应商，只改这里即可
+    lookup-url-template: https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip}
+    # 第三方 IP 城市查询超时时间（毫秒）
+    lookup-timeout-ms: 1500
   upload:
     # 本地允许在未配置 COS 时回退到项目根目录 uploads/
     local-fallback-enabled: true

@@ -47,6 +47,11 @@ app:
     mock-enabled: false
   email:
     mock-enabled: false
+  ip-location:
+    dev-city: ""
+    lookup-enabled: true
+    lookup-url-template: https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip}
+    lookup-timeout-ms: 1500
   upload:
     local-fallback-enabled: false
     local-dir: /app/uploads

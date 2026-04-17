@@ -66,6 +66,7 @@ social:
     id: your_google_client_id
     secret: your_google_client_secret
     redirect-uri: https://your-domain.com/api/user/login/google/callback
+    request-timeout-ms: 10000
 
 wechat:
   mp:
