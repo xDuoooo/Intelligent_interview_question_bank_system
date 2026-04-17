@@ -35,7 +35,7 @@ spring:
   # 本地数据库连接
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/Intelligent_interview_question_bank_system?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://localhost:3306/intelligent_interview_question_bank_system?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=Asia/Shanghai
     username: root
     password: your_db_password
   # 本地 Redis 连接
@@ -96,8 +96,6 @@ cos:
     secretKey: your_cos_secret_key
     region: ap-beijing
     bucket: your_cos_bucket
-    # 如有自定义 CDN / COS 访问域名可填写；留空时会按 bucket + region 推导默认地址
-    host: https://your-bucket.cos.ap-beijing.myqcloud.com
 
 # 本地保留接口文档
 knife4j:
