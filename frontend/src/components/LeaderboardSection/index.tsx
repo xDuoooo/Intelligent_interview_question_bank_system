@@ -93,23 +93,6 @@ export default function LeaderboardSection({ leaderboard }: Props) {
 
   return (
     <section className="space-y-12">
-      <div className="relative overflow-hidden rounded-[3rem] border border-slate-100 bg-white px-8 py-12 shadow-2xl shadow-slate-200/50 sm:px-12">
-        <div className="absolute left-0 top-0 h-64 w-64 rounded-full bg-primary/8 blur-[100px]" />
-        <div className="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-amber-300/15 blur-[100px]" />
-
-        <div className="relative flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-slate-200 bg-white/50 px-5 py-2.5 text-[11px] font-black uppercase tracking-[0.3em] text-slate-500 backdrop-blur-sm shadow-sm ring-4 ring-slate-50">
-            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-            Live Ranking Ecosystem
-          </div>
-          <h2 className="mt-8 text-4xl font-black tracking-tight text-slate-900 sm:text-6xl">
-            智能榜单<span className="text-primary italic">.</span>
-          </h2>
-          <p className="mt-6 max-w-2xl text-base leading-8 text-slate-400 font-medium">
-            多维度成长评估体系：综合力、活跃度与意志力三位一体，精准捕捉每一份对知识的渴望与坚持。
-          </p>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 2xl:grid-cols-3 2xl:gap-4">
         {boardList.map((board) => {
