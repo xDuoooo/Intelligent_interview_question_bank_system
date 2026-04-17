@@ -36,6 +36,8 @@ cos:
     bucket: your_cos_bucket
     host: https://your-bucket.cos.ap-beijing.myqcloud.com
     customizedCosHost:
+    # 签名 URL 有效期（分钟），默认 1
+    presignedExpireMinutes: 1
 tencent:
   email:
     secretId: your_tencent_email_secret_id
