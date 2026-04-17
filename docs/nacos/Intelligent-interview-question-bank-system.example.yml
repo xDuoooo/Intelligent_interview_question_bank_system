@@ -35,7 +35,7 @@ cos:
     region: ap-beijing
     bucket: your_cos_bucket
     host: https://your-bucket.cos.ap-beijing.myqcloud.com
-
+    customizedCosHost:
 tencent:
   email:
     secretId: your_tencent_email_secret_id

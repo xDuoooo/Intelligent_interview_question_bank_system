@@ -10,17 +10,21 @@ import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.manager.CosManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.TimeUnit;
+
 import com.xduo.springbootinit.model.dto.file.UploadFileRequest;
 import com.xduo.springbootinit.model.entity.User;
 import com.xduo.springbootinit.model.enums.FileUploadBizEnum;
 import com.xduo.springbootinit.service.UserService;
+
 import java.io.File;
 import java.util.Arrays;
+
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +38,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 /**
  * 文件接口
-
  */
 @RestController
 @RequestMapping("/file")
@@ -64,7 +67,8 @@ public class FileController {
 
     @Value("${cos.client.host:}")
     private String cosHost;
-
+    @Value("${cos.client.customizedCosHost:}")
+    private String customizedCosHost;
     /**
      * 文件上传
      *
@@ -75,14 +79,14 @@ public class FileController {
      */
     @PostMapping("/upload")
     public BaseResponse<String> uploadFile(@RequestPart("file") MultipartFile multipartFile,
-            UploadFileRequest uploadFileRequest, HttpServletRequest request) {
+                                           UploadFileRequest uploadFileRequest, HttpServletRequest request) {
         String biz = uploadFileRequest.getBiz();
         FileUploadBizEnum fileUploadBizEnum = FileUploadBizEnum.getEnumByValue(biz);
         if (fileUploadBizEnum == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
-        
+
         // 频率限制：单用户每小时限 10 次上传
         String redisKey = "user:upload:limit:" + loginUser.getId();
         String uploadCountStr = stringRedisTemplate.opsForValue().get(redisKey);
@@ -90,9 +94,9 @@ public class FileController {
         if (uploadCount >= 10) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "上传过于频繁，请一小时后再试");
         }
-        
+
         validFile(multipartFile, fileUploadBizEnum);
-        
+
         // 计数增加
         if (uploadCount == 0) {
             stringRedisTemplate.opsForValue().set(redisKey, "1", 1, TimeUnit.HOURS);
@@ -104,7 +108,7 @@ public class FileController {
         String uuid = RandomStringUtils.randomAlphanumeric(8);
         String filename = uuid + "-" + multipartFile.getOriginalFilename();
         String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
-        
+
         // 优先使用 COS，若未配置则使用本地存储
         if (cosAccessKey != null && !cosAccessKey.equals("xxx")) {
             File file = null;
@@ -131,7 +135,7 @@ public class FileController {
                 }
                 Path targetPath = bizPath.resolve(filename);
                 Files.copy(multipartFile.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-                
+
                 // 返回本地访问 URL (带 context-path /api)
                 return ResultUtils.success("/api/files" + filepath);
             } catch (Exception e) {
@@ -142,6 +146,9 @@ public class FileController {
     }
 
     private String buildCosFileUrl(String filepath) {
+        if(StringUtils.isNotBlank(customizedCosHost)){
+            return StringUtils.removeEnd(customizedCosHost,"/") + filepath;
+        }
         String baseUrl = StringUtils.trimToEmpty(cosHost);
         if (StringUtils.isBlank(baseUrl)) {
             ThrowUtils.throwIf(StringUtils.isAnyBlank(cosClientConfig.getBucket(), cosClientConfig.getRegion()),
