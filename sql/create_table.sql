@@ -1,7 +1,7 @@
 -- 数据库初始化（完整建表版）
 
-create database if not exists Intelligent_interview_question_bank_system;
-use Intelligent_interview_question_bank_system;
+create database if not exists intelligent_interview_question_bank_system;
+use intelligent_interview_question_bank_system;
 
 -- 用户表
 create table if not exists user

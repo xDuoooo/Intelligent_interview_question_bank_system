@@ -1,6 +1,6 @@
 -- 初始化演示数据（管理员账号 + 示例题库/题目）
 
-use Intelligent_interview_question_bank_system;
+use intelligent_interview_question_bank_system;
 
 -- 默认管理员账号
 insert into user (userAccount, userPassword, passwordConfigured, userName, userRole)
