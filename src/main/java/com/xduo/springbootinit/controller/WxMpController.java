@@ -12,16 +12,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * 微信公众号相关接口
  */
 @RestController
+@RequestMapping("/wx")
 @Tag(name = "WxMpController")
 public class WxMpController {
 
@@ -54,38 +51,38 @@ public class WxMpController {
         return "个人订阅号验证码登录模式无需设置自定义菜单";
     }
 
-    @PostMapping("/wx/mp/login/ticket")
+    @PostMapping("/mp/login/ticket")
     @Operation(summary = "创建公众号验证码登录口令")
     public BaseResponse<WxMpLoginTicketVO> createLoginTicket(HttpServletRequest request) {
         return ResultUtils.success(wxMpService.createLoginTicket(request));
     }
 
-    @GetMapping("/wx/mp/login/status")
+    @GetMapping("/mp/login/status")
     @Operation(summary = "查询公众号验证码登录状态")
     public BaseResponse<WxMpLoginStatusVO> getLoginStatus(HttpServletRequest request) {
         return ResultUtils.success(wxMpService.getLoginStatus(request));
     }
 
-    @PostMapping("/wx/mp/bind/ticket")
+    @PostMapping("/mp/bind/ticket")
     @Operation(summary = "创建公众号绑定口令")
     public BaseResponse<WxMpLoginTicketVO> createBindTicket(HttpServletRequest request) {
         return ResultUtils.success(wxMpService.createBindTicket(request));
     }
 
-    @GetMapping("/wx/mp/bind/status")
+    @GetMapping("/mp/bind/status")
     @Operation(summary = "查询公众号绑定状态")
     public BaseResponse<WxMpLoginStatusVO> getBindStatus(HttpServletRequest request) {
         return ResultUtils.success(wxMpService.getBindStatus(request));
     }
 
-    @PostMapping("/wx/mp/login/code")
+    @PostMapping("/mp/login/code")
     @Operation(summary = "使用公众号验证码登录")
     public BaseResponse<LoginUserVO> loginByCode(@RequestBody WxMpCodeLoginRequest wxMpCodeLoginRequest,
                                                  HttpServletRequest request) {
         return ResultUtils.success(wxMpService.loginByCode(wxMpCodeLoginRequest, request));
     }
 
-    @PostMapping("/wx/mp/bind/code")
+    @PostMapping("/mp/bind/code")
     @Operation(summary = "使用公众号验证码绑定当前账号")
     public BaseResponse<LoginUserVO> bindByCode(@RequestBody WxMpCodeLoginRequest wxMpCodeLoginRequest,
                                                 HttpServletRequest request) {
