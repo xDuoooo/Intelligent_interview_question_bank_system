@@ -68,6 +68,7 @@ function getBoardTheme(key?: string) {
 }
 
 function getRankBadgeBg(rank: number) {
+  if (rank === 1) return "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-orange-200";
   if (rank === 2) return "bg-slate-100 text-slate-500";
   if (rank === 3) return "bg-orange-50 text-orange-600";
   return "bg-slate-50 text-slate-400";
@@ -88,9 +89,7 @@ export default function LeaderboardSection({ leaderboard }: Props) {
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {boardList.map((board) => {
           const theme = getBoardTheme(board.key);
-          const champion = board.rankingList?.[0];
           const rankingList = board.rankingList || [];
-          const secondaryList = champion ? rankingList.slice(1, 6) : rankingList.slice(0, 5);
 
           return (
             <article
@@ -117,91 +116,49 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                   </div>
                 </div>
 
-                <div className="flex-1 flex flex-col gap-3">
-                  {/* Champion Card (Top 1) */}
-                  {champion ? (
-                    <UserProfileHoverCard
-                      user={{
-                        id: champion.userId,
-                        userName: champion.userName,
-                        userAvatar: champion.userAvatar,
-                        userRole: champion.userRole,
-                      } as any}
-                    >
-                      <div className={`relative flex items-center justify-between rounded-2xl border border-white bg-white/80 p-4 backdrop-blur-md shadow-sm transition-all duration-300 hover:shadow-md hover:bg-white cursor-pointer ${theme.championBg}`}>
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="relative shrink-0">
-                            <div className="rounded-full border-2 border-white shadow-sm bg-white p-0.5">
-                              <UserAvatar src={champion.userAvatar} name={champion.userName} size={52} />
+                <div className="flex-1 flex flex-col gap-2">
+                  {/* Rankings List (Top 1-5) */}
+                  {rankingList.slice(0, 5).map((item: any, index: number) => {
+                    const rank = item.rank || index + 1;
+                    const isChampion = rank === 1;
+                    
+                    return (
+                      <UserProfileHoverCard
+                        key={`${board.key}-${item.userId}`}
+                        user={{
+                          id: item.userId,
+                          userName: item.userName,
+                          userAvatar: item.userAvatar,
+                          userRole: item.userRole,
+                        } as any}
+                      >
+                        <div className={`group/item flex items-center justify-between rounded-xl p-2.5 transition-all duration-200 hover:bg-white/80 hover:shadow-sm cursor-pointer border hover:border-slate-100 ${isChampion ? 'bg-amber-50/10 border-transparent shadow-sm' : 'border-transparent'}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${getRankBadgeBg(rank)}`}>
+                              {isChampion ? <Medal className="h-3 w-3" /> : rank}
                             </div>
-                            <div className={`absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white text-white shadow-sm bg-gradient-to-br ${theme.championBorder}`}>
-                              <Medal className="h-3 w-3" />
-                            </div>
-                          </div>
-                          <div className="min-w-0 flex flex-col">
-                            <div className="flex items-center gap-1.5">
-                              <span className="truncate text-base font-extrabold text-slate-800">
-                                {champion.userName || "匿名用户"}
-                              </span>
-                              {champion.userRole === "admin" && (
-                                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                              )}
-                            </div>
-                            <div className={`mt-0.5 text-xs font-bold leading-tight ${theme.accentText}`}>
-                              TOP 1
+                            <UserAvatar src={item.userAvatar} name={item.userName} size={36} />
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`truncate text-sm font-bold transition-colors ${isChampion ? 'text-slate-800 group-hover/item:text-black' : 'text-slate-700 group-hover/item:text-slate-900'}`}>
+                                  {item.userName || "匿名用户"}
+                                </span>
+                                {item.userRole === "admin" && (
+                                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                )}
                             </div>
                           </div>
-                        </div>
-                        <div className="shrink-0 text-right pl-3">
-                          <div className="text-xl font-black text-slate-900 tracking-tight">
-                            {champion.metricValue || 0}
+                          <div className={`shrink-0 font-bold pl-3 ${isChampion ? theme.accentText : 'text-slate-700'}`}>
+                            {item.metricValue || 0}
                           </div>
                         </div>
-                      </div>
-                    </UserProfileHoverCard>
-                  ) : (
+                      </UserProfileHoverCard>
+                    )
+                  })}
+                  {!rankingList.length ? (
                     <div className="flex h-[92px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white/50">
                       <span className="text-xs font-semibold text-slate-400">目前无人登顶，虚位以待</span>
                     </div>
-                  )}
-
-                  {/* Following Ranks (Top 2-6) */}
-                  <div className="flex flex-col gap-2 flex-1 mt-1">
-                    {secondaryList.map((item: any, index: number) => {
-                      const rank = item.rank || index + 2;
-                      return (
-                        <UserProfileHoverCard
-                          key={`${board.key}-${item.userId}`}
-                          user={{
-                            id: item.userId,
-                            userName: item.userName,
-                            userAvatar: item.userAvatar,
-                            userRole: item.userRole,
-                          } as any}
-                        >
-                          <div className="group/item flex items-center justify-between rounded-xl p-2 transition-all duration-200 hover:bg-white/80 hover:shadow-sm cursor-pointer border border-transparent hover:border-slate-100">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${getRankBadgeBg(rank)}`}>
-                                {rank}
-                              </div>
-                              <UserAvatar src={item.userAvatar} name={item.userName} size={36} />
-                              <div className="truncate text-sm font-bold text-slate-700 transition-colors group-hover/item:text-slate-900">
-                                {item.userName || "匿名用户"}
-                              </div>
-                            </div>
-                            <div className="shrink-0 font-bold text-slate-700 pl-3">
-                              {item.metricValue || 0}
-                            </div>
-                          </div>
-                        </UserProfileHoverCard>
-                      )
-                    })}
-                    {!rankingList.length ? (
-                      <div className="rounded-xl px-4 py-6 text-center text-xs text-slate-400">
-                        这条赛道目前还没有形成榜单数据
-                      </div>
-                    ) : null}
-                  </div>
+                  ) : null}
 
                   {/* My Position Box */}
                   <div className="mt-2 pt-4 border-t border-slate-200/60">
