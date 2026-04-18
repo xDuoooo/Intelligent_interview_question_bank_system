@@ -54,15 +54,17 @@ public class CosClientConfig {
         ClientConfig clientConfig = new ClientConfig(new Region(region));
         // 如果配置了自定义域名，则设置 EndpointBuilder
         if (StringUtils.isNotBlank(customizedCosHost)) {
+            // SDK 内部会自动拼接协议(https/http)，这里必须只传入纯域名，不能包含 http:// 或 / 尾巴
+            String cleanHost = customizedCosHost.replaceFirst("^https?://", "").replaceAll("/+$", "");
             clientConfig.setEndpointBuilder(new EndpointBuilder() {
                 @Override
                 public String buildGeneralApiEndpoint(String bucketName) {
-                    return customizedCosHost;
+                    return cleanHost;
                 }
 
                 @Override
                 public String buildGetServiceApiEndpoint() {
-                    return customizedCosHost;
+                    return cleanHost;
                 }
             });
         }
