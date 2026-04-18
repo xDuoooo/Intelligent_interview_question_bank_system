@@ -94,7 +94,14 @@ public class WxMpServiceImpl implements WxMpService {
     @Override
     public WxMpLoginTicketVO createLoginTicket(HttpServletRequest request) {
         ensureWechatMpEnabled();
-        return createTicket(request, WX_MP_LOGIN_TICKET_SESSION_KEY, SCENE_LOGIN, null);
+        // 新模式：不再生成随机口令，只返回公众号展示信息（名称和二维码）
+        // 用户扫码后直接发送"登录"关键字，公众号会自动回复6位验证码
+        WxMpLoginTicketVO vo = new WxMpLoginTicketVO();
+        vo.setAccountName(StringUtils.defaultIfBlank(wechatMpConfig.getAccountName(), "公众号"));
+        vo.setQrImageUrl(wechatMpConfig.getQrImageUrl());
+        String loginKeyword = StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录");
+        vo.setKeyword(loginKeyword); // 告知前端用户需要发送的关键字
+        return vo;
     }
 
     @Override
@@ -121,27 +128,15 @@ public class WxMpServiceImpl implements WxMpService {
         if (StringUtils.isBlank(code)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请输入公众号验证码");
         }
-        String ticket = getCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
-        if (StringUtils.isBlank(ticket)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "登录口令不存在或已过期，请重新获取");
+        // 新模式：直接通过6位验证码在 Redis 中反查 openId
+        String directCodeKey = RedisConstant.getWxMpDirectCodeRedisKey(code);
+        String openId = stringRedisTemplate.opsForValue().get(directCodeKey);
+        if (StringUtils.isBlank(openId)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "公众号验证码不存在或已过期，请在公众号重新发送\"登录\"获取");
         }
-        WxMpLoginTicketState state = getTicketState(ticket);
-        if (state == null || isExpired(state)) {
-            clearCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "登录口令不存在或已过期，请重新获取");
-        }
-        if (!STATUS_CODE_SENT.equals(state.getStatus()) || StringUtils.isBlank(state.getCode())) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先按页面提示向公众号发送登录口令");
-        }
-        if (!StringUtils.equals(state.getCode(), code)) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "公众号验证码错误或已过期");
-        }
-        LoginUserVO loginUserVO = userService.userLoginByMpOpenId(state.getOpenId(), httpServletRequest);
-        state.setStatus(STATUS_USED);
-        state.setCode(null);
-        saveTicketState(state, Duration.ofSeconds(60));
-        clearCurrentTicket(httpServletRequest, WX_MP_LOGIN_TICKET_SESSION_KEY);
-        return loginUserVO;
+        // 验证码一次性使用，立即删除
+        stringRedisTemplate.delete(directCodeKey);
+        return userService.userLoginByMpOpenId(openId, httpServletRequest);
     }
 
     @Override
@@ -179,37 +174,73 @@ public class WxMpServiceImpl implements WxMpService {
     }
 
     private String handleIncomingMessage(WxMpIncomingMessage message) {
+        String openId = StringUtils.trimToEmpty(message.getFromUserName());
+
+        // 关注/取关事件
         if ("event".equalsIgnoreCase(message.getMsgType())) {
             return buildWelcomeText();
         }
         if (!"text".equalsIgnoreCase(message.getMsgType())) {
             return buildHelpText();
         }
-        String ticket = extractTicket(message.getContent());
-        if (StringUtils.isBlank(ticket)) {
-            return buildHelpText();
+
+        String normalizedContent = StringUtils.trimToEmpty(message.getContent()).replaceAll("\\s+", " ");
+        String keyword = StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录");
+        String bindKeyword = "绑定";
+
+        // --- 新模式：用户直接发"登录"获取验证码 ---
+        if (StringUtils.equals(normalizedContent, keyword)) {
+            return generateAndReplyDirectCode(openId, SCENE_LOGIN);
         }
-        WxMpLoginTicketState state = getTicketState(ticket);
-        if (state == null || isExpired(state)) {
-            return "这个登录口令已经失效了，请回到网页刷新后重新获取。";
+
+        // --- 绑定场景：用户发"绑定 TICKET"（兼容旧的票据机制）---
+        if (normalizedContent.startsWith(bindKeyword + " ")) {
+            String ticket = StringUtils.trimToNull(normalizedContent.substring(bindKeyword.length()));
+            if (StringUtils.isNotBlank(ticket)) {
+                WxMpLoginTicketState state = getTicketState(ticket);
+                if (state == null || isExpired(state)) {
+                    return "这个绑定口令已经失效了，请回到网页重新获取。";
+                }
+                if (!SCENE_BIND.equals(state.getScene())) {
+                    return "这个口令不是绑定口令，请发送正确的绑定口令。";
+                }
+                if (StringUtils.isBlank(state.getOpenId())) {
+                    state.setOpenId(openId);
+                } else if (!StringUtils.equals(state.getOpenId(), openId)) {
+                    return "这个绑定口令已经被其他微信会话使用，请回到网页重新获取新的口令。";
+                }
+                String code = RandomUtil.randomNumbers(6);
+                long expireAt = System.currentTimeMillis() + Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()).toMillis();
+                state.setCode(code);
+                state.setStatus(STATUS_CODE_SENT);
+                state.setExpireAt(expireAt);
+                saveTicketState(state, Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()));
+                return String.format("你的智面绑定验证码为：%s，%d 分钟内有效。请回到网页输入完成绑定。",
+                        code, Math.max(1, wechatMpConfig.getCodeExpireSeconds() / 60));
+            }
         }
-        String openId = StringUtils.trimToEmpty(message.getFromUserName());
-        if (StringUtils.isBlank(state.getOpenId())) {
-            state.setOpenId(openId);
-        } else if (!StringUtils.equals(state.getOpenId(), openId)) {
-            return "这个登录口令已经被其他微信会话使用，请回到网页重新获取新的口令。";
+
+        // 纯数字：可能是回复验证码（不处理，提示帮助）
+        return buildHelpText();
+    }
+
+    /**
+     * 直接验证码模式：为指定 openId 生成6位验证码，存入 Redis 并返回回复文本
+     */
+    private String generateAndReplyDirectCode(String openId, String scene) {
+        if (StringUtils.isBlank(openId)) {
+            return "获取验证码失败，请稍后重试。";
         }
+        // 生成6位数字验证码，存入 Redis，key 为验证码，value 为 openId
         String code = RandomUtil.randomNumbers(6);
-        long expireAt = System.currentTimeMillis() + Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()).toMillis();
-        state.setCode(code);
-        state.setStatus(STATUS_CODE_SENT);
-        state.setExpireAt(expireAt);
-        saveTicketState(state, Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()));
-        return String.format("你的智面%s验证码为：%s，%d 分钟内有效。请回到网页输入完成%s。",
-                SCENE_BIND.equals(state.getScene()) ? "绑定" : "登录",
-                code,
-                Math.max(1, wechatMpConfig.getCodeExpireSeconds() / 60),
-                SCENE_BIND.equals(state.getScene()) ? "绑定" : "登录");
+        String redisKey = RedisConstant.getWxMpDirectCodeRedisKey(code);
+        stringRedisTemplate.opsForValue().set(redisKey, openId,
+                Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()));
+        long minutes = Math.max(1, wechatMpConfig.getCodeExpireSeconds() / 60);
+        return String.format("你的智面%s验证码为：%s，%d 分钟内有效。请在网页输入完成%s。",
+                SCENE_BIND.equals(scene) ? "绑定" : "登录",
+                code, minutes,
+                SCENE_BIND.equals(scene) ? "绑定" : "登录");
     }
 
     private WxMpIncomingMessage parseIncomingMessage(String requestBody) {
@@ -272,23 +303,7 @@ public class WxMpServiceImpl implements WxMpService {
         return StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录") + " " + ticket;
     }
 
-    private String extractTicket(String content) {
-        String normalizedContent = StringUtils.trimToEmpty(content).replaceAll("\\s+", " ");
-        if (StringUtils.isBlank(normalizedContent)) {
-            return null;
-        }
-        String keyword = StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录");
-        if (normalizedContent.startsWith(keyword + " ")) {
-            return StringUtils.trimToNull(normalizedContent.substring(keyword.length()));
-        }
-        if (StringUtils.equals(normalizedContent, keyword)) {
-            return null;
-        }
-        if (normalizedContent.matches("^[A-Za-z0-9]{6,24}$")) {
-            return normalizedContent;
-        }
-        return null;
-    }
+    // extractTicket 方法已废弃，绑定口令解析已内置于 handleIncomingMessage 中
 
     private String generateUniqueTicket() {
         for (int i = 0; i < 5; i++) {

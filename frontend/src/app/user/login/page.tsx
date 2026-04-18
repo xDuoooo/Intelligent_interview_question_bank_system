@@ -581,69 +581,36 @@ const UserLoginPage: React.FC = () => {
                       <QrCode className="h-7 w-7" />
                     </div>
                     <div className="space-y-1 text-sm text-slate-600">
-                      <div className="font-bold text-slate-900">使用公众号验证码登录</div>
-                      <div>1. 关注公众号，或直接打开已关注的公众号会话</div>
-                      <div>2. 向公众号发送页面里的登录口令</div>
-                      <div>3. 把公众号回复的 6 位数字验证码填回网页</div>
+                      <div className="font-bold text-slate-900">通过公众号验证码登录</div>
+                      <div>① 扫描下方二维码，关注公众号</div>
+                      <div>② 在公众号对话框中发送「<span className="font-bold text-emerald-700">{wxMpTicketInfo?.keyword || "登录"}</span>」</div>
+                      <div>③ 把公众号回复的 <span className="font-bold">6 位数字</span>填入下方输入框</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-3xl border border-slate-100 bg-slate-50/60 p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-slate-400">公众号</div>
-                      <div className="mt-1 text-base font-black text-slate-900">
-                        {wxMpTicketInfo?.accountName || "你的公众号"}
+                <div className="flex flex-col items-center gap-4 rounded-3xl border border-slate-100 bg-slate-50/60 p-5 sm:flex-row sm:items-center">
+                  <div className="flex h-44 w-44 shrink-0 items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-3">
+                    {wxMpTicketInfo?.qrImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={wxMpTicketInfo.qrImageUrl}
+                        alt="公众号二维码"
+                        className="h-full w-full rounded-2xl object-contain"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-400">
+                        <QrCode className="h-10 w-10" />
+                        <span>暂未配置二维码</span>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void createWxMpTicket();
-                      }}
-                      disabled={wxMpTicketLoading}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-all hover:border-primary hover:text-primary disabled:opacity-60"
-                    >
-                      {wxMpTicketLoading ? "刷新中..." : "刷新口令"}
-                    </button>
+                    )}
                   </div>
-
-                  <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-                    <div className="flex h-40 w-40 shrink-0 items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white p-3">
-                      {wxMpTicketInfo?.qrImageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={wxMpTicketInfo.qrImageUrl}
-                          alt="公众号二维码"
-                          className="h-full w-full rounded-2xl object-contain"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-2 text-center text-xs text-slate-400">
-                          <QrCode className="h-10 w-10" />
-                          <span>暂未配置二维码图片，请在微信里搜索公众号名称后发送下方口令</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="w-full space-y-4">
-                      <div className="space-y-2">
-                        <div className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                          发送给公众号的口令
-                        </div>
-                        <div className="rounded-2xl bg-white px-4 py-3 font-mono text-sm font-bold text-slate-800 shadow-sm ring-1 ring-slate-100">
-                          {wxMpTicketInfo?.keyword || "正在生成登录口令..."}
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm text-slate-600">
-                        {wxMpStatus?.message || "正在等待公众号回发验证码..."}
-                        {wxMpExpireText ? (
-                          <div className="mt-2 text-xs font-medium text-slate-400">
-                            本次口令预计在 {wxMpExpireText} 前有效
-                          </div>
-                        ) : null}
-                      </div>
+                  <div className="text-center sm:text-left space-y-1">
+                    <div className="text-xs font-bold uppercase tracking-wider text-slate-400">关注公众号</div>
+                    <div className="text-lg font-black text-slate-900">{wxMpTicketInfo?.accountName || "公众号"}</div>
+                    <div className="mt-2 text-sm text-slate-500">
+                      发送「<span className="font-bold text-primary">{wxMpTicketInfo?.keyword || "登录"}</span>」
+                      即可获得登录验证码
                     </div>
                   </div>
                 </div>

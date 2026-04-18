@@ -68,6 +68,18 @@ public interface RedisConstant {
     String WX_MP_LOGIN_TICKET_KEY_PREFIX = "wxmp:login:ticket:";
 
     /**
+     * 微信公众号直接验证码 Redis Key 前缀（code → openId 映射）
+     */
+    String WX_MP_DIRECT_CODE_KEY_PREFIX = "wxmp:direct:code:";
+
+    /**
+     * 获取公众号直接验证码 Redis Key
+     */
+    static String getWxMpDirectCodeRedisKey(String code) {
+        return WX_MP_DIRECT_CODE_KEY_PREFIX + code;
+    }
+
+    /**
      * 获取用户登录验证码 Redis Key
      */
     static String getUserLoginCodeRedisKey(String target) {
