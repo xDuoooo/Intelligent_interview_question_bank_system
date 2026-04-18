@@ -7,6 +7,7 @@ services:
     container_name: intelligent-interview-backend
     restart: unless-stopped
     environment:
+      JAVA_TOOL_OPTIONS: "-Dnacos.remote.client.grpc.channel.capability.negotiation.timeout=10000 -Dnacos.remote.client.grpc.timeout=10000 -Dnacos.remote.client.grpc.server.check.timeout=10000"
       SPRING_PROFILES_ACTIVE: prod
       NACOS_DISCOVERY_SERVER_ADDR: ${NACOS_DISCOVERY_SERVER_ADDR}
       NACOS_DISCOVERY_USERNAME: ${NACOS_DISCOVERY_USERNAME:-}
