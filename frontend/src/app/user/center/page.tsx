@@ -341,16 +341,16 @@ function UserCenterContent() {
           <Card
             className="user-tabs-card min-h-[600px]"
             tabList={[
-              { key: "overview", label: <span className="flex items-center gap-2"><LayoutDashboard size={16} />个人概览</span> },
-              { key: "record", label: <span className="flex items-center gap-2"><Calendar size={16} />成就看板</span> },
-              { key: "banks", label: <span className="flex items-center gap-2"><BookOpen size={16} />我的题库</span> },
-              { key: "submission", label: <span className="flex items-center gap-2"><FilePenLine size={16} />我的题目</span> },
-              { key: "notes", label: <span className="flex items-center gap-2"><NotebookPen size={16} />我的笔记</span> },
-              { key: "comments", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />评论足迹</span> },
-              { key: "posts", label: <span className="flex items-center gap-2"><MessageSquareText size={16} />社区足迹</span> },
-              { key: "security", label: <span className="flex items-center gap-2"><ShieldCheck size={16} />账号安全</span> },
-              { key: "favour", label: <span className="flex items-center gap-2"><Heart size={16} />收藏题目</span> },
-              { key: "history", label: <span className="flex items-center gap-2"><History size={16} />刷题轨迹</span> },
+              { key: "overview", label: <span className="flex items-center gap-2 whitespace-nowrap"><LayoutDashboard size={16} />个人概览</span> },
+              { key: "record", label: <span className="flex items-center gap-2 whitespace-nowrap"><Calendar size={16} />成就看板</span> },
+              { key: "banks", label: <span className="flex items-center gap-2 whitespace-nowrap"><BookOpen size={16} />我的题库</span> },
+              { key: "submission", label: <span className="flex items-center gap-2 whitespace-nowrap"><FilePenLine size={16} />我的题目</span> },
+              { key: "notes", label: <span className="flex items-center gap-2 whitespace-nowrap"><NotebookPen size={16} />我的笔记</span> },
+              { key: "comments", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />评论足迹</span> },
+              { key: "posts", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />社区足迹</span> },
+              { key: "security", label: <span className="flex items-center gap-2 whitespace-nowrap"><ShieldCheck size={16} />账号安全</span> },
+              { key: "favour", label: <span className="flex items-center gap-2 whitespace-nowrap"><Heart size={16} />收藏题目</span> },
+              { key: "history", label: <span className="flex items-center gap-2 whitespace-nowrap"><History size={16} />刷题轨迹</span> },
             ]}
             activeTabKey={activeTabKey}
             onTabChange={onTabChange}
