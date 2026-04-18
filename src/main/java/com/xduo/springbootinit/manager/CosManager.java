@@ -182,6 +182,12 @@ public class CosManager {
             if (qIndex != -1) {
                 key = key.substring(0, qIndex);
             }
+            try {
+                // 解决经过签名的中文 URL 被提取后再次去签名导致 "%E8" 变成 "%25E8" 的双重编码 BUG
+                key = java.net.URLDecoder.decode(key, java.nio.charset.StandardCharsets.UTF_8.name());
+            } catch (Exception e) {
+                log.error("URL decode error for key: " + key, e);
+            }
         }
 
         return key;
