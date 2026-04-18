@@ -114,48 +114,44 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
           )}
 
           {leaderboard.currentUserItem ? (
-            <div className="mt-5 rounded-[1.8rem] border border-primary/10 bg-primary/5 p-4">
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-xs font-black tracking-[0.14em] text-primary">
+            <div className="mt-5 rounded-[2.2rem] border border-primary/15 bg-primary/5 p-4 sm:p-5">
+              <div className="mb-4 flex items-center justify-between px-2">
+                <div className="text-[11px] font-black tracking-[0.2em] text-primary uppercase">
                   我的题库位置
                 </div>
-                <div className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 shadow-sm">
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                  继续追赶
-                </div>
+                <div className="h-[1px] flex-1 mx-4 bg-primary/10" />
+                <ArrowUpRight className="h-4 w-4 text-primary/40" />
               </div>
 
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_104px_144px] xl:items-center">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between px-1">
                 <UserProfileHoverCard user={leaderboard.currentUserItem} placement="topLeft">
-                  <div className="flex min-w-0 items-center gap-3">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black ${getRankBadgeClass(leaderboard.currentUserItem.rank)}`}
+                    >
+                      {leaderboard.currentUserItem.rank || "-"}
+                    </div>
                     <UserAvatar
                       src={leaderboard.currentUserItem.userAvatar}
                       name={leaderboard.currentUserItem.userName}
                       size={40}
                     />
                     <div className="min-w-0">
-                      <div className="break-keep text-base font-black leading-tight text-slate-900">
+                      <div className="break-keep font-black leading-tight text-slate-900">
                         {leaderboard.currentUserItem.userName || "当前用户"}
                       </div>
-                      <div className="mt-1 text-sm text-slate-500">
-                        继续完成更多题目，你的名次会很快刷新。
+                      <div className="mt-1 text-xs text-slate-500">
+                        {leaderboard.currentUserItem.userRole === "admin" ? "管理员" : "持续进阶中"}
                       </div>
                     </div>
                   </div>
                 </UserProfileHoverCard>
 
-                <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400 whitespace-nowrap">排名</div>
-                  <div className="mt-1 text-xl font-black text-slate-900">
-                    #{leaderboard.currentUserItem.rank || "-"}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl bg-white px-3 py-3 text-center shadow-sm">
-                  <div className="text-[11px] font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
+                <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between xl:min-w-[172px] xl:justify-end">
+                  <div className="text-xs font-bold tracking-[0.08em] leading-tight text-slate-400 whitespace-nowrap">
                     {leaderboard.currentUserItem.metricText || leaderboard.metricLabel || "完成题数"}
                   </div>
-                  <div className="mt-1 text-xl font-black text-slate-900">
+                  <div className="inline-flex min-w-[96px] items-center justify-center rounded-2xl bg-white px-4 py-2 text-lg font-black text-slate-900 shadow-sm">
                     {leaderboard.currentUserItem.metricValue || 0}
                   </div>
                 </div>

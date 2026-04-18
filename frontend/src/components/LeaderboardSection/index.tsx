@@ -171,23 +171,22 @@ export default function LeaderboardSection({ leaderboard }: Props) {
                           userRole: board.currentUserItem.userRole,
                         } as any}
                       >
-                        <div className="group/my flex items-center justify-between rounded-xl bg-white border border-slate-200 p-3 shadow-sm transition-all duration-200 hover:bg-slate-50 cursor-pointer hover:border-slate-300">
+                        <div className="group/my flex items-center justify-between rounded-xl p-2.5 transition-all duration-200 hover:bg-white/80 hover:shadow-sm cursor-pointer border border-slate-200 bg-white shadow-sm hover:border-slate-300">
                           <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex flex-col items-center justify-center min-w-[28px] pl-1">
-                              <Sparkles className="h-3 w-3 text-slate-400 mb-0.5" />
-                              <span className="font-bold text-slate-500 text-xs">#{board.currentUserItem.rank || "-"}</span>
+                            <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${getRankBadgeBg(board.currentUserItem.rank || 0)}`}>
+                              {board.currentUserItem.rank === 1 ? <Medal className="h-3 w-3" /> : (board.currentUserItem.rank || "-")}
                             </div>
                             <UserAvatar src={board.currentUserItem.userAvatar} name={board.currentUserItem.userName} size={36} />
-                            <div className="min-w-0 flex-1 ml-1">
-                              <div className="truncate text-sm font-bold text-slate-800">
-                                {board.currentUserItem.userName || "当前用户"}
-                              </div>
-                              <div className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">
-                                My Score
-                              </div>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="truncate text-sm font-bold text-slate-700 group-hover/my:text-slate-900">
+                                  {board.currentUserItem.userName || "当前用户"}
+                                </span>
+                                {board.currentUserItem.userRole === "admin" && (
+                                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                )}
                             </div>
                           </div>
-                          <div className="shrink-0 font-black text-slate-800 text-lg pr-2 text-right">
+                          <div className={`shrink-0 font-bold pl-3 ${board.currentUserItem.rank === 1 ? theme.accentText : 'text-slate-700'}`}>
                             {board.currentUserItem.metricValue || 0}
                           </div>
                         </div>
