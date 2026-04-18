@@ -117,8 +117,8 @@ public class FileController {
                 file = File.createTempFile(filepath, null);
                 multipartFile.transferTo(file);
                 cosManager.putObject(filepath, file);
-                // 只返回 COS key，签名 URL 在读取时（构建 VO）统一生成
-                return ResultUtils.success(filepath);
+                // 返回签名过的临时 URL 供前端预览。虽然前端会将它提回更新资料接口，但后续解析逻辑可安全剥离签名参数并生成新签名。
+                return ResultUtils.success(cosManager.resolveSignedUrl(filepath));
             } catch (Exception e) {
                 log.error("COS upload error, filepath = " + filepath, e);
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传至云存储失败");

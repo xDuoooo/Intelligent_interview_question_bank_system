@@ -134,29 +134,56 @@ public class CosManager {
             return null;
         }
 
+        String key = null;
+
         // 尝试从 customizedCosHost 提取
         if (StringUtils.isNotBlank(customizedCosHost)) {
             String normalizedHost = StringUtils.removeEnd(customizedCosHost, "/");
-            if (url.startsWith(normalizedHost)) {
-                return url.substring(normalizedHost.length());
+            if (!normalizedHost.startsWith("http")) {
+                if (url.startsWith("https://" + normalizedHost)) {
+                    key = url.substring(("https://" + normalizedHost).length());
+                } else if (url.startsWith("http://" + normalizedHost)) {
+                    key = url.substring(("http://" + normalizedHost).length());
+                } else if (url.startsWith(normalizedHost)) {
+                    key = url.substring(normalizedHost.length());
+                }
+            } else if (url.startsWith(normalizedHost)) {
+                key = url.substring(normalizedHost.length());
             }
         }
 
         // 尝试从 cosHost 提取
-        if (StringUtils.isNotBlank(cosHost)) {
+        if (key == null && StringUtils.isNotBlank(cosHost)) {
             String normalizedHost = StringUtils.removeEnd(cosHost, "/");
-            if (url.startsWith(normalizedHost)) {
-                return url.substring(normalizedHost.length());
+            if (!normalizedHost.startsWith("http")) {
+                if (url.startsWith("https://" + normalizedHost)) {
+                    key = url.substring(("https://" + normalizedHost).length());
+                } else if (url.startsWith("http://" + normalizedHost)) {
+                    key = url.substring(("http://" + normalizedHost).length());
+                } else if (url.startsWith(normalizedHost)) {
+                    key = url.substring(normalizedHost.length());
+                }
+            } else if (url.startsWith(normalizedHost)) {
+                key = url.substring(normalizedHost.length());
             }
         }
 
         // 尝试从默认格式提取：https://{bucket}.cos.{region}.myqcloud.com
-        String defaultHost = String.format("https://%s.cos.%s.myqcloud.com",
-                cosClientConfig.getBucket(), cosClientConfig.getRegion());
-        if (url.startsWith(defaultHost)) {
-            return url.substring(defaultHost.length());
+        if (key == null) {
+            String defaultHost = String.format("https://%s.cos.%s.myqcloud.com",
+                    cosClientConfig.getBucket(), cosClientConfig.getRegion());
+            if (url.startsWith(defaultHost)) {
+                key = url.substring(defaultHost.length());
+            }
         }
 
-        return null;
+        if (key != null) {
+            int qIndex = key.indexOf("?");
+            if (qIndex != -1) {
+                key = key.substring(0, qIndex);
+            }
+        }
+
+        return key;
     }
 }
