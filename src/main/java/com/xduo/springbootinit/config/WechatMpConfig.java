@@ -18,6 +18,16 @@ public class WechatMpConfig {
     private boolean enabled;
 
     /**
+     * 微信公众号的 AppID
+     */
+    private String appId;
+
+    /**
+     * 微信公众号的 AppSecret
+     */
+    private String appSecret;
+
+    /**
      * 微信公众号后台配置的开发者 Token
      */
     private String token;

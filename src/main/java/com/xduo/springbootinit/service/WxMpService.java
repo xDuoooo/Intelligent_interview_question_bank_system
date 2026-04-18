@@ -50,4 +50,9 @@ public interface WxMpService {
      * 使用公众号验证码绑定当前账号
      */
     LoginUserVO bindByCode(WxMpCodeLoginRequest request, HttpServletRequest httpServletRequest);
+
+    /**
+     * 同步公众号自定义菜单
+     */
+    void syncMenu();
 }
