@@ -263,6 +263,9 @@ public class QuestionBankController {
         } catch (Throwable ex) {
             // 业务异常
             if (!BlockException.isBlockException(ex)) {
+                if (ex instanceof BusinessException businessException) {
+                    throw businessException;
+                }
                 Tracer.trace(ex);
                 return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
             }

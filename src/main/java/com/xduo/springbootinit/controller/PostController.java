@@ -2,6 +2,7 @@ package com.xduo.springbootinit.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.DeleteRequest;
@@ -41,6 +42,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -368,6 +371,7 @@ public class PostController {
      * 举报帖子
      */
     @PostMapping("/report")
+    @Transactional(rollbackFor = Exception.class)
     public BaseResponse<Boolean> reportPost(@RequestBody PostReportRequest postReportRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(postReportRequest == null || postReportRequest.getPostId() == null || postReportRequest.getPostId() <= 0,
                 ErrorCode.PARAMS_ERROR);
@@ -386,16 +390,19 @@ public class PostController {
         report.setUserId(loginUser.getId());
         report.setReason(StringUtils.abbreviate(postReportRequest.getReason().trim(), 200));
         report.setStatus(0);
-        postReportMapper.insert(report);
-
-        Post updatePost = new Post();
-        updatePost.setId(post.getId());
-        updatePost.setReportNum((post.getReportNum() == null ? 0 : post.getReportNum()) + 1);
-        if ((post.getReportNum() == null ? 0 : post.getReportNum()) + 1 >= 3) {
-            updatePost.setReviewStatus(PostConstant.REVIEW_STATUS_PENDING);
-            updatePost.setReviewMessage("社区举报触发人工复核");
+        try {
+            postReportMapper.insert(report);
+        } catch (DuplicateKeyException duplicateKeyException) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "你已经举报过这篇帖子了");
         }
-        boolean result = postService.updateById(updatePost);
+
+        LambdaUpdateWrapper<Post> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(Post::getId, post.getId())
+                .setSql("reviewStatus = CASE WHEN COALESCE(reportNum, 0) >= 2 THEN "
+                        + PostConstant.REVIEW_STATUS_PENDING + " ELSE reviewStatus END")
+                .setSql("reviewMessage = CASE WHEN COALESCE(reportNum, 0) >= 2 THEN '社区举报触发人工复核' ELSE reviewMessage END")
+                .setSql("reportNum = COALESCE(reportNum, 0) + 1");
+        boolean result = postService.update(updateWrapper);
         if (result) {
             Post latestPost = postService.getById(post.getId());
             postService.syncPostToEs(latestPost);
