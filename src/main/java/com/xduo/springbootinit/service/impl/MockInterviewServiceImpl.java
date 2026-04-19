@@ -27,9 +27,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -467,10 +469,19 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
     }
 
     private long countCandidateAnswers(List<InterviewMessage> messageList) {
-        return messageList.stream()
-                .filter(message -> !message.isAI)
-                .filter(message -> !"end".equals(message.stage))
-                .count();
+        Set<Integer> answeredRoundSet = new HashSet<>();
+        long answerCountWithoutRound = 0;
+        for (InterviewMessage message : messageList) {
+            if (message.isAI || "end".equals(message.stage)) {
+                continue;
+            }
+            if (message.round != null && message.round > 0) {
+                answeredRoundSet.add(message.round);
+            } else {
+                answerCountWithoutRound++;
+            }
+        }
+        return answeredRoundSet.size() + answerCountWithoutRound;
     }
 
     private String buildOpeningIntro(MockInterview mockInterview) {
@@ -586,6 +597,15 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
     }
 
     private int getNextRoundNumber(List<InterviewMessage> messageList) {
+        for (int i = messageList.size() - 1; i >= 0; i--) {
+            InterviewMessage interviewMessage = messageList.get(i);
+            if (interviewMessage.isAI
+                    && ("question".equals(interviewMessage.stage) || "probe".equals(interviewMessage.stage))
+                    && interviewMessage.round != null
+                    && interviewMessage.round > 0) {
+                return interviewMessage.round;
+            }
+        }
         return (int) countCandidateAnswers(messageList) + 1;
     }
 

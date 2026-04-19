@@ -25,8 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.text.ParseException;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -103,10 +104,17 @@ public class AdminOperationLogController {
         queryWrapper.like(StringUtils.isNotBlank(queryRequest.getOperation()), "operation", queryRequest.getOperation());
         queryWrapper.like(StringUtils.isNotBlank(queryRequest.getMethod()), "method", queryRequest.getMethod());
         queryWrapper.like(StringUtils.isNotBlank(queryRequest.getIp()), "ip", queryRequest.getIp());
-        Date startTime = parseDate(queryRequest.getStartTime());
-        Date endTime = parseDate(queryRequest.getEndTime());
+        Date startTime = parseDate(queryRequest.getStartTime(), false);
+        boolean endDateOnly = isDateOnly(queryRequest.getEndTime());
+        Date endTime = parseDate(queryRequest.getEndTime(), endDateOnly);
         queryWrapper.ge(startTime != null, "createTime", startTime);
-        queryWrapper.le(endTime != null, "createTime", endTime);
+        if (endTime != null) {
+            if (endDateOnly) {
+                queryWrapper.lt("createTime", endTime);
+            } else {
+                queryWrapper.le("createTime", endTime);
+            }
+        }
         String sortField = queryRequest.getSortField();
         String sortOrder = queryRequest.getSortOrder();
         if (SqlUtils.validSortField(sortField)) {
@@ -117,25 +125,41 @@ public class AdminOperationLogController {
         return queryWrapper;
     }
 
-    private Date parseDate(String dateStr) {
+    private Date parseDate(String dateStr, boolean endOfDateRange) {
         if (StringUtils.isBlank(dateStr)) {
             return null;
         }
+        String trimDateStr = dateStr.trim();
         String[] patterns = {
                 "yyyy-MM-dd HH:mm:ss",
                 "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSX",
                 "yyyy-MM-dd'T'HH:mm:ssX",
                 "yyyy-MM-dd'T'HH:mm:ss",
                 "yyyy-MM-dd"
         };
         for (String pattern : patterns) {
-            try {
-                return new SimpleDateFormat(pattern).parse(dateStr);
-            } catch (ParseException ignored) {
+            SimpleDateFormat dateFormat = new SimpleDateFormat(pattern);
+            dateFormat.setLenient(false);
+            ParsePosition parsePosition = new ParsePosition(0);
+            Date parsedDate = dateFormat.parse(trimDateStr, parsePosition);
+            if (parsedDate != null && parsePosition.getIndex() == trimDateStr.length()) {
+                if (endOfDateRange && "yyyy-MM-dd".equals(pattern)) {
+                    Calendar calendar = Calendar.getInstance();
+                    calendar.setTime(parsedDate);
+                    calendar.add(Calendar.DAY_OF_MONTH, 1);
+                    return calendar.getTime();
+                }
+                return parsedDate;
             }
         }
         throw new BusinessException(ErrorCode.PARAMS_ERROR, "时间格式错误");
+    }
+
+    private boolean isDateOnly(String dateStr) {
+        return StringUtils.isNotBlank(dateStr) && dateStr.trim().matches("\\d{4}-\\d{2}-\\d{2}");
     }
 
     private String formatDateTime(Date date) {

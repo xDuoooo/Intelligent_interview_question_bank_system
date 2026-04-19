@@ -244,13 +244,21 @@ public class NotificationController {
     @PostMapping("/read/all")
     public BaseResponse<Boolean> readAllNotification(HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
+        QueryWrapper<Notification> countWrapper = new QueryWrapper<>();
+        countWrapper.eq("userId", loginUser.getId());
+        countWrapper.eq("status", 0);
+        long unreadCount = notificationService.count(countWrapper);
+        if (unreadCount <= 0) {
+            return ResultUtils.success(true);
+        }
         Notification notification = new Notification();
         notification.setStatus(1);
         QueryWrapper<Notification> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", loginUser.getId());
         queryWrapper.eq("status", 0);
         boolean result = notificationService.update(notification, queryWrapper);
-        return ResultUtils.success(result);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "标记已读失败");
+        return ResultUtils.success(true);
     }
 
     /**

@@ -75,7 +75,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         queryWrapper.eq(StringUtils.isNotBlank(type), "type", type);
         queryWrapper.eq(status != null, "status", status);
         queryWrapper.eq(targetId != null, "targetId", targetId);
-        queryWrapper.eq("isDelete", false);
+        queryWrapper.eq("isDelete", 0);
         if (SqlUtils.validSortField(sortField)) {
             queryWrapper.orderBy(true, CommonConstant.SORT_ORDER_ASC.equals(sortOrder), sortField);
         } else {
