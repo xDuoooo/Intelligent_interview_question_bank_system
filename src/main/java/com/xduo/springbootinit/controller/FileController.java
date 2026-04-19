@@ -107,14 +107,16 @@ public class FileController {
 
         // 文件目录：根据业务、用户来划分
         String uuid = RandomStringUtils.randomAlphanumeric(8);
-        String filename = uuid + "-" + multipartFile.getOriginalFilename();
+        String originalFilename = StringUtils.defaultIfBlank(FileUtil.getName(multipartFile.getOriginalFilename()), "file");
+        String filename = uuid + "-" + originalFilename.replaceAll("[\\\\/\\r\\n\\t]+", "_");
         String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
 
         // 优先使用 COS，若未配置则使用本地存储
         if (cosAccessKey != null && !cosAccessKey.equals("xxx")) {
             File file = null;
             try {
-                file = File.createTempFile(filepath, null);
+                String fileSuffix = FileUtil.getSuffix(filename);
+                file = File.createTempFile("upload-" + uuid + "-", StringUtils.isBlank(fileSuffix) ? null : "." + fileSuffix);
                 multipartFile.transferTo(file);
                 cosManager.putObject(filepath, file);
                 // 返回签名过的临时 URL 供前端预览。虽然前端会将它提回更新资料接口，但后续解析逻辑可安全剥离签名参数并生成新签名。
@@ -171,9 +173,12 @@ public class FileController {
         // 文件大小
         long fileSize = multipartFile.getSize();
         // 文件后缀
-        String fileSuffix = FileUtil.getSuffix(multipartFile.getOriginalFilename());
+        String fileSuffix = StringUtils.lowerCase(FileUtil.getSuffix(multipartFile.getOriginalFilename()));
         final long ONE_M = 1024 * 1024L;
         if (FileUploadBizEnum.USER_AVATAR.equals(fileUploadBizEnum)) {
+            if (fileSize <= 0) {
+                throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件不能为空");
+            }
             if (fileSize > ONE_M) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "文件大小不能超过 1M");
             }

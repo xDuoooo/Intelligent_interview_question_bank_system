@@ -279,11 +279,15 @@ public class NotificationController {
         if (!oldNotification.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
+        if (Integer.valueOf(1).equals(oldNotification.getStatus())) {
+            return ResultUtils.success(true);
+        }
         Notification notification = new Notification();
         notification.setId(id);
         notification.setStatus(1);
         boolean result = notificationService.updateById(notification);
-        return ResultUtils.success(result);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "标记已读失败");
+        return ResultUtils.success(true);
     }
 
     // endregion

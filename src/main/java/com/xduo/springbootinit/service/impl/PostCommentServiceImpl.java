@@ -88,11 +88,9 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             PostComment parent = getById(parentId);
             ThrowUtils.throwIf(parent == null || Objects.equals(parent.getIsDelete(), 1), ErrorCode.NOT_FOUND_ERROR, "父回复不存在");
             ThrowUtils.throwIf(!postId.equals(parent.getPostId()), ErrorCode.PARAMS_ERROR, "父回复与帖子不匹配");
+            // 回复子评论时平铺到顶级评论下，否则列表树只取一层子评论会漏展示。
             if (parent.getParentId() != null) {
-                PostComment grandParent = getById(parent.getParentId());
-                if (grandParent != null && grandParent.getParentId() != null) {
-                    parentId = parent.getParentId();
-                }
+                parentId = parent.getParentId();
             }
         }
         if (request.getReplyToId() != null) {
@@ -155,6 +153,7 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
         ThrowUtils.throwIf(request == null || request.getPostId() == null, ErrorCode.PARAMS_ERROR);
         long current = request.getCurrent();
         long pageSize = Math.min(request.getPageSize(), 20);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         User loginUser = userService.getLoginUserPermitNull(httpRequest);
 
         LambdaQueryWrapper<PostComment> wrapper = new LambdaQueryWrapper<>();

@@ -402,8 +402,9 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
-        if (StringUtils.isNotBlank(userUpdateMyRequest.getUserAccount())) {
-            String userAccount = userUpdateMyRequest.getUserAccount().trim();
+        if (userUpdateMyRequest.getUserAccount() != null) {
+            String userAccount = StringUtils.trimToNull(userUpdateMyRequest.getUserAccount());
+            ThrowUtils.throwIf(userAccount == null, ErrorCode.PARAMS_ERROR, "登录账号不能为空");
             userService.checkUserAccountUnique(userAccount, loginUser.getId());
             userUpdateMyRequest.setUserAccount(userAccount);
         }

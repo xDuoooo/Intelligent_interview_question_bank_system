@@ -87,11 +87,11 @@ public class UserFollowServiceImpl extends ServiceImpl<UserFollowMapper, UserFol
         synchronized (("user_follow:" + userId).intern()) {
             QueryWrapper<UserFollow> queryWrapper = buildRelationQueryWrapper(userId, followUserId);
             if (this.count(queryWrapper) == 0) {
-                return false;
+                return true;
             }
             boolean result = this.remove(queryWrapper);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
-            return false;
+            return true;
         }
     }
 

@@ -100,21 +100,16 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         Long parentId = request.getParentId();
         if (parentId != null) {
             QuestionComment parent = getById(parentId);
-            ThrowUtils.throwIf(parent == null || parent.getIsDelete() == 1, ErrorCode.NOT_FOUND_ERROR, "父评论不存在");
+            ThrowUtils.throwIf(parent == null || Objects.equals(parent.getIsDelete(), 1), ErrorCode.NOT_FOUND_ERROR, "父评论不存在");
             ThrowUtils.throwIf(!questionId.equals(parent.getQuestionId()), ErrorCode.PARAMS_ERROR, "父评论与题目不匹配");
-            // 检查深度，父评论若已有 parentId 则已经是第 2 级，再回复就是第 3 级
-            // 若父评论是第 3 级，则将 parentId 设为该评论的 parentId（"引用上一级"）
+            // 评论列表只展示两层：回复子评论时仍挂到顶级评论下，replyToId 保留被回复对象。
             if (parent.getParentId() != null) {
-                QuestionComment grandParent = getById(parent.getParentId());
-                if (grandParent != null && grandParent.getParentId() != null) {
-                    // 已是第 3 层，将 parentId 提升为 grandParent
-                    parentId = parent.getParentId();
-                }
+                parentId = parent.getParentId();
             }
         }
         if (request.getReplyToId() != null) {
             QuestionComment replyToComment = getById(request.getReplyToId());
-            ThrowUtils.throwIf(replyToComment == null || replyToComment.getIsDelete() == 1, ErrorCode.NOT_FOUND_ERROR, "回复目标不存在");
+            ThrowUtils.throwIf(replyToComment == null || Objects.equals(replyToComment.getIsDelete(), 1), ErrorCode.NOT_FOUND_ERROR, "回复目标不存在");
             ThrowUtils.throwIf(!questionId.equals(replyToComment.getQuestionId()), ErrorCode.PARAMS_ERROR, "回复目标与题目不匹配");
         }
 
@@ -188,6 +183,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
 
         long current = request.getCurrent();
         long pageSize = Math.min(request.getPageSize(), 50);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         String sortField = StringUtils.isNotBlank(request.getSortField()) ? request.getSortField() : "createTime";
         String sortOrder = StringUtils.isNotBlank(request.getSortOrder()) ? request.getSortOrder() : CommonConstant.SORT_ORDER_DESC;
         // 获取当前登录用户（可为 null）
@@ -335,7 +331,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                      .setSql("reportNum = reportNum + 1");
 
         // 若举报次数达到阈值，自动进入待审核
-        int newReportNum = comment.getReportNum() + 1;
+        int newReportNum = Optional.ofNullable(comment.getReportNum()).orElse(0) + 1;
         if (newReportNum >= AUTO_HIDE_REPORT_NUM) {
             updateWrapper.set(QuestionComment::getStatus, COMMENT_STATUS_PENDING);
             updateWrapper.set(QuestionComment::getReviewMessage, "社区举报触发人工复核");
@@ -533,6 +529,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         long current = request.getCurrent();
         long pageSize = Math.min(request.getPageSize(), 50);
+        ThrowUtils.throwIf(current <= 0 || pageSize <= 0, ErrorCode.PARAMS_ERROR, "分页参数不合法");
 
         LambdaQueryWrapper<QuestionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(request.getQuestionId() != null, QuestionComment::getQuestionId, request.getQuestionId())
