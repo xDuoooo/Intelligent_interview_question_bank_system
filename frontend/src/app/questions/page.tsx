@@ -62,6 +62,20 @@ function normalizeSortOrder(value?: string | string[]) {
   return sortOrder === "ascend" ? "ascend" : "descend";
 }
 
+function buildQuestionTableKey(params: API.QuestionQueryRequest) {
+  return JSON.stringify({
+    searchText: params.searchText || "",
+    title: params.title || "",
+    content: params.content || "",
+    answer: params.answer || "",
+    difficulty: params.difficulty || "",
+    tags: params.tags || [],
+    sortField: params.sortField || "createTime",
+    sortOrder: params.sortOrder || "descend",
+    current: params.current || 1,
+  });
+}
+
 async function loadMyDraftQuestions(requestOptions: { headers: { cookie: string } }) {
   const sectionResults = await Promise.all(
     MY_DRAFT_SECTIONS.map(async (section) => {
@@ -241,6 +255,7 @@ export default async function QuestionsPage({
       {/* Main Content Area */}
       <section className="bg-white/50 backdrop-blur-sm rounded-[3rem] p-6 sm:p-10 border border-white shadow-2xl shadow-slate-200/50">
         <QuestionTable
+          key={buildQuestionTableKey(defaultSearchParams)}
           defaultQuestionList={questionList}
           defaultTotal={total}
           defaultSearchParams={defaultSearchParams}

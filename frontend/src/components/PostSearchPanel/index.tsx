@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,8 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
   const router = useRouter();
   const pathname = usePathname() || "/posts";
   const searchParams = useSearchParams();
-  const [keyword, setKeyword] = useState(searchParams?.get("q") || "");
+  const currentKeyword = searchParams?.get("q") || "";
+  const [keyword, setKeyword] = useState(currentKeyword);
 
   const activeTag = searchParams?.get("tag") || "";
   const activeFeatured = searchParams?.get("featured") === "1";
@@ -47,6 +48,10 @@ export default function PostSearchPanel({ suggestedTags = [] }: Props) {
     () => Array.from(new Set(suggestedTags.filter(Boolean))).slice(0, 8),
     [suggestedTags],
   );
+
+  useEffect(() => {
+    setKeyword(currentKeyword);
+  }, [currentKeyword]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

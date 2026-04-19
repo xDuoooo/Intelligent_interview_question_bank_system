@@ -35,7 +35,9 @@ const AccessLayout: React.FC<
 
   React.useEffect(() => {
     if (shouldRedirectToLogin) {
-      router.replace(`/user/login?redirect=${encodeURIComponent(pathname)}`);
+      const currentSearch = typeof window !== "undefined" ? window.location.search : "";
+      const currentPathWithQuery = `${pathname}${currentSearch}`;
+      router.replace(`/user/login?redirect=${encodeURIComponent(currentPathWithQuery)}`);
     }
   }, [pathname, router, shouldRedirectToLogin]);
 
