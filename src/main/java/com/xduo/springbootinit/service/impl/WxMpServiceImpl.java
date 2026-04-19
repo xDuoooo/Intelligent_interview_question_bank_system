@@ -289,8 +289,8 @@ public class WxMpServiceImpl implements WxMpService {
         if (StringUtils.isBlank(openId)) {
             return "获取验证码失败，请稍后重试。";
         }
-        // 生成6位数字验证码，存入 Redis，key 为验证码，value 为 openId
-        String code = RandomUtil.randomNumbers(6);
+        // 生成不冲突的6位数字验证码，存入 Redis，key 为验证码，value 为 openId。
+        String code = generateUniqueDirectCode();
         String redisKey = RedisConstant.getWxMpDirectCodeRedisKey(code);
         stringRedisTemplate.opsForValue().set(redisKey, openId,
                 Duration.ofSeconds(wechatMpConfig.getCodeExpireSeconds()));
@@ -299,6 +299,16 @@ public class WxMpServiceImpl implements WxMpService {
                 SCENE_BIND.equals(scene) ? "绑定" : "登录",
                 code, minutes,
                 SCENE_BIND.equals(scene) ? "绑定" : "登录");
+    }
+
+    private String generateUniqueDirectCode() {
+        for (int i = 0; i < 10; i++) {
+            String code = RandomUtil.randomNumbers(6);
+            if (!Boolean.TRUE.equals(stringRedisTemplate.hasKey(RedisConstant.getWxMpDirectCodeRedisKey(code)))) {
+                return code;
+            }
+        }
+        throw new BusinessException(ErrorCode.SYSTEM_ERROR, "生成公众号验证码失败，请稍后重试");
     }
 
     private WxMpIncomingMessage parseIncomingMessage(String requestBody) {
@@ -351,14 +361,21 @@ public class WxMpServiceImpl implements WxMpService {
     }
 
     private String buildWelcomeText() {
-        return "欢迎来到智面公众号助手。若你正在网页上登录或绑定账号，请把页面给你的口令发给我，例如：" + buildLoginKeyword("ABC12345");
+        return "欢迎来到智面公众号助手。登录请发送「"
+                + StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录")
+                + "」获取验证码；绑定账号请先在网页获取绑定口令，再发送「绑定 口令」。";
     }
 
     private String buildHelpText() {
-        return "请先在智面网页上获取登录或绑定口令，然后把它发给我，例如：" + buildLoginKeyword("ABC12345");
+        return "登录请发送「"
+                + StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录")
+                + "」获取验证码；绑定账号请发送网页展示的「绑定 口令」。";
     }
 
-    private String buildLoginKeyword(String ticket) {
+    private String buildTicketKeyword(String scene, String ticket) {
+        if (SCENE_BIND.equals(scene)) {
+            return "绑定 " + ticket;
+        }
         return StringUtils.defaultIfBlank(wechatMpConfig.getLoginKeyword(), "登录") + " " + ticket;
     }
 
@@ -432,7 +449,7 @@ public class WxMpServiceImpl implements WxMpService {
 
         WxMpLoginTicketVO ticketVO = new WxMpLoginTicketVO();
         ticketVO.setTicket(ticket);
-        ticketVO.setKeyword(buildLoginKeyword(ticket));
+        ticketVO.setKeyword(buildTicketKeyword(scene, ticket));
         ticketVO.setExpireAt(expireAt);
         ticketVO.setAccountName(StringUtils.defaultIfBlank(wechatMpConfig.getAccountName(), "你的公众号"));
         ticketVO.setQrImageUrl(wechatMpConfig.getQrImageUrl());

@@ -63,6 +63,10 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         if (status < 0 || status > 2) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "刷题状态不合法");
         }
+        Question question = questionService.getById(questionId);
+        if (question == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        }
         // 先查询是否已经有记录
         QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("userId", userId);
@@ -70,10 +74,7 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         UserQuestionHistory oldHistory = this.getOne(queryWrapper);
 
         if (oldHistory != null) {
-            // 状态值本身不是业务优先级，掌握应高于困难，困难高于浏览
-            if (shouldReplaceStatus(oldHistory.getStatus(), status)) {
-                oldHistory.setStatus(status);
-            }
+            oldHistory.setStatus(status);
             oldHistory.setUpdateTime(new Date());
             return this.updateById(oldHistory);
         } else {
@@ -279,26 +280,6 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
         stats.put("masteredCount", parseLong(result == null ? null : result.get("masteredCount")));
         stats.put("todayCount", parseLong(result == null ? null : result.get("todayCount")));
         return stats;
-    }
-
-    private boolean shouldReplaceStatus(Integer oldStatus, Integer newStatus) {
-        return getStatusPriority(newStatus) > getStatusPriority(oldStatus);
-    }
-
-    private int getStatusPriority(Integer status) {
-        if (status == null) {
-            return 0;
-        }
-        switch (status) {
-            case 1:
-                return 3;
-            case 2:
-                return 2;
-            case 0:
-                return 1;
-            default:
-                return 0;
-        }
     }
 
     private Date toDate(LocalDate localDate, boolean startOfDay) {
