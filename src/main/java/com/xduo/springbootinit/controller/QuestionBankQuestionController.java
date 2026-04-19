@@ -77,6 +77,13 @@ public class QuestionBankQuestionController {
         User loginUser = userService.getLoginUser(request);
         ensureCanManageQuestionBank(questionBankId, loginUser, request);
         ensureCanManageQuestion(question, loginUser, request);
+        LambdaQueryWrapper<QuestionBankQuestion> relationQueryWrapper = Wrappers.lambdaQuery(QuestionBankQuestion.class)
+                .eq(QuestionBankQuestion::getQuestionBankId, questionBankId)
+                .eq(QuestionBankQuestion::getQuestionId, questionId);
+        QuestionBankQuestion oldRelation = questionBankQuestionService.getOne(relationQueryWrapper, false);
+        if (oldRelation != null) {
+            return ResultUtils.success(oldRelation.getId());
+        }
         QuestionBankQuestion questionBankQuestion = new QuestionBankQuestion();
         questionBankQuestion.setQuestionBankId(questionBankId);
         questionBankQuestion.setQuestionId(questionId);

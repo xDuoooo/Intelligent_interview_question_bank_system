@@ -386,6 +386,9 @@ public class QuestionController {
         } catch (Throwable ex) {
             // 业务异常
             if (!BlockException.isBlockException(ex)) {
+                if (ex instanceof BusinessException businessException) {
+                    throw businessException;
+                }
                 Tracer.trace(ex);
                 return ResultUtils.error(ErrorCode.SYSTEM_ERROR, "系统错误");
             }
@@ -464,7 +467,8 @@ public class QuestionController {
                 .set(Question::getTitle, question.getTitle())
                 .set(Question::getContent, question.getContent())
                 .set(Question::getTags, question.getTags())
-                .set(Question::getAnswer, question.getAnswer());
+                .set(Question::getAnswer, question.getAnswer())
+                .set(Question::getDifficulty, question.getDifficulty());
         if (!isAdmin) {
             if (QuestionConstant.REVIEW_STATUS_APPROVED == oldReviewStatus) {
                 updateWrapper.set(Question::getReviewStatus, QuestionConstant.REVIEW_STATUS_PENDING)
