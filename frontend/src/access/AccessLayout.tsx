@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { RootState } from "@/stores";
 import { findAllMenuItemByPath } from "../../config/menu";
@@ -20,16 +20,36 @@ const AccessLayout: React.FC<
   }>
 > = ({ children }) => {
   const pathname = usePathname() ?? "/";
+  const router = useRouter();
   const authInitialized = useAuthInitialized();
   // 当前登录用户
   const loginUser = useSelector((state: RootState) => state.loginUser);
   // 获取当前路径需要的权限
   const menu = findAllMenuItemByPath(pathname);
   const needAccess = menu?.access ?? ACCESS_ENUM.NOT_LOGIN;
+  const loginUserAccess = loginUser?.userRole ?? ACCESS_ENUM.NOT_LOGIN;
+  const shouldRedirectToLogin =
+    authInitialized &&
+    needAccess !== ACCESS_ENUM.NOT_LOGIN &&
+    (!loginUser?.id || loginUserAccess === ACCESS_ENUM.NOT_LOGIN);
+
+  React.useEffect(() => {
+    if (shouldRedirectToLogin) {
+      router.replace(`/user/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [pathname, router, shouldRedirectToLogin]);
+
   if (!authInitialized && needAccess !== ACCESS_ENUM.NOT_LOGIN) {
     return (
       <div className="max-width-content py-20 text-center text-slate-400">
         正在校验登录状态...
+      </div>
+    );
+  }
+  if (shouldRedirectToLogin) {
+    return (
+      <div className="max-width-content py-20 text-center text-slate-400">
+        正在前往登录页...
       </div>
     );
   }

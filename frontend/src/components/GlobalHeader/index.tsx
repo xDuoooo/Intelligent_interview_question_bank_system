@@ -15,7 +15,7 @@ import ACCESS_ENUM from "@/access/accessEnum";
 import getAccessibleMenus from "@/access/menuAccess";
 import { menus } from "../../../config/menu";
 import { cn, validateImageSrc } from "@/lib/utils";
-import { Search, Menu, X, LogOut, User, Settings, Crown, ChevronDown } from "lucide-react";
+import { Search, Menu, X, LogOut, User, Crown, ChevronDown } from "lucide-react";
 
 const NotificationPopover = dynamic(() => import("../NotificationPopover"), {
   ssr: false,
@@ -31,9 +31,17 @@ export default function GlobalHeader() {
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [questionSearchText, setQuestionSearchText] = useState("");
 
   // 获取可访问的菜单
   const accessibleMenus = getAccessibleMenus(loginUser, menus);
+
+  const handleQuestionSearch = () => {
+    const keyword = questionSearchText.trim();
+    const nextUrl = keyword ? `/questions?q=${encodeURIComponent(keyword)}` : "/questions";
+    router.push(nextUrl);
+    setIsMobileMenuOpen(false);
+  };
 
   const handleLogout = async () => {
     try {
@@ -95,10 +103,12 @@ export default function GlobalHeader() {
               <input
                 type="text"
                 placeholder="搜索题目..."
+                value={questionSearchText}
+                onChange={(e) => setQuestionSearchText(e.target.value)}
                 className="h-10 w-48 xl:w-64 rounded-full bg-muted/50 pl-10 pr-4 text-sm outline-none ring-primary/20 transition-all focus:ring-2 focus:w-72 xl:focus:w-80"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    router.push(`/questions?q=${(e.target as HTMLInputElement).value}`);
+                    handleQuestionSearch();
                   }
                 }}
               />
@@ -185,7 +195,14 @@ export default function GlobalHeader() {
               <input
                 type="text"
                 placeholder="搜索题目..."
+                value={questionSearchText}
+                onChange={(e) => setQuestionSearchText(e.target.value)}
                 className="h-11 w-full rounded-xl bg-muted/50 pl-10 pr-4 text-sm outline-none border-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleQuestionSearch();
+                  }
+                }}
               />
             </div>
             

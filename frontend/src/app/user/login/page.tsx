@@ -28,16 +28,39 @@ import {
 
 type LoginType = "password" | "code" | "wxMp";
 
+const DEFAULT_REDIRECT_PATH = "/";
+
+const getSafeRedirectPath = (redirect: string | null) => {
+  if (!redirect || typeof window === "undefined") {
+    return DEFAULT_REDIRECT_PATH;
+  }
+  try {
+    const url = new URL(redirect, window.location.origin);
+    if (url.origin !== window.location.origin) {
+      return DEFAULT_REDIRECT_PATH;
+    }
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    if (!path || path.startsWith("/user/login")) {
+      return DEFAULT_REDIRECT_PATH;
+    }
+    return path;
+  } catch {
+    return DEFAULT_REDIRECT_PATH;
+  }
+};
+
 const UserLoginPage: React.FC = () => {
   const [loginType, setLoginType] = useState<LoginType>("code");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [redirectPath, setRedirectPath] = useState(DEFAULT_REDIRECT_PATH);
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const loginUser = useSelector((state: RootState) => state.loginUser);
 
   useEffect(() => {
     if (loginUser && loginUser.id) {
-      router.replace("/");
+      const searchParams = new URLSearchParams(window.location.search);
+      router.replace(getSafeRedirectPath(searchParams.get("redirect")));
     }
   }, [loginUser, router]);
 
@@ -124,6 +147,7 @@ const UserLoginPage: React.FC = () => {
     const msg = searchParams.get("msg");
     const account = searchParams.get("account");
     const nextLoginType = searchParams.get("loginType");
+    setRedirectPath(getSafeRedirectPath(searchParams.get("redirect")));
 
     if (!error && !msg && !account && !nextLoginType) {
       return;
@@ -144,7 +168,13 @@ const UserLoginPage: React.FC = () => {
     } else if (msg) {
       message.success(msg);
     }
-    router.replace(window.location.pathname);
+    const nextSearchParams = new URLSearchParams(window.location.search);
+    nextSearchParams.delete("error");
+    nextSearchParams.delete("msg");
+    nextSearchParams.delete("account");
+    nextSearchParams.delete("loginType");
+    const nextQuery = nextSearchParams.toString();
+    router.replace(nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname);
   }, [router]);
 
   useEffect(() => {
@@ -309,7 +339,7 @@ const UserLoginPage: React.FC = () => {
         if (userRes.data) {
           dispatch(setLoginUser(userRes.data as API.LoginUserVO));
         }
-        router.replace("/");
+        router.replace(redirectPath);
       }
     } catch (e: any) {
       message.error(e.message || "认证失败，请检查输入项");
