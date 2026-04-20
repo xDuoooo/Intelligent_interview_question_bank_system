@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { AlertCircle, ChevronDown, Loader2, MessageCircle, Send, Trash2 } from "lucide-react";
 import { Modal, message } from "antd";
 import { useSelector } from "react-redux";
@@ -191,7 +192,7 @@ function PostCommentCard({ comment, loginUser, onDelete, onReply, depth = 0 }: C
           </div>
 
           <div className="flex items-center gap-4">
-            {isApproved ? (
+            {isApproved && loginUser?.id ? (
               <button
                 onClick={() =>
                   onReply(
@@ -205,12 +206,12 @@ function PostCommentCard({ comment, loginUser, onDelete, onReply, depth = 0 }: C
                 <MessageCircle className="h-3.5 w-3.5" />
                 回复
               </button>
-            ) : (
+            ) : !isApproved ? (
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
                 <AlertCircle className="h-3.5 w-3.5" />
                 {isRejected ? "这条内容当前仅你和管理员可见" : "审核通过后会对其他用户可见"}
               </div>
-            )}
+            ) : null}
             {(isOwner || isAdmin) ? (
               <button
                 onClick={() => onDelete(comment.id)}
@@ -243,7 +244,9 @@ function PostCommentCard({ comment, loginUser, onDelete, onReply, depth = 0 }: C
 }
 
 export default function PostCommentSection({ postId }: Props) {
+  const pathname = usePathname() || "/";
   const loginUser = useSelector((state: RootState) => state.loginUser);
+  const loginHref = `/user/login?redirect=${encodeURIComponent(pathname)}`;
   const [comments, setComments] = useState<PostCommentVO[]>([]);
   const [total, setTotal] = useState(0);
   const [current, setCurrent] = useState(1);
@@ -385,7 +388,7 @@ export default function PostCommentSection({ postId }: Props) {
       ) : (
         <div className="flex items-center justify-center space-x-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-8">
           <AlertCircle className="h-5 w-5 text-slate-400" />
-          <a href="/user/login" className="text-sm font-bold text-primary hover:underline">
+          <a href={loginHref} className="text-sm font-bold text-primary hover:underline">
             登录后
           </a>
           <span className="text-sm text-slate-400">才能参与社区回复</span>

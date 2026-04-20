@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { message, Modal } from "antd";
 import {
   ThumbsUp, MessageCircle, MoreHorizontal, Flag, Trash2,
@@ -380,7 +381,9 @@ function CommentCard({ comment, loginUser, onLike, onDelete, onPin, onOfficial, 
 
 // ---------------------- 主评论区组件 ----------------------
 export default function CommentSection({ questionId }: Props) {
+  const pathname = usePathname() || "/";
   const loginUser = useSelector((state: RootState) => state.loginUser);
+  const loginHref = `/user/login?redirect=${encodeURIComponent(pathname)}`;
 
   const [comments, setComments] = useState<CommentVO[]>([]);
   const [total, setTotal] = useState(0);
@@ -588,7 +591,7 @@ export default function CommentSection({ questionId }: Props) {
       ) : (
         <div className="flex items-center justify-center py-8 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 space-x-3">
           <AlertCircle className="h-5 w-5 text-slate-400" />
-          <a href="/user/login" className="text-sm font-bold text-primary hover:underline">登录后</a>
+          <a href={loginHref} className="text-sm font-bold text-primary hover:underline">登录后</a>
           <span className="text-sm text-slate-400">才能参与讨论</span>
         </div>
       )}
