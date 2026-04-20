@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Alert, Button, Space, Tag, Typography, message } from "antd";
 import { Clock3, EyeOff, SendHorizonal, ShieldAlert, ShieldCheck } from "lucide-react";
 import { submitQuestionReviewUsingPost } from "@/api/questionController";
@@ -31,6 +32,7 @@ const QuestionOwnerPanel: React.FC<Props> = ({
   isOwner = false,
   isAdmin = false,
 }) => {
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const status = Number(reviewStatus ?? QUESTION_REVIEW_STATUS_ENUM.APPROVED);
   const canSubmitReview =
@@ -75,8 +77,8 @@ const QuestionOwnerPanel: React.FC<Props> = ({
     try {
       await submitQuestionReviewUsingPost({ id: questionId });
       hide();
-      message.success("题目已提交审核，刷新后可查看最新状态");
-      window.location.reload();
+      message.success("题目已提交审核，状态已更新");
+      router.refresh();
     } catch (error: any) {
       hide();
       message.error("提交审核失败，" + (error?.message || "请稍后重试"));
