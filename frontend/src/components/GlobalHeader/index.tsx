@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -24,6 +24,46 @@ const NotificationPopover = dynamic(() => import("../NotificationPopover"), {
   ),
 });
 
+type ActiveRouteGroup = {
+  exact?: string[];
+  prefixes?: string[];
+};
+
+const ACTIVE_ROUTE_GROUPS: Record<string, ActiveRouteGroup> = {
+  "/banks": { exact: ["/banks"], prefixes: ["/bank"] },
+  "/questions": { exact: ["/questions"], prefixes: ["/question"] },
+  "/posts": { exact: ["/posts"], prefixes: ["/posts", "/post"] },
+  "/mockInterview/add": { exact: ["/mockInterview/add"] },
+  "/mockInterview": { exact: ["/mockInterview"], prefixes: ["/mockInterview/chat"] },
+  "/admin": { exact: ["/admin"], prefixes: ["/admin"] },
+};
+
+const normalizePath = (path?: string) => {
+  if (!path || path === "/") {
+    return "/";
+  }
+  return path.replace(/\/+$/, "") || "/";
+};
+
+const isActiveMenu = (menuPath: string | undefined, currentPath: string | null) => {
+  const normalizedMenuPath = normalizePath(menuPath);
+  const normalizedCurrentPath = normalizePath(currentPath || "/");
+  if (normalizedMenuPath === "/") {
+    return normalizedCurrentPath === "/";
+  }
+  const activeGroup = ACTIVE_ROUTE_GROUPS[normalizedMenuPath] || {
+    exact: [normalizedMenuPath],
+    prefixes: [normalizedMenuPath],
+  };
+  if (activeGroup.exact?.some((route) => normalizedCurrentPath === normalizePath(route))) {
+    return true;
+  }
+  return Boolean(activeGroup.prefixes?.some((route) => {
+    const normalizedRoute = normalizePath(route);
+    return normalizedCurrentPath === normalizedRoute || normalizedCurrentPath.startsWith(`${normalizedRoute}/`);
+  }));
+};
+
 export default function GlobalHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -35,6 +75,11 @@ export default function GlobalHeader() {
 
   // 获取可访问的菜单
   const accessibleMenus = getAccessibleMenus(loginUser, menus);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsUserDropdownOpen(false);
+  }, [pathname]);
 
   const handleQuestionSearch = () => {
     const keyword = questionSearchText.trim();
@@ -84,7 +129,7 @@ export default function GlobalHeader() {
                 target={menu.target}
                 className={cn(
                   "px-4 py-2 text-sm font-semibold rounded-full transition-all flex items-center gap-2",
-                  pathname === menu.path
+                  isActiveMenu(menu.path, pathname)
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
@@ -214,7 +259,7 @@ export default function GlobalHeader() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-bold transition-all",
-                    pathname === menu.path
+                    isActiveMenu(menu.path, pathname)
                       ? "bg-primary/10 text-primary"
                       : "hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
