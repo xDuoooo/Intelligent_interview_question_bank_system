@@ -1084,6 +1084,7 @@ declare namespace API {
     hasFavour?: boolean;
     id?: string | number;
     recommendReason?: string;
+    questionStatus?: number;
     reviewMessage?: string;
     reviewStatus?: number;
     reviewTime?: string;

@@ -214,7 +214,7 @@ public class QuestionController {
         ThrowUtils.throwIf(!questionService.canViewQuestion(question, loginUser), ErrorCode.NOT_FOUND_ERROR);
         if (loginUser != null && QuestionConstant.REVIEW_STATUS_APPROVED == getQuestionReviewStatus(question)) {
             crawlerDetect(loginUser, request);
-            userQuestionHistoryService.addQuestionHistory(loginUser.getId(), id, 0);
+            userQuestionHistoryService.recordQuestionView(loginUser.getId(), id);
         }
         // 获取封装类
         return ResultUtils.success(questionService.getQuestionVO(question, request));

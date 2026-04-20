@@ -22,6 +22,15 @@ const QUESTION_STATUS_VALUE_MAP: Record<QuestionStatusLabel, number> = {
   掌握: 1,
   困难: 2,
 };
+const QUESTION_STATUS_LABEL_MAP: Record<number, QuestionStatusLabel> = {
+  0: "浏览",
+  1: "掌握",
+  2: "困难",
+};
+
+function getQuestionStatusLabel(status?: number | null): QuestionStatusLabel {
+  return QUESTION_STATUS_LABEL_MAP[Number(status)] || "浏览";
+}
 
 const MdViewer = dynamic(() => import("@/components/MdViewer"), {
   loading: () => (
@@ -79,7 +88,9 @@ const QuestionCard = (props: Props) => {
   const [hasFavour, setHasFavour] = useState(Boolean(question.hasFavour));
   const [favourNum, setFavourNum] = useState(question.favourNum || 0);
   const [favourLoading, setFavourLoading] = useState(false);
-  const [questionStatus, setQuestionStatus] = useState<QuestionStatusLabel>("浏览");
+  const [questionStatus, setQuestionStatus] = useState<QuestionStatusLabel>(
+    getQuestionStatusLabel(question.questionStatus),
+  );
   const [statusLoading, setStatusLoading] = useState(false);
   const studyStartTimeRef = useRef(Date.now());
   const hasReportedStudyRef = useRef(false);
@@ -133,8 +144,8 @@ const QuestionCard = (props: Props) => {
   useEffect(() => {
     setHasFavour(Boolean(question.hasFavour));
     setFavourNum(question.favourNum || 0);
-    setQuestionStatus("浏览");
-  }, [question.favourNum, question.hasFavour, question.id]);
+    setQuestionStatus(getQuestionStatusLabel(question.questionStatus));
+  }, [question.favourNum, question.hasFavour, question.id, question.questionStatus]);
 
   useEffect(() => {
     studyStartTimeRef.current = Date.now();

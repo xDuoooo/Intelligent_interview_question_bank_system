@@ -88,6 +88,30 @@ public class UserQuestionHistoryServiceImpl extends ServiceImpl<UserQuestionHist
     }
 
     @Override
+    public boolean recordQuestionView(long userId, long questionId) {
+        if (userId <= 0 || questionId <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "刷题记录参数不合法");
+        }
+        Question question = questionService.getById(questionId);
+        if (question == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "题目不存在");
+        }
+        QueryWrapper<UserQuestionHistory> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("userId", userId);
+        queryWrapper.eq("questionId", questionId);
+        UserQuestionHistory oldHistory = this.getOne(queryWrapper);
+        if (oldHistory != null) {
+            oldHistory.setUpdateTime(new Date());
+            return this.updateById(oldHistory);
+        }
+        UserQuestionHistory newHistory = new UserQuestionHistory();
+        newHistory.setUserId(userId);
+        newHistory.setQuestionId(questionId);
+        newHistory.setStatus(0);
+        return this.save(newHistory);
+    }
+
+    @Override
     public Page<QuestionVO> listMyFavourQuestionByPage(Page<Question> page, long userId, HttpServletRequest request) {
         // 先查询收藏记录
         QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();

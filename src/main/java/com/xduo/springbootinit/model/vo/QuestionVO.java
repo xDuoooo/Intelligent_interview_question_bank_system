@@ -91,6 +91,11 @@ public class QuestionVO implements Serializable {
     private Boolean hasFavour;
 
     /**
+     * 当前用户刷题状态：0-浏览, 1-掌握, 2-困难
+     */
+    private Integer questionStatus;
+
+    /**
      * 收藏数
      */
     private Integer favourNum;

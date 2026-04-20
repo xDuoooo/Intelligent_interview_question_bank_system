@@ -220,6 +220,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             favourQueryWrapper.eq("questionId", question.getId());
             favourQueryWrapper.eq("userId", loginUser.getId());
             questionVO.setHasFavour(questionFavourService.getOne(favourQueryWrapper) != null);
+            Map<Long, Integer> questionStatusMap = getUserQuestionStatusMap(Collections.singleton(question.getId()), loginUser.getId());
+            questionVO.setQuestionStatus(questionStatusMap.getOrDefault(question.getId(), 0));
         } else {
             questionVO.setHasFavour(false);
         }
@@ -267,6 +269,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 .collect(Collectors.toSet());
         Map<Long, Integer> questionIdFavourNumMap = getQuestionFavourCountMap(questionIdSet);
         Map<Long, Boolean> questionIdHasFavourMap = new HashMap<>();
+        Map<Long, Integer> questionIdStatusMap = new HashMap<>();
         User loginUser = userService.getLoginUserPermitNull(request);
         if (loginUser != null && CollUtil.isNotEmpty(questionIdSet)) {
             QueryWrapper<QuestionFavour> favourQueryWrapper = new QueryWrapper<>();
@@ -274,10 +277,12 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             favourQueryWrapper.eq("userId", loginUser.getId());
             questionFavourService.list(favourQueryWrapper).forEach(favour ->
                     questionIdHasFavourMap.put(favour.getQuestionId(), true));
+            questionIdStatusMap.putAll(getUserQuestionStatusMap(questionIdSet, loginUser.getId()));
         }
         questionVOList.forEach(questionVO -> {
             questionVO.setUser(userService.getUserVO(userMap.get(questionVO.getUserId())));
             questionVO.setHasFavour(questionIdHasFavourMap.getOrDefault(questionVO.getId(), false));
+            questionVO.setQuestionStatus(questionIdStatusMap.getOrDefault(questionVO.getId(), 0));
             questionVO.setFavourNum(questionIdFavourNumMap.getOrDefault(questionVO.getId(), 0));
             if (recommendReasonMap != null && recommendReasonMap.containsKey(questionVO.getId())) {
                 questionVO.setRecommendReason(recommendReasonMap.get(questionVO.getId()));
@@ -299,6 +304,22 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                         item -> Long.valueOf(String.valueOf(item.get("questionId"))),
                         item -> Integer.parseInt(String.valueOf(item.get("totalCount"))),
                         (existing, replacement) -> existing));
+    }
+
+    private Map<Long, Integer> getUserQuestionStatusMap(Set<Long> questionIdSet, Long userId) {
+        if (CollUtil.isEmpty(questionIdSet) || userId == null || userId <= 0) {
+            return Collections.emptyMap();
+        }
+        QueryWrapper<UserQuestionHistory> historyQueryWrapper = new QueryWrapper<>();
+        historyQueryWrapper.in("questionId", questionIdSet);
+        historyQueryWrapper.eq("userId", userId);
+        historyQueryWrapper.select("questionId", "status");
+        return userQuestionHistoryMapper.selectList(historyQueryWrapper).stream()
+                .filter(item -> item.getQuestionId() != null)
+                .collect(Collectors.toMap(
+                        UserQuestionHistory::getQuestionId,
+                        item -> item.getStatus() == null ? 0 : item.getStatus(),
+                        (existing, replacement) -> replacement));
     }
 
     @Override

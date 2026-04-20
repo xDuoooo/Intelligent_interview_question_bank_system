@@ -18,6 +18,11 @@ public interface UserQuestionHistoryService extends IService<UserQuestionHistory
     boolean addQuestionHistory(long userId, long questionId, int status);
 
     /**
+     * 记录用户浏览题目，不覆盖已有的掌握/困难状态
+     */
+    boolean recordQuestionView(long userId, long questionId);
+
+    /**
      * 获取我收藏的题目分页
      */
     com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xduo.springbootinit.model.vo.QuestionVO> listMyFavourQuestionByPage(
