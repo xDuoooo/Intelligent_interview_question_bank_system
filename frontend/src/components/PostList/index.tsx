@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Tag } from "antd";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
-import { CalendarClock, ChevronRight, Heart, ThumbsUp } from "lucide-react";
+import { CalendarClock, ChevronRight, Heart, MessageSquareText, ThumbsUp } from "lucide-react";
 import { POST_REVIEW_STATUS_COLOR_MAP, POST_REVIEW_STATUS_TEXT_MAP } from "@/constants/post";
 
 interface Props {
@@ -13,6 +13,18 @@ interface Props {
 }
 
 export default function PostList({ postList = [], getHref }: Props) {
+  if (!postList.length) {
+    return (
+      <div className="flex min-h-48 flex-col items-center justify-center rounded-[2rem] border border-dashed border-slate-200 bg-white/70 px-6 py-12 text-center">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-400">
+          <MessageSquareText className="h-7 w-7" />
+        </div>
+        <div className="text-base font-black text-slate-800">暂无帖子</div>
+        <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">当前没有可展示的帖子，换个筛选条件或稍后再来看看。</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4">
       {postList.map((item) => (
