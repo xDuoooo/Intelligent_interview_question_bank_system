@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
 import TagList from "@/components/TagList";
 import { ChevronLeft, ChevronRight, Filter, Loader2, Search, Sparkles } from "lucide-react";
-import { Button, Input, Select, Tag } from "antd";
+import { Button, Input, Select, Tag, message } from "antd";
 import { QUESTION_DIFFICULTY_COLOR_MAP, QUESTION_DIFFICULTY_OPTIONS } from "@/constants/question";
 
 interface Props {
@@ -138,14 +138,13 @@ const QuestionTable: React.FC<Props> = (props) => {
     setLoading(true);
     try {
       const res = (await searchQuestionVoByPageUsingPost(requestParams)) as unknown as API.BaseResponsePageQuestionVO_;
-      if (res.data) {
-        setQuestionList(res.data.records || []);
-        setTotal(res.data.total || 0);
-      }
+      setQuestionList(res.data?.records || []);
+      setTotal(Number(res.data?.total) || 0);
       setParams(requestParams);
       syncUrl(requestParams);
-    } catch (error) {
+    } catch (error: any) {
       console.error("获取题目失败", error);
+      message.error("获取题目失败，" + (error?.message || "请稍后重试"));
     } finally {
       setLoading(false);
     }
