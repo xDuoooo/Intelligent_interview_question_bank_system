@@ -455,10 +455,10 @@ export default function CommentSection({ questionId }: Props) {
     const result = await addComment({ questionId, content });
     if (result.status === 0) {
       message.success("评论发布成功");
-      await fetchComments(1, sortField, false);
     } else {
       message.success(`评论已提交审核${result.reviewMessage ? `：${result.reviewMessage}` : ""}`);
     }
+    await fetchComments(1, sortField, false);
   };
 
   // ---- 发表回复 ----
@@ -473,10 +473,10 @@ export default function CommentSection({ questionId }: Props) {
     setReplyState(null);
     if (result.status === 0) {
       message.success("回复发布成功");
-      await fetchComments(1, sortField, false);
     } else {
       message.success(`回复已提交审核${result.reviewMessage ? `：${result.reviewMessage}` : ""}`);
     }
+    await fetchComments(1, sortField, false);
   };
 
   // ---- 点赞（乐观更新） ----
