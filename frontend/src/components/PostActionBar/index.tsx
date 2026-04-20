@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 import { Input, Modal, message } from "antd";
 import { AlertTriangle, Heart, ThumbsUp } from "lucide-react";
@@ -24,6 +25,8 @@ export default function PostActionBar({
   initialHasThumb = false,
   initialHasFavour = false,
 }: Props) {
+  const router = useRouter();
+  const pathname = usePathname() || "/";
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const [thumbNum, setThumbNum] = useState(initialThumbNum);
   const [favourNum, setFavourNum] = useState(initialFavourNum);
@@ -35,9 +38,20 @@ export default function PostActionBar({
   const [reportReason, setReportReason] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
 
+  useEffect(() => {
+    setThumbNum(initialThumbNum);
+    setFavourNum(initialFavourNum);
+    setHasThumb(initialHasThumb);
+    setHasFavour(initialHasFavour);
+    setReportVisible(false);
+    setReportReason("");
+  }, [initialFavourNum, initialHasFavour, initialHasThumb, initialThumbNum, postId]);
+
   const ensureLogin = () => {
     if (!loginUser?.id) {
       message.info("登录后才可以进行点赞、收藏或举报");
+      const search = typeof window !== "undefined" ? window.location.search : "";
+      router.push(`/user/login?redirect=${encodeURIComponent(`${pathname}${search}`)}`);
       return false;
     }
     return true;
