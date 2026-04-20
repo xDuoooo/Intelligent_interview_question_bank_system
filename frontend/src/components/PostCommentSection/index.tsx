@@ -260,6 +260,15 @@ export default function PostCommentSection({ postId }: Props) {
   const PAGE_SIZE = 10;
   const hasMore = comments.length < total;
 
+  const handleLoginClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (typeof window === "undefined") {
+      return;
+    }
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    window.location.href = `/user/login?redirect=${encodeURIComponent(currentPath || pathname)}`;
+  };
+
   const fetchComments = useCallback(
     async (page = 1, append = false) => {
       setLoading(true);
@@ -388,7 +397,7 @@ export default function PostCommentSection({ postId }: Props) {
       ) : (
         <div className="flex items-center justify-center space-x-3 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 py-8">
           <AlertCircle className="h-5 w-5 text-slate-400" />
-          <a href={loginHref} className="text-sm font-bold text-primary hover:underline">
+          <a href={loginHref} onClick={handleLoginClick} className="text-sm font-bold text-primary hover:underline">
             登录后
           </a>
           <span className="text-sm text-slate-400">才能参与社区回复</span>

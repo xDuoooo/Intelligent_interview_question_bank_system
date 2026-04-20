@@ -98,6 +98,20 @@ export default function GlobalHeader() {
     }
   };
 
+  const handleLoginClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (typeof window === "undefined") {
+      router.push("/user/login");
+      return;
+    }
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (!currentPath || currentPath.startsWith("/user/login")) {
+      router.push("/user/login");
+      return;
+    }
+    router.push(`/user/login?redirect=${encodeURIComponent(currentPath)}`);
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md transition-all">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -213,6 +227,7 @@ export default function GlobalHeader() {
             ) : (
               <Link
                 href="/user/login"
+                onClick={handleLoginClick}
                 className="h-10 px-6 rounded-full bg-primary text-primary-foreground font-semibold flex items-center justify-center transition-all shadow-lg shadow-primary/25 hover:scale-105 active:scale-95 tracking-wider"
               >
                 登录
