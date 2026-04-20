@@ -14,6 +14,15 @@ import { buildApiUrl } from "@/libs/request";
 
 const { Text } = Typography;
 
+type QuestionStatusLabel = "浏览" | "掌握" | "困难";
+
+const QUESTION_STATUS_OPTIONS: QuestionStatusLabel[] = ["浏览", "掌握", "困难"];
+const QUESTION_STATUS_VALUE_MAP: Record<QuestionStatusLabel, number> = {
+  浏览: 0,
+  掌握: 1,
+  困难: 2,
+};
+
 const MdViewer = dynamic(() => import("@/components/MdViewer"), {
   loading: () => (
     <div className="rounded-[2rem] border border-slate-100 bg-slate-50/60 p-6 text-sm text-slate-400">
@@ -67,8 +76,11 @@ const QuestionCard = (props: Props) => {
   const { question } = props;
 
   // 状态维护
-  const [hasFavour, setHasFavour] = useState(question.hasFavour);
+  const [hasFavour, setHasFavour] = useState(Boolean(question.hasFavour));
   const [favourNum, setFavourNum] = useState(question.favourNum || 0);
+  const [favourLoading, setFavourLoading] = useState(false);
+  const [questionStatus, setQuestionStatus] = useState<QuestionStatusLabel>("浏览");
+  const [statusLoading, setStatusLoading] = useState(false);
   const studyStartTimeRef = useRef(Date.now());
   const hasReportedStudyRef = useRef(false);
 
@@ -77,38 +89,52 @@ const QuestionCard = (props: Props) => {
 
   // 收藏处理
   const onFavourClick = async () => {
+    if (favourLoading) {
+      return;
+    }
+    setFavourLoading(true);
     try {
       const res = await doQuestionFavourUsingPost({
         questionId: question.id,
       });
-      if (res.data) {
-        setHasFavour(!hasFavour);
-        setFavourNum(hasFavour ? favourNum - 1 : favourNum + 1);
-        message.success(hasFavour ? "取消收藏成功" : "收藏成功");
+      const delta = Number(res.data || 0);
+      if (delta !== 0) {
+        setHasFavour(delta > 0);
+        setFavourNum((prev) => Math.max(0, prev + delta));
+        message.success(delta > 0 ? "收藏成功" : "取消收藏成功");
       }
     } catch (error: any) {
       message.error("操作失败，" + error.message);
+    } finally {
+      setFavourLoading(false);
     }
   };
 
   // 掌握程度处理
-  const onStatusChange = async (status: any) => {
-    // 映射状态文本到数字
-    const statusMap: Record<string, number> = {
-      浏览: 0,
-      掌握: 1,
-      困难: 2,
-    };
+  const onStatusChange = async (status: string | number) => {
+    const nextStatus = status as QuestionStatusLabel;
+    const previousStatus = questionStatus;
+    setQuestionStatus(nextStatus);
+    setStatusLoading(true);
     try {
       await addQuestionHistoryUsingPost({
         questionId: question.id,
-        status: statusMap[status],
+        status: QUESTION_STATUS_VALUE_MAP[nextStatus],
       });
       message.success("状态已更新");
     } catch (error: any) {
+      setQuestionStatus(previousStatus);
       message.error("更新状态失败，" + error.message);
+    } finally {
+      setStatusLoading(false);
     }
   };
+
+  useEffect(() => {
+    setHasFavour(Boolean(question.hasFavour));
+    setFavourNum(question.favourNum || 0);
+    setQuestionStatus("浏览");
+  }, [question.favourNum, question.hasFavour, question.id]);
 
   useEffect(() => {
     studyStartTimeRef.current = Date.now();
@@ -203,6 +229,7 @@ const QuestionCard = (props: Props) => {
               <Button
                 type="text"
                 size="large"
+                loading={favourLoading}
                 icon={
                   <Heart
                     className={`h-6 w-6 ${hasFavour ? "fill-red-500 text-red-500" : "text-slate-400"}`}
@@ -227,7 +254,9 @@ const QuestionCard = (props: Props) => {
             <div className="flex items-center gap-2">
               <Text type="secondary" style={{ fontSize: 13 }}>学习状态：</Text>
               <Segmented
-                options={["浏览", "掌握", "困难"]}
+                options={QUESTION_STATUS_OPTIONS}
+                value={questionStatus}
+                disabled={statusLoading}
                 onChange={onStatusChange}
               />
             </div>
