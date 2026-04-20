@@ -46,15 +46,20 @@ myAxios.interceptors.response.use(
   function (response) {
     // 处理响应数据
     const { data } = response;
+    const requestUrl = response.config.url || "";
     // 未登录
     if (data.code === 40100) {
+      const isLoginStatusRequest = requestUrl.includes("user/get/login");
       // 不是获取用户信息接口，或者不是登录页面，则跳转到登录页面
       if (
         typeof window !== "undefined" &&
         !window.location.pathname.includes("/user/login") &&
-        !response.config.url?.includes("user/get/login")
+        !isLoginStatusRequest
       ) {
         window.location.href = `/user/login?redirect=${encodeURIComponent(window.location.href)}`;
+      }
+      if (!isLoginStatusRequest) {
+        throw new Error(data.message ?? "请先登录");
       }
     } else if (data.code !== 0) {
       // 其他错误
