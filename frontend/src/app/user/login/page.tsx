@@ -401,7 +401,7 @@ const UserLoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setLoginType("code")}
-              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+              className={`rounded-xl py-2.5 text-xs font-bold transition-all sm:text-sm ${
                 loginType === "code"
                   ? "bg-white text-primary shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -412,7 +412,7 @@ const UserLoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setLoginType("password")}
-              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+              className={`rounded-xl py-2.5 text-xs font-bold transition-all sm:text-sm ${
                 loginType === "password"
                   ? "bg-white text-primary shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -423,7 +423,7 @@ const UserLoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setLoginType("wxMp")}
-              className={`rounded-xl py-2.5 text-sm font-bold transition-all ${
+              className={`rounded-xl py-2.5 text-xs font-bold transition-all sm:text-sm ${
                 loginType === "wxMp"
                   ? "bg-white text-primary shadow-sm"
                   : "text-slate-500 hover:text-slate-700"
@@ -482,8 +482,8 @@ const UserLoginPage: React.FC = () => {
                     <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       图形验证码
                     </label>
-                    <div className="flex gap-3">
-                      <div className="relative flex-1">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="relative min-w-0 flex-1">
                         <ShieldCheck className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
@@ -494,7 +494,7 @@ const UserLoginPage: React.FC = () => {
                         />
                       </div>
                       <div
-                        className="flex h-12 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary"
+                        className="flex h-12 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary sm:w-28"
                         onClick={refreshCaptcha}
                         title="点击刷新"
                       >
@@ -544,8 +544,8 @@ const UserLoginPage: React.FC = () => {
                     <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       图形验证码
                     </label>
-                    <div className="flex gap-3">
-                      <div className="relative flex-1">
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                      <div className="relative min-w-0 flex-1">
                         <ShieldCheck className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                           type="text"
@@ -556,7 +556,7 @@ const UserLoginPage: React.FC = () => {
                         />
                       </div>
                       <div
-                        className="flex h-12 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary"
+                        className="flex h-12 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-slate-100 bg-white p-1 transition-all hover:border-primary sm:w-28"
                         onClick={refreshCaptcha}
                         title="点击刷新"
                       >
@@ -581,8 +581,8 @@ const UserLoginPage: React.FC = () => {
                   <label className="ml-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     验证码
                   </label>
-                  <div className="flex gap-3">
-                    <div className="relative flex-1">
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <div className="relative min-w-0 flex-1">
                       <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
@@ -596,7 +596,7 @@ const UserLoginPage: React.FC = () => {
                       type="button"
                       disabled={count > 0}
                       onClick={sendCode}
-                      className="h-12 whitespace-nowrap rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95 disabled:grayscale disabled:opacity-50"
+                      className="h-12 w-full whitespace-nowrap rounded-2xl bg-primary px-6 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-95 disabled:grayscale disabled:opacity-50 sm:w-auto"
                     >
                       {count > 0 ? `${count}s` : "获取验证码"}
                     </button>
