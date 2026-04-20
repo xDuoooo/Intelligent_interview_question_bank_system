@@ -39,6 +39,29 @@ function timeAgo(dateStr: string) {
   }
 }
 
+function mapCommentTree(
+  list: CommentVO[] = [],
+  updater: (comment: CommentVO) => CommentVO,
+): CommentVO[] {
+  return list.map((comment) => {
+    const nextComment = updater(comment);
+    const replies = nextComment.replies ?? [];
+    return {
+      ...nextComment,
+      replies: replies.length ? mapCommentTree(replies, updater) : [],
+    };
+  });
+}
+
+function removeCommentFromTree(list: CommentVO[] = [], commentId: string | number): CommentVO[] {
+  return list
+    .filter((comment) => comment.id !== commentId)
+    .map((comment) => ({
+      ...comment,
+      replies: removeCommentFromTree(comment.replies ?? [], commentId),
+    }));
+}
+
 // ---------------------- 评论输入框 ----------------------
 interface ReplyInputProps {
   placeholder?: string;
@@ -462,19 +485,30 @@ export default function CommentSection({ questionId }: Props) {
       message.warning("请先登录后再点赞");
       return;
     }
-    const update = (list: CommentVO[]): CommentVO[] =>
-      list.map((c) => {
-        if (c.id === commentId) {
-          const liked = !c.hasLiked;
-          return { ...c, hasLiked: liked, likeNum: c.likeNum + (liked ? 1 : -1) };
+    let previousComments: CommentVO[] = [];
+    setComments((prev) => {
+      previousComments = prev;
+      return mapCommentTree(prev, (comment) => {
+        if (comment.id !== commentId) {
+          return comment;
         }
-        return { ...c, replies: update(c.replies) };
+        const liked = !comment.hasLiked;
+        const nextLikeNum = Math.max(0, Number(comment.likeNum || 0) + (liked ? 1 : -1));
+        return { ...comment, hasLiked: liked, likeNum: nextLikeNum };
       });
-    setComments((prev) => update(prev));
+    });
     try {
-      await likeComment(commentId);
+      const result = await likeComment(commentId);
+      setComments((prev) =>
+        mapCommentTree(prev, (comment) =>
+          comment.id === commentId
+            ? { ...comment, hasLiked: result.liked, likeNum: Math.max(0, Number(result.likeNum || 0)) }
+            : comment,
+        ),
+      );
     } catch {
-      setComments((prev) => update(prev)); // 回滚
+      setComments(previousComments);
+      message.error("点赞失败，请稍后重试");
     }
   };
 
@@ -489,11 +523,7 @@ export default function CommentSection({ questionId }: Props) {
         danger: true,
       },
       onOk: async () => {
-        const remove = (list: CommentVO[]): CommentVO[] =>
-          list
-            .map((c) => ({ ...c, replies: remove(c.replies) }))
-            .filter((c) => c.id !== commentId);
-        setComments((prev) => remove(prev));
+        setComments((prev) => removeCommentFromTree(prev, commentId));
         try {
           await deleteComment(commentId);
           message.success("评论已删除");
@@ -507,22 +537,32 @@ export default function CommentSection({ questionId }: Props) {
 
   // ---- 置顶 ----
   const handlePin = async (commentId: string | number, pinned: boolean) => {
-    const update = (list: CommentVO[]): CommentVO[] =>
-      list.map((c) =>
-        c.id === commentId ? { ...c, isPinned: pinned ? 1 : 0 } : { ...c, replies: update(c.replies) }
-      );
-    setComments((prev) => update(prev));
-    await pinComment(commentId, pinned);
+    setComments((prev) =>
+      mapCommentTree(prev, (comment) =>
+        comment.id === commentId ? { ...comment, isPinned: pinned ? 1 : 0 } : comment,
+      ),
+    );
+    try {
+      await pinComment(commentId, pinned);
+    } catch {
+      await fetchComments(current, sortField, false);
+      message.error("置顶操作失败，请稍后重试");
+    }
   };
 
   // ---- 官方解答 ----
   const handleOfficial = async (commentId: string | number, official: boolean) => {
-    const update = (list: CommentVO[]): CommentVO[] =>
-      list.map((c) =>
-        c.id === commentId ? { ...c, isOfficial: official ? 1 : 0 } : { ...c, replies: update(c.replies) }
-      );
-    setComments((prev) => update(prev));
-    await setOfficialAnswer(commentId, official);
+    setComments((prev) =>
+      mapCommentTree(prev, (comment) =>
+        comment.id === commentId ? { ...comment, isOfficial: official ? 1 : 0 } : comment,
+      ),
+    );
+    try {
+      await setOfficialAnswer(commentId, official);
+    } catch {
+      await fetchComments(current, sortField, false);
+      message.error("官方解答操作失败，请稍后重试");
+    }
   };
 
   const SORT_OPTIONS = [
