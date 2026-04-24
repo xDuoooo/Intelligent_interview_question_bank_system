@@ -24,6 +24,8 @@ nacos:
     data-id: black-ip-list.yml
     # 所属分组
     group: DEFAULT_GROUP
+    # 获取远程配置的超时时间，单位毫秒
+    timeout: ${NACOS_LISTENER_TIMEOUT:30000}
 
 # Web 服务基础配置
 server:

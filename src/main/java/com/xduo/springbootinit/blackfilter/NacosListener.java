@@ -28,13 +28,16 @@ public class NacosListener implements InitializingBean {
     @Value("${nacos.config.group}")
     private String group;
 
+    @Value("${nacos.config.timeout:30000}")
+    private long timeout;
+
     @Override
     public void afterPropertiesSet() throws Exception {
         log.info("nacos 监听器启动");
 
         try {
             ConfigService configService = nacosConfigManager.getConfigService();
-            String config = configService.getConfigAndSignListener(dataId, group, 3000L, new Listener() {
+            String config = configService.getConfigAndSignListener(dataId, group, timeout, new Listener() {
                 @Override
                 public Executor getExecutor() {
                     return null;

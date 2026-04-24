@@ -25,6 +25,7 @@ spring:
         server-addr: ${NACOS_CONFIG_SERVER_ADDR:}
         username: ${NACOS_CONFIG_USERNAME:}
         password: ${NACOS_CONFIG_PASSWORD:}
+        timeout: ${NACOS_CONFIG_TIMEOUT:30000}
         file-extension: yml
         shared-configs:
           - data-id: common.yml
