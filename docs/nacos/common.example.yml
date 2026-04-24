@@ -99,6 +99,14 @@ ai:
   host: https://api.deepseek.com/v1
   model: deepseek-chat
   speech-model: whisper-1
+  rate-limit:
+    enabled: true
+    chat:
+      max-per-minute: 10
+      max-per-day: 100
+    audio:
+      max-per-minute: 3
+      max-per-day: 30
 
 nacos:
   config:

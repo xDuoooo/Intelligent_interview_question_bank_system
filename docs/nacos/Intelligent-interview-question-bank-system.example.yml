@@ -79,6 +79,14 @@ wechat:
 
 ai:
   api-key: your_ai_api_key
+  rate-limit:
+    enabled: true
+    chat:
+      max-per-minute: 10
+      max-per-day: 100
+    audio:
+      max-per-minute: 3
+      max-per-day: 30
 
 app:
   frontend-url: https://your-frontend-domain.com

@@ -3,10 +3,20 @@ package com.xduo.springbootinit.manager;
 import cn.hutool.json.JSONUtil;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.exception.BusinessException;
+import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.NetUtils;
+import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -15,8 +25,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +57,36 @@ public class AiManager {
     @Value("${ai.speech-model:whisper-1}")
     private String speechModel;
 
+    @Value("${ai.rate-limit.enabled:true}")
+    private boolean rateLimitEnabled;
+
+    @Value("${ai.rate-limit.chat.max-per-minute:10}")
+    private int chatMaxPerMinute;
+
+    @Value("${ai.rate-limit.chat.max-per-day:100}")
+    private int chatMaxPerDay;
+
+    @Value("${ai.rate-limit.audio.max-per-minute:3}")
+    private int audioMaxPerMinute;
+
+    @Value("${ai.rate-limit.audio.max-per-day:30}")
+    private int audioMaxPerDay;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private UserService userService;
+
+    private static final ZoneId RATE_LIMIT_ZONE_ID = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final String LIMIT_LUA = "local current = redis.call('incr', KEYS[1])\n" +
+            "if current == 1 then\n" +
+            "    redis.call('expire', KEYS[1], ARGV[1])\n" +
+            "end\n" +
+            "return current;";
+    private static final RedisScript<Long> LIMIT_SCRIPT = new DefaultRedisScript<>(LIMIT_LUA, Long.class);
+
     private final HttpClient client = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(60))
             .build();
@@ -56,6 +102,7 @@ public class AiManager {
         if (!hasConfiguredApiKey()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置 AI API Key");
         }
+        checkAiRateLimit("chat", chatMaxPerMinute, 60, chatMaxPerDay, secondsUntilTomorrow());
 
         // 构造请求参数
         Map<String, Object> requestMap = new HashMap<>();
@@ -105,6 +152,7 @@ public class AiManager {
         if (fileBytes == null || fileBytes.length == 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "音频内容不能为空");
         }
+        checkAiRateLimit("audio", audioMaxPerMinute, 60, audioMaxPerDay, secondsUntilTomorrow());
         String safeFileName = StringUtils.defaultIfBlank(fileName, "mock-interview-audio.webm");
         String safeContentType = StringUtils.defaultIfBlank(contentType, "application/octet-stream");
         String boundary = "----CodexBoundary" + UUID.randomUUID().toString().replace("-", "");
@@ -185,6 +233,67 @@ public class AiManager {
                 && !"empty".equalsIgnoreCase(apiKey)
                 && !"sk-xxxx".equalsIgnoreCase(apiKey)
                 && !apiKey.toLowerCase().contains("your_api_key");
+    }
+
+    private void checkAiRateLimit(String operation, int maxPerMinute, long minuteWindowSeconds,
+                                  int maxPerDay, long dayWindowSeconds) {
+        if (!rateLimitEnabled) {
+            return;
+        }
+        String actor = resolveRateLimitActor();
+        String today = LocalDate.now(RATE_LIMIT_ZONE_ID).format(DAY_FORMATTER);
+        long minuteCount = incrementAndExpire(
+                "ai_rate_limit:" + operation + ":minute:" + actor,
+                minuteWindowSeconds
+        );
+        if (minuteCount > Math.max(1, maxPerMinute)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    "AI 请求过于频繁，请稍后再试");
+        }
+        long dayCount = incrementAndExpire(
+                "ai_rate_limit:" + operation + ":day:" + today + ":" + actor,
+                dayWindowSeconds
+        );
+        if (dayCount > Math.max(1, maxPerDay)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR,
+                    "今日 AI 使用次数已达上限，请明天再试");
+        }
+    }
+
+    private long incrementAndExpire(String key, long expireSeconds) {
+        Long currentCount = stringRedisTemplate.execute(
+                LIMIT_SCRIPT,
+                Collections.singletonList(key),
+                String.valueOf(Math.max(1, expireSeconds))
+        );
+        return currentCount == null ? 0 : currentCount;
+    }
+
+    private String resolveRateLimitActor() {
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return "system";
+        }
+        HttpServletRequest request = attributes.getRequest();
+        try {
+            User loginUser = userService.getLoginUserPermitNull(request);
+            if (loginUser != null && loginUser.getId() != null) {
+                return "user:" + loginUser.getId();
+            }
+        } catch (Exception e) {
+            log.debug("获取 AI 限流用户失败，降级为 IP 维度", e);
+        }
+        String ip = NetUtils.getIpAddress(request);
+        if ("0:0:0:0:0:0:0:1".equals(ip)) {
+            ip = "127.0.0.1";
+        }
+        return "ip:" + StringUtils.defaultIfBlank(ip, "unknown");
+    }
+
+    private long secondsUntilTomorrow() {
+        LocalDateTime now = LocalDateTime.now(RATE_LIMIT_ZONE_ID);
+        LocalDateTime tomorrowStart = LocalDateTime.of(now.toLocalDate().plusDays(1), LocalTime.MIN);
+        return Math.max(60, Duration.between(now, tomorrowStart).getSeconds());
     }
 
     private String extractAssistantContent(String responseBody) {

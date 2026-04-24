@@ -193,6 +193,14 @@ ai:
   model: deepseek-chat
   # 语音转写模型（需兼容 OpenAI audio/transcriptions 协议）
   speech-model: whisper-1
+  rate-limit:
+    enabled: true
+    chat:
+      max-per-minute: 10
+      max-per-day: 100
+    audio:
+      max-per-minute: 3
+      max-per-day: 30
 
 # 前端联调地址
 app:
