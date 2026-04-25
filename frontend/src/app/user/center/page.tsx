@@ -93,6 +93,7 @@ function UserCenterContent() {
   const router = useRouter();
   const hasShownMessage = useRef(false);
   const statsRef = useRef<any>({});
+  const tabScrollRef = useRef<HTMLDivElement | null>(null);
   const statsLoadedRef = useRef(false);
   const statsRequestRef = useRef<Promise<Record<string, any>> | null>(null);
   const validTabKeySet = useRef(
@@ -236,6 +237,31 @@ function UserCenterContent() {
     setActiveTabKey(key);
   };
 
+  const handleTabWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const container = tabScrollRef.current;
+    if (!container) {
+      return;
+    }
+    if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) {
+      return;
+    }
+    container.scrollLeft += event.deltaY;
+    event.preventDefault();
+  };
+
+  const centerTabList = [
+    { key: "overview", label: <span className="flex items-center gap-2 whitespace-nowrap"><LayoutDashboard size={16} />个人概览</span> },
+    { key: "record", label: <span className="flex items-center gap-2 whitespace-nowrap"><Calendar size={16} />成就看板</span> },
+    { key: "banks", label: <span className="flex items-center gap-2 whitespace-nowrap"><BookOpen size={16} />我的题库</span> },
+    { key: "submission", label: <span className="flex items-center gap-2 whitespace-nowrap"><FilePenLine size={16} />我的题目</span> },
+    { key: "notes", label: <span className="flex items-center gap-2 whitespace-nowrap"><NotebookPen size={16} />我的笔记</span> },
+    { key: "comments", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />评论足迹</span> },
+    { key: "posts", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />社区足迹</span> },
+    { key: "security", label: <span className="flex items-center gap-2 whitespace-nowrap"><ShieldCheck size={16} />账号安全</span> },
+    { key: "favour", label: <span className="flex items-center gap-2 whitespace-nowrap"><Heart size={16} />收藏题目</span> },
+    { key: "history", label: <span className="flex items-center gap-2 whitespace-nowrap"><History size={16} />刷题轨迹</span> },
+  ];
+
   return (
     <div id="userCenterPage" className="max-width-content">
       <Row gutter={[24, 24]}>
@@ -349,23 +375,32 @@ function UserCenterContent() {
 
         {/* 右侧核心内容区 */}
         <Col xs={24} md={17}>
-          <Card
-            className="user-tabs-card min-h-[600px]"
-            tabList={[
-              { key: "overview", label: <span className="flex items-center gap-2 whitespace-nowrap"><LayoutDashboard size={16} />个人概览</span> },
-              { key: "record", label: <span className="flex items-center gap-2 whitespace-nowrap"><Calendar size={16} />成就看板</span> },
-              { key: "banks", label: <span className="flex items-center gap-2 whitespace-nowrap"><BookOpen size={16} />我的题库</span> },
-              { key: "submission", label: <span className="flex items-center gap-2 whitespace-nowrap"><FilePenLine size={16} />我的题目</span> },
-              { key: "notes", label: <span className="flex items-center gap-2 whitespace-nowrap"><NotebookPen size={16} />我的笔记</span> },
-              { key: "comments", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />评论足迹</span> },
-              { key: "posts", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />社区足迹</span> },
-              { key: "security", label: <span className="flex items-center gap-2 whitespace-nowrap"><ShieldCheck size={16} />账号安全</span> },
-              { key: "favour", label: <span className="flex items-center gap-2 whitespace-nowrap"><Heart size={16} />收藏题目</span> },
-              { key: "history", label: <span className="flex items-center gap-2 whitespace-nowrap"><History size={16} />刷题轨迹</span> },
-            ]}
-            activeTabKey={activeTabKey}
-            onTabChange={onTabChange}
-          >
+          <div className="user-tabs-shell">
+            <div
+              ref={tabScrollRef}
+              className="user-tabs-scroll"
+              role="tablist"
+              aria-label="个人中心栏目"
+              onWheel={handleTabWheel}
+            >
+              {centerTabList.map((tab) => {
+                const isActive = activeTabKey === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`user-tab-trigger ${isActive ? "user-tab-trigger-active" : ""}`}
+                    onClick={() => onTabChange(tab.key)}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <Card className="user-tabs-card min-h-[600px]">
             {activeTabKey === "overview" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <div className="space-y-8">
@@ -560,7 +595,8 @@ function UserCenterContent() {
             )}
             {activeTabKey === "favour" && <MyFavourList />}
             {activeTabKey === "history" && <LearningHistoryList />}
-          </Card>
+            </Card>
+          </div>
         </Col>
       </Row>
 
