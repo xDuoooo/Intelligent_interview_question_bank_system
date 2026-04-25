@@ -25,8 +25,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDate;
+import java.util.Base64;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -39,23 +40,50 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * AI 服务管理 (通用 OpenAI 协议)
+ * AI 服务管理
  */
 @Component
 @Slf4j
 public class AiManager {
 
     @Value("${ai.api-key:empty}")
-    private String apiKey;
+    private String legacyApiKey;
 
-    @Value("${ai.host:https://api.deepseek.com/v1}")
-    private String host;
+    @Value("${ai.chat.api-key:}")
+    private String chatApiKey;
 
-    @Value("${ai.model:deepseek-chat}")
-    private String model;
+    @Value("${ai.chat.host:${ai.host:https://api.deepseek.com/v1}}")
+    private String chatHost;
 
-    @Value("${ai.speech-model:whisper-1}")
+    @Value("${ai.chat.model:${ai.model:deepseek-chat}}")
+    private String chatModel;
+
+    @Value("${ai.speech.provider:openai}")
+    private String speechProvider;
+
+    @Value("${ai.speech.api-key:}")
+    private String speechApiKey;
+
+    @Value("${ai.speech.host:${ai.host:https://api.openai.com/v1}}")
+    private String speechHost;
+
+    @Value("${ai.speech.model:${ai.speech-model:whisper-1}}")
     private String speechModel;
+
+    @Value("${ai.speech.endpoint:https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash}")
+    private String speechEndpoint;
+
+    @Value("${ai.speech.resource-id:volc.bigasr.auc_turbo}")
+    private String speechResourceId;
+
+    @Value("${ai.speech.model-name:bigmodel}")
+    private String speechModelName;
+
+    @Value("${ai.speech.user-id:intelliface}")
+    private String speechUserId;
+
+    @Value("${ai.speech.timeout-seconds:120}")
+    private long speechTimeoutSeconds;
 
     @Value("${ai.rate-limit.enabled:true}")
     private boolean rateLimitEnabled;
@@ -99,14 +127,15 @@ public class AiManager {
      * @return AI 回复
      */
     public String doChat(String systemPrompt, String userPrompt) {
-        if (!hasConfiguredApiKey()) {
+        String resolvedChatApiKey = resolveChatApiKey();
+        if (!hasConfiguredApiKey(resolvedChatApiKey)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置 AI API Key");
         }
         checkAiRateLimit("chat", chatMaxPerMinute, 60, chatMaxPerDay, secondsUntilTomorrow());
 
         // 构造请求参数
         Map<String, Object> requestMap = new HashMap<>();
-        requestMap.put("model", model);
+        requestMap.put("model", chatModel);
         
         List<Map<String, String>> messages = new ArrayList<>();
         Map<String, String> systemMsg = new HashMap<>();
@@ -124,7 +153,7 @@ public class AiManager {
 
         String json = JSONUtil.toJsonStr(requestMap);
         try {
-            String responseBody = sendJsonRequest("/chat/completions", json);
+            String responseBody = sendJsonRequest(chatHost, resolvedChatApiKey, "/chat/completions", json);
             return extractAssistantContent(responseBody);
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
@@ -136,7 +165,7 @@ public class AiManager {
     }
 
     /**
-     * 调用兼容 OpenAI 协议的音频转写接口
+     * 调用音频转写接口
      *
      * @param fileName    文件名
      * @param fileBytes   文件内容
@@ -146,13 +175,26 @@ public class AiManager {
      * @return 转写文本
      */
     public String transcribeAudio(String fileName, byte[] fileBytes, String contentType, String language, String prompt) {
-        if (!hasConfiguredApiKey()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置 AI API Key");
-        }
         if (fileBytes == null || fileBytes.length == 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "音频内容不能为空");
         }
         checkAiRateLimit("audio", audioMaxPerMinute, 60, audioMaxPerDay, secondsUntilTomorrow());
+        String provider = StringUtils.defaultIfBlank(speechProvider, "openai").trim().toLowerCase();
+        return switch (provider) {
+            case "volcengine", "volc", "doubao" ->
+                    transcribeAudioByVolcengine(fileBytes);
+            case "openai", "openai-compatible" ->
+                    transcribeAudioByOpenAi(fileName, fileBytes, contentType, language, prompt);
+            default -> throw new BusinessException(ErrorCode.PARAMS_ERROR, "不支持的语音转写服务商: " + speechProvider);
+        };
+    }
+
+    private String transcribeAudioByOpenAi(String fileName, byte[] fileBytes, String contentType,
+                                           String language, String prompt) {
+        String resolvedSpeechApiKey = resolveOpenAiSpeechApiKey();
+        if (!hasConfiguredApiKey(resolvedSpeechApiKey)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置 AI 语音转写 API Key");
+        }
         String safeFileName = StringUtils.defaultIfBlank(fileName, "mock-interview-audio.webm");
         String safeContentType = StringUtils.defaultIfBlank(contentType, "application/octet-stream");
         String boundary = "----CodexBoundary" + UUID.randomUUID().toString().replace("-", "");
@@ -160,9 +202,9 @@ public class AiManager {
         try {
             byte[] requestBody = buildMultipartBody(boundary, safeFileName, fileBytes, safeContentType, language, prompt);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(host + "/audio/transcriptions"))
-                    .timeout(Duration.ofSeconds(60))
-                    .header("Authorization", "Bearer " + apiKey)
+                    .uri(buildUri(speechHost, "/audio/transcriptions"))
+                    .timeout(Duration.ofSeconds(speechTimeoutSeconds))
+                    .header("Authorization", "Bearer " + resolvedSpeechApiKey)
                     .header("Content-Type", "multipart/form-data; boundary=" + boundary)
                     .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody))
                     .build();
@@ -183,9 +225,52 @@ public class AiManager {
         }
     }
 
-    private String sendJsonRequest(String path, String json) throws IOException, InterruptedException {
+    private String transcribeAudioByVolcengine(byte[] fileBytes) {
+        if (!hasConfiguredApiKey(speechApiKey)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请先配置豆包语音 X-Api-Key");
+        }
+        String requestId = UUID.randomUUID().toString();
+        Map<String, Object> requestMap = new HashMap<>();
+        Map<String, Object> userMap = new HashMap<>();
+        userMap.put("uid", StringUtils.defaultIfBlank(speechUserId, "intelliface"));
+        Map<String, Object> audioMap = new HashMap<>();
+        audioMap.put("data", Base64.getEncoder().encodeToString(fileBytes));
+        Map<String, Object> asrRequestMap = new HashMap<>();
+        asrRequestMap.put("model_name", StringUtils.defaultIfBlank(speechModelName, "bigmodel"));
+        requestMap.put("user", userMap);
+        requestMap.put("audio", audioMap);
+        requestMap.put("request", asrRequestMap);
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(StringUtils.defaultIfBlank(speechEndpoint,
+                            "https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash")))
+                    .timeout(Duration.ofSeconds(speechTimeoutSeconds))
+                    .header("Content-Type", "application/json")
+                    .header("X-Api-Key", speechApiKey)
+                    .header("X-Api-Resource-Id", StringUtils.defaultIfBlank(speechResourceId, "volc.bigasr.auc_turbo"))
+                    .header("X-Api-Request-Id", requestId)
+                    .header("X-Api-Sequence", "-1")
+                    .POST(HttpRequest.BodyPublishers.ofString(JSONUtil.toJsonStr(requestMap), StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> response = client.send(request,
+                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            validateVolcengineResponse(response);
+            String responseBody = response.body() == null ? "" : response.body();
+            return extractTranscriptionText(responseBody);
+        } catch (IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            log.error("豆包语音转写通信异常", e);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "豆包语音转写通信失败");
+        }
+    }
+
+    private String sendJsonRequest(String baseUrl, String apiKey, String path, String json)
+            throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(host + path))
+                .uri(buildUri(baseUrl, path))
                 .timeout(Duration.ofSeconds(60))
                 .header("Authorization", "Bearer " + apiKey)
                 .header("Content-Type", "application/json")
@@ -197,6 +282,12 @@ public class AiManager {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 服务调用异常");
         }
         return response.body() == null ? "" : response.body();
+    }
+
+    private URI buildUri(String baseUrl, String path) {
+        String safeBaseUrl = StringUtils.removeEnd(StringUtils.defaultString(baseUrl), "/");
+        String safePath = StringUtils.startsWith(path, "/") ? path : "/" + path;
+        return URI.create(safeBaseUrl + safePath);
     }
 
     private byte[] buildMultipartBody(String boundary, String fileName, byte[] fileBytes, String contentType,
@@ -228,11 +319,21 @@ public class AiManager {
         outputStream.write("\r\n".getBytes(StandardCharsets.UTF_8));
     }
 
-    private boolean hasConfiguredApiKey() {
+    private String resolveChatApiKey() {
+        return StringUtils.defaultIfBlank(chatApiKey, legacyApiKey);
+    }
+
+    private String resolveOpenAiSpeechApiKey() {
+        return StringUtils.defaultIfBlank(speechApiKey, legacyApiKey);
+    }
+
+    private boolean hasConfiguredApiKey(String apiKey) {
+        String lowerApiKey = StringUtils.defaultString(apiKey).toLowerCase();
         return StringUtils.isNotBlank(apiKey)
                 && !"empty".equalsIgnoreCase(apiKey)
                 && !"sk-xxxx".equalsIgnoreCase(apiKey)
-                && !apiKey.toLowerCase().contains("your_api_key");
+                && !lowerApiKey.startsWith("your_")
+                && !lowerApiKey.contains("_api_key");
     }
 
     private void checkAiRateLimit(String operation, int maxPerMinute, long minuteWindowSeconds,
@@ -328,21 +429,9 @@ public class AiManager {
     private String extractTranscriptionText(String responseBody) {
         try {
             Map<?, ?> responseMap = JSONUtil.toBean(responseBody, Map.class);
-            String text = valueToText(responseMap.get("text"));
+            String text = extractTextFromObject(responseMap);
             if (StringUtils.isNotBlank(text)) {
                 return text;
-            }
-            Object resultObj = responseMap.get("result");
-            text = valueToText(resultObj);
-            if (StringUtils.isNotBlank(text)) {
-                return text;
-            }
-            Object dataObj = responseMap.get("data");
-            if (dataObj instanceof Map<?, ?> dataMap) {
-                text = valueToText(dataMap.get("text"));
-                if (StringUtils.isNotBlank(text)) {
-                    return text;
-                }
             }
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 转写内容为空");
         } catch (BusinessException e) {
@@ -351,6 +440,66 @@ public class AiManager {
             log.error("解析 AI 转写结果失败，responseBody={}", responseBody, e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 转写结果格式错误");
         }
+    }
+
+    private void validateVolcengineResponse(HttpResponse<String> response) {
+        String responseBody = response.body() == null ? "" : response.body();
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            log.error("豆包语音转写失败, statusCode={}, body={}", response.statusCode(), responseBody);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "豆包语音转写失败");
+        }
+        String apiStatusCode = response.headers().firstValue("X-Api-Status-Code").orElse("");
+        if (StringUtils.isNotBlank(apiStatusCode) && !"20000000".equals(apiStatusCode)) {
+            String apiMessage = response.headers().firstValue("X-Api-Message").orElse("");
+            log.error("豆包语音转写失败, apiStatusCode={}, apiMessage={}, body={}",
+                    apiStatusCode, apiMessage, responseBody);
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "豆包语音转写失败");
+        }
+        try {
+            Map<?, ?> responseMap = JSONUtil.toBean(responseBody, Map.class);
+            Object codeObj = responseMap.get("code");
+            if (codeObj != null) {
+                String code = String.valueOf(codeObj);
+                if (!"0".equals(code) && !"20000000".equals(code)) {
+                    log.error("豆包语音转写失败, code={}, message={}, body={}",
+                            code, responseMap.get("message"), responseBody);
+                    throw new BusinessException(ErrorCode.SYSTEM_ERROR, "豆包语音转写失败");
+                }
+            }
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.debug("解析豆包语音状态失败，继续按转写内容解析, responseBody={}", responseBody, e);
+        }
+    }
+
+    private String extractTextFromObject(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            String text = valueToText(map.get("text"));
+            if (StringUtils.isNotBlank(text)) {
+                return text;
+            }
+            text = extractTextFromObject(map.get("result"));
+            if (StringUtils.isNotBlank(text)) {
+                return text;
+            }
+            text = extractTextFromObject(map.get("data"));
+            if (StringUtils.isNotBlank(text)) {
+                return text;
+            }
+            return extractTextFromObject(map.get("utterances"));
+        }
+        if (value instanceof List<?> list) {
+            List<String> textList = new ArrayList<>();
+            for (Object item : list) {
+                String text = extractTextFromObject(item);
+                if (StringUtils.isNotBlank(text)) {
+                    textList.add(text);
+                }
+            }
+            return textList.isEmpty() ? null : String.join("", textList);
+        }
+        return valueToText(value);
     }
 
     private String valueToText(Object value) {

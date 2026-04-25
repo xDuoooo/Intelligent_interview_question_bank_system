@@ -185,14 +185,21 @@ wechat:
 
 # AI 模型本地配置
 ai:
-  # 本地开发使用的模型服务密钥
-  api-key: your_ai_api_key
-  # 模型服务地址
-  host: https://api.deepseek.com/v1
-  # 默认模型名称
-  model: deepseek-chat
-  # 语音转写模型（需兼容 OpenAI audio/transcriptions 协议）
-  speech-model: whisper-1
+  chat:
+    # 文本 AI：DeepSeek / 火山方舟等 OpenAI 兼容接口均可
+    api-key: your_deepseek_api_key
+    host: https://api.deepseek.com
+    model: deepseek-v4-flash
+  speech:
+    # 语音转写：openai / openai-compatible / volcengine / doubao
+    provider: volcengine
+    # 火山引擎豆包语音控制台中的 X-Api-Key
+    api-key: your_volcengine_speech_api_key
+    endpoint: https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash
+    resource-id: volc.bigasr.auc_turbo
+    model-name: bigmodel
+    user-id: intelliface
+    timeout-seconds: 120
   rate-limit:
     enabled: true
     chat:

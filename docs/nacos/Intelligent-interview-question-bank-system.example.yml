@@ -78,7 +78,10 @@ wechat:
     qrImageUrl: https://your-domain.com/static/wechat-mp-qr.png
 
 ai:
-  api-key: your_ai_api_key
+  chat:
+    api-key: your_deepseek_api_key
+  speech:
+    api-key: your_volcengine_speech_api_key
   rate-limit:
     enabled: true
     chat:

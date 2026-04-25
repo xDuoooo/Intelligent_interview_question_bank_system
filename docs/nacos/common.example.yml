@@ -96,9 +96,16 @@ wechat:
     codeExpireSeconds: 300
 
 ai:
-  host: https://api.deepseek.com/v1
-  model: deepseek-chat
-  speech-model: whisper-1
+  chat:
+    host: https://api.deepseek.com
+    model: deepseek-v4-flash
+  speech:
+    provider: volcengine
+    endpoint: https://openspeech.bytedance.com/api/v3/auc/bigmodel/recognize/flash
+    resource-id: volc.bigasr.auc_turbo
+    model-name: bigmodel
+    user-id: intelliface
+    timeout-seconds: 120
   rate-limit:
     enabled: true
     chat:
