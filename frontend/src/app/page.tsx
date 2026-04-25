@@ -11,6 +11,7 @@ import PostList from "@/components/PostList";
 import Image from "next/image";
 import { Trophy, Zap, ArrowRight } from "lucide-react";
 import { APP_CONFIG } from "@/config/appConfig";
+import { QUESTION_REVIEW_STATUS_ENUM } from "@/constants/question";
 
 // 本页面使用服务端渲染，禁用静态生成
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,7 @@ export default async function HomePage() {
     listQuestionBankVoByPageUsingPost(
       {
         pageSize: 8,
+        reviewStatus: QUESTION_REVIEW_STATUS_ENUM.APPROVED,
         sortField: "createTime",
         sortOrder: "descend",
       },
