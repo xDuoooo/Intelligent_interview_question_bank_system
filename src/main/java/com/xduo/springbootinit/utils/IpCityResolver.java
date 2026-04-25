@@ -139,14 +139,24 @@ public class IpCityResolver {
             return supportedCity;
         }
         String ip = NetUtils.getIpAddress(request);
-        if (isLocalOrPrivateIp(ip)) {
-            return CityUtils.normalizeSupportedCity(devCity);
+        boolean localOrPrivateIp = isLocalOrPrivateIp(ip);
+        if (localOrPrivateIp) {
+            String devSupportedCity = CityUtils.normalizeSupportedCity(devCity);
+            if (StringUtils.isBlank(devSupportedCity)) {
+                logUnresolvedCityDiagnostics(request, ip, true, regionHint, null, "private-ip-without-dev-city");
+            }
+            return devSupportedCity;
         }
-        String offlineResolvedCity = resolveSupportedCityByIp2Region(ip);
+        String ip2RegionRegion = searchIp2Region(ip);
+        String offlineResolvedCity = CityUtils.extractSupportedCity(ip2RegionRegion);
         if (StringUtils.isNotBlank(offlineResolvedCity)) {
             return offlineResolvedCity;
         }
-        return resolveSupportedCityByPublicIp(ip);
+        String onlineResolvedCity = resolveSupportedCityByPublicIp(ip);
+        if (StringUtils.isBlank(onlineResolvedCity)) {
+            logUnresolvedCityDiagnostics(request, ip, false, regionHint, ip2RegionRegion, "no-supported-city");
+        }
+        return onlineResolvedCity;
     }
 
     private InputStream openXdbInputStream(String location) {
@@ -195,18 +205,21 @@ public class IpCityResolver {
     }
 
     private String resolveSupportedCityByIp2Region(String ip) {
+        String region = searchIp2Region(ip);
+        String supportedCity = CityUtils.extractSupportedCity(region);
+        if (StringUtils.isBlank(supportedCity) && StringUtils.isNotBlank(region)) {
+            log.debug("ip2region 未命中支持城市: ip={}, region={}", ip, region);
+        }
+        return supportedCity;
+    }
+
+    private String searchIp2Region(String ip) {
         Ip2Region currentIp2Region = ip2Region;
         if (!ip2RegionEnabled || currentIp2Region == null || StringUtils.isBlank(ip)) {
             return null;
         }
         try {
-            String region = currentIp2Region.search(ip.trim());
-            String supportedCity = CityUtils.extractSupportedCity(region);
-            if (StringUtils.isBlank(supportedCity)) {
-                log.debug("ip2region 未命中支持城市: ip={}, region={}", ip, region);
-                return null;
-            }
-            return supportedCity;
+            return currentIp2Region.search(ip.trim());
         } catch (Exception e) {
             log.warn("ip2region 城市解析异常: ip={}, message={}", ip, e.getMessage());
             return null;
@@ -287,6 +300,69 @@ public class IpCityResolver {
             }
         }
         return null;
+    }
+
+    private void logUnresolvedCityDiagnostics(HttpServletRequest request, String ip, boolean localOrPrivateIp,
+                                              String regionHint, String ip2RegionRegion, String reason) {
+        log.info("IP 城市解析未命中: reason={}, clientIp={}, privateIp={}, remoteAddr={}, xForwardedFor={}, "
+                        + "xRealIp={}, cfConnectingIp={}, trueClientIp={}, xClientIp={}, cityHeaders={}, "
+                        + "regionHint={}, ip2regionEnabled={}, ip2regionLoaded={}, ip2regionRegion={}, "
+                        + "lookupEnabled={}, devCity={}",
+                reason,
+                maskIpForLog(ip),
+                localOrPrivateIp,
+                maskIpForLog(request.getRemoteAddr()),
+                maskIpHeaderForLog(request.getHeader("X-Forwarded-For")),
+                maskIpHeaderForLog(request.getHeader("X-Real-IP")),
+                maskIpHeaderForLog(request.getHeader("CF-Connecting-IP")),
+                maskIpHeaderForLog(request.getHeader("True-Client-IP")),
+                maskIpHeaderForLog(request.getHeader("X-Client-IP")),
+                collectCityHeadersForLog(request),
+                StringUtils.trimToEmpty(regionHint),
+                ip2RegionEnabled,
+                ip2Region != null,
+                StringUtils.defaultIfBlank(ip2RegionRegion, "<empty>"),
+                lookupEnabled,
+                StringUtils.defaultIfBlank(devCity, "<empty>"));
+    }
+
+    private String collectCityHeadersForLog(HttpServletRequest request) {
+        List<String> headerList = new ArrayList<>();
+        for (String headerName : CITY_HEADER_CANDIDATES) {
+            String headerValue = request.getHeader(headerName);
+            if (StringUtils.isNotBlank(headerValue)) {
+                headerList.add(headerName + "=" + headerValue);
+            }
+        }
+        return headerList.isEmpty() ? "<empty>" : String.join(",", headerList);
+    }
+
+    private String maskIpHeaderForLog(String headerValue) {
+        if (StringUtils.isBlank(headerValue)) {
+            return "<empty>";
+        }
+        String[] ipList = headerValue.split(",");
+        List<String> maskedIpList = new ArrayList<>();
+        for (String item : ipList) {
+            maskedIpList.add(maskIpForLog(item));
+        }
+        return String.join(",", maskedIpList);
+    }
+
+    private String maskIpForLog(String ip) {
+        if (StringUtils.isBlank(ip)) {
+            return "<empty>";
+        }
+        String normalizedIp = ip.trim();
+        String[] ipv4Parts = normalizedIp.split("\\.");
+        if (ipv4Parts.length == 4) {
+            return ipv4Parts[0] + "." + ipv4Parts[1] + ".x.x";
+        }
+        int colonIndex = normalizedIp.indexOf(':');
+        if (colonIndex > 0) {
+            return normalizedIp.substring(0, colonIndex) + ":****";
+        }
+        return normalizedIp;
     }
 
     private void closeIp2RegionQuietly() {
