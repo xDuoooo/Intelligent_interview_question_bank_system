@@ -59,6 +59,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     public static final String SALT = "xduo";
 
+    private static final List<String> DEFAULT_PROFILE_VISIBLE_FIELDS = List.of(
+            "profile",
+            "city",
+            "career",
+            "tags",
+            "joinTime",
+            "stats",
+            "activity",
+            "content",
+            "relation"
+    );
+
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
@@ -410,6 +422,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         LoginUserVO loginUserVO = new LoginUserVO();
         BeanUtils.copyProperties(user, loginUserVO);
         loginUserVO.setInterestTagList(parseInterestTagList(user.getInterestTags()));
+        loginUserVO.setProfileVisibleFieldList(parseProfileVisibleFieldList(user.getProfileVisibleFields()));
         loginUserVO.setPasswordConfigured(hasUsablePasswordLogin(user) ? 1 : 0);
         // 对 COS 头像 URL 进行签名，防止永久 URL 暴露
         loginUserVO.setUserAvatar(cosManager.resolveSignedUrl(user.getUserAvatar()));
@@ -428,6 +441,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         UserVO userVO = new UserVO();
         BeanUtils.copyProperties(user, userVO);
         userVO.setInterestTagList(parseInterestTagList(user.getInterestTags()));
+        userVO.setProfileVisibleFieldList(parseProfileVisibleFieldList(user.getProfileVisibleFields()));
         // 对 COS 头像 URL 进行签名，防止永久 URL 暴露
         userVO.setUserAvatar(cosManager.resolveSignedUrl(user.getUserAvatar()));
         return userVO;
@@ -476,6 +490,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .collect(Collectors.toList());
         } catch (Exception e) {
             return Collections.emptyList();
+        }
+    }
+
+    private List<String> parseProfileVisibleFieldList(String profileVisibleFields) {
+        if (StringUtils.isBlank(profileVisibleFields)) {
+            return DEFAULT_PROFILE_VISIBLE_FIELDS;
+        }
+        try {
+            Set<String> requestedFieldSet = new HashSet<>(JSONUtil.toList(profileVisibleFields, String.class));
+            return DEFAULT_PROFILE_VISIBLE_FIELDS.stream()
+                    .filter(requestedFieldSet::contains)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            return DEFAULT_PROFILE_VISIBLE_FIELDS;
         }
     }
 

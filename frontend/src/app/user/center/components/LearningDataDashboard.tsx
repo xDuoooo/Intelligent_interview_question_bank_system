@@ -212,11 +212,12 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
               {achievementList.length === 0 ? (
                 <Empty description="还没有成就数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="achievement-scroll -mx-1 overflow-x-auto pb-2">
+                  <div className="flex min-w-max snap-x snap-mandatory gap-3 px-1">
                   {achievementList.map((item: any) => (
                     <div
                       key={item.key}
-                      className={`rounded-2xl border p-4 transition-all ${
+                      className={`flex w-[280px] shrink-0 snap-start flex-col rounded-2xl border p-4 transition-all sm:w-[320px] ${
                         item.maxLevel
                           ? "border-emerald-200 bg-emerald-50/70"
                           : item.currentLevel > 0
@@ -246,7 +247,7 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
                           {item.maxLevel ? "已满级" : `${item.current}/${item.nextTarget || item.target}`}
                         </Tag>
                       </div>
-                      <div className="mt-3 text-sm font-medium text-slate-600">{item.statusText}</div>
+                      <div className="mt-3 min-h-[44px] text-sm font-medium text-slate-600">{item.statusText}</div>
                       <Progress
                         percent={Number(item.percent || 0)}
                         showInfo={false}
@@ -274,6 +275,7 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
                       ) : null}
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </div>

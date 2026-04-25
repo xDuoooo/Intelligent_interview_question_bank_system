@@ -20,6 +20,7 @@ create table if not exists user
     city         varchar(128)                           null comment '所在城市',
     careerDirection varchar(128)                        null comment '就业方向',
     interestTags varchar(1024)                          null comment '兴趣标签（json 数组）',
+    profileVisibleFields varchar(512)                   null comment '公开主页可见字段（json 数组，空值默认全部公开）',
     githubId     varchar(256)                           null comment 'GitHub 唯一标识',
     giteeId      varchar(256)                           null comment 'Gitee 唯一标识',
     googleId     varchar(256)                           null comment 'Google 唯一标识',

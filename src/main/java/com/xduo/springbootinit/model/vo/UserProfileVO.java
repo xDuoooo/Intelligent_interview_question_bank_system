@@ -17,6 +17,11 @@ public class UserProfileVO implements Serializable {
     private UserVO user;
 
     /**
+     * 公开主页可见字段
+     */
+    private List<String> profileVisibleFieldList;
+
+    /**
      * 累计刷题数
      */
     private Long totalQuestionCount;

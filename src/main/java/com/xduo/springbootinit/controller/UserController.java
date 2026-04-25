@@ -69,6 +69,18 @@ import static com.xduo.springbootinit.service.impl.UserServiceImpl.SALT;
 @Slf4j
 public class UserController {
 
+    private static final List<String> DEFAULT_PROFILE_VISIBLE_FIELDS = List.of(
+            "profile",
+            "city",
+            "career",
+            "tags",
+            "joinTime",
+            "stats",
+            "activity",
+            "content",
+            "relation"
+    );
+
     @Resource
     private UserService userService;
 
@@ -324,7 +336,9 @@ public class UserController {
     @RateLimit(key = "user:getVO", maxRequests = 600, windowSeconds = 60)
     public BaseResponse<UserVO> getUserVOById(long id, HttpServletRequest request) {
         User user = getPublicUserById(id);
-        return ResultUtils.success(userService.getUserVO(user));
+        UserVO userVO = userService.getUserVO(user);
+        applyProfileVisibility(userVO, parseProfileVisibleFieldList(user.getProfileVisibleFields()));
+        return ResultUtils.success(userVO);
     }
 
     /**
@@ -433,13 +447,18 @@ public class UserController {
         if (userUpdateMyRequest.getInterestTags() != null) {
             userUpdateMyRequest.setInterestTags(parseInterestTagList(normalizeInterestTags(userUpdateMyRequest.getInterestTags())));
         }
+        String profileVisibleFields = null;
+        if (userUpdateMyRequest.getProfileVisibleFields() != null) {
+            profileVisibleFields = normalizeProfileVisibleFields(userUpdateMyRequest.getProfileVisibleFields());
+        }
         // 校验昵称唯一性
         userService.checkUserNameUnique(userUpdateMyRequest.getUserName(), loginUser.getId());
 
         User user = new User();
         // 仅允许修改账号、昵称、头像、简介、城市
-        BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "mpOpenId", "githubId", "giteeId", "googleId");
+        BeanUtils.copyProperties(userUpdateMyRequest, user, "phone", "email", "mpOpenId", "githubId", "giteeId", "googleId", "profileVisibleFields");
         user.setInterestTags(normalizeInterestTags(userUpdateMyRequest.getInterestTags()));
+        user.setProfileVisibleFields(profileVisibleFields);
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -524,6 +543,20 @@ public class UserController {
         return normalizedTagList.isEmpty() ? null : JSONUtil.toJsonStr(normalizedTagList);
     }
 
+    private String normalizeProfileVisibleFields(List<String> profileVisibleFieldList) {
+        if (profileVisibleFieldList == null) {
+            return null;
+        }
+        Set<String> requestedFieldSet = profileVisibleFieldList.stream()
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<String> normalizedFieldList = DEFAULT_PROFILE_VISIBLE_FIELDS.stream()
+                .filter(requestedFieldSet::contains)
+                .collect(Collectors.toList());
+        return JSONUtil.toJsonStr(normalizedFieldList);
+    }
+
     private List<String> parseInterestTagList(String interestTags) {
         if (StringUtils.isBlank(interestTags)) {
             return Collections.emptyList();
@@ -533,6 +566,27 @@ public class UserController {
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    private List<String> parseProfileVisibleFieldList(String profileVisibleFields) {
+        if (StringUtils.isBlank(profileVisibleFields)) {
+            return DEFAULT_PROFILE_VISIBLE_FIELDS;
+        }
+        try {
+            Set<String> requestedFieldSet = JSONUtil.toList(profileVisibleFields, String.class).stream()
+                    .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            return DEFAULT_PROFILE_VISIBLE_FIELDS.stream()
+                    .filter(requestedFieldSet::contains)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            return DEFAULT_PROFILE_VISIBLE_FIELDS;
+        }
+    }
+
+    private boolean isProfileFieldVisible(List<String> visibleFieldList, String field) {
+        return visibleFieldList != null && visibleFieldList.contains(field);
     }
 
     /**
@@ -706,27 +760,61 @@ public class UserController {
      */
     private UserProfileVO buildUserProfileVO(User user, User loginUser) {
         UserProfileVO userProfileVO = new UserProfileVO();
-        userProfileVO.setUser(userService.getUserVO(user));
+        List<String> visibleFieldList = parseProfileVisibleFieldList(user.getProfileVisibleFields());
+        UserVO userVO = userService.getUserVO(user);
+        applyProfileVisibility(userVO, visibleFieldList);
+        userProfileVO.setUser(userVO);
+        userProfileVO.setProfileVisibleFieldList(visibleFieldList);
 
-        java.util.Map<String, Object> stats = userQuestionHistoryService.getUserQuestionStats(user.getId());
-        userProfileVO.setTotalQuestionCount(getLongValue(stats.get("totalCount")));
-        userProfileVO.setMasteredQuestionCount(getLongValue(stats.get("masteredCount")));
-        userProfileVO.setActiveDays(getLongValue(stats.get("activeDays")));
-        userProfileVO.setCurrentStreak(getLongValue(stats.get("currentStreak")));
+        if (isProfileFieldVisible(visibleFieldList, "stats")) {
+            java.util.Map<String, Object> stats = userQuestionHistoryService.getUserQuestionStats(user.getId());
+            userProfileVO.setTotalQuestionCount(getLongValue(stats.get("totalCount")));
+            userProfileVO.setMasteredQuestionCount(getLongValue(stats.get("masteredCount")));
+            userProfileVO.setActiveDays(getLongValue(stats.get("activeDays")));
+            userProfileVO.setCurrentStreak(getLongValue(stats.get("currentStreak")));
+        }
 
-        QueryWrapper<Question> questionQueryWrapper = new QueryWrapper<>();
-        questionQueryWrapper.eq("userId", user.getId());
-        questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
-        userProfileVO.setApprovedQuestionCount(questionService.count(questionQueryWrapper));
-        QueryWrapper<QuestionBank> questionBankQueryWrapper = new QueryWrapper<>();
-        questionBankQueryWrapper.eq("userId", user.getId());
-        questionBankQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionBankConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
-        userProfileVO.setApprovedQuestionBankCount(questionBankService.count(questionBankQueryWrapper));
-        userProfileVO.setFollowerCount(userFollowService.getFollowerCount(user.getId()));
-        userProfileVO.setFollowingCount(userFollowService.getFollowingCount(user.getId()));
+        if (isProfileFieldVisible(visibleFieldList, "content")) {
+            QueryWrapper<Question> questionQueryWrapper = new QueryWrapper<>();
+            questionQueryWrapper.eq("userId", user.getId());
+            questionQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+            userProfileVO.setApprovedQuestionCount(questionService.count(questionQueryWrapper));
+            QueryWrapper<QuestionBank> questionBankQueryWrapper = new QueryWrapper<>();
+            questionBankQueryWrapper.eq("userId", user.getId());
+            questionBankQueryWrapper.and(qw -> qw.eq("reviewStatus", QuestionBankConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"));
+            userProfileVO.setApprovedQuestionBankCount(questionBankService.count(questionBankQueryWrapper));
+        }
+        if (isProfileFieldVisible(visibleFieldList, "relation")) {
+            userProfileVO.setFollowerCount(userFollowService.getFollowerCount(user.getId()));
+            userProfileVO.setFollowingCount(userFollowService.getFollowingCount(user.getId()));
+        }
         userProfileVO.setHasFollowed(userFollowService.hasFollowed(loginUser == null ? null : loginUser.getId(), user.getId()));
-        userProfileVO.setRecentActivityList(buildRecentActivityList(user.getId()));
+        userProfileVO.setRecentActivityList(isProfileFieldVisible(visibleFieldList, "activity")
+                ? buildRecentActivityList(user.getId())
+                : Collections.emptyList());
         return userProfileVO;
+    }
+
+    private void applyProfileVisibility(UserVO userVO, List<String> visibleFieldList) {
+        if (userVO == null) {
+            return;
+        }
+        userVO.setProfileVisibleFieldList(visibleFieldList);
+        if (!isProfileFieldVisible(visibleFieldList, "profile")) {
+            userVO.setUserProfile(null);
+        }
+        if (!isProfileFieldVisible(visibleFieldList, "city")) {
+            userVO.setCity(null);
+        }
+        if (!isProfileFieldVisible(visibleFieldList, "career")) {
+            userVO.setCareerDirection(null);
+        }
+        if (!isProfileFieldVisible(visibleFieldList, "tags")) {
+            userVO.setInterestTagList(Collections.emptyList());
+        }
+        if (!isProfileFieldVisible(visibleFieldList, "joinTime")) {
+            userVO.setCreateTime(null);
+        }
     }
 
     private List<UserActivityVO> buildRecentActivityList(Long userId) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame, MapPin, NotebookPen, PenSquare, Sparkles } from "lucide-react";
+import { Activity, ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame, MapPin, NotebookPen, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
@@ -10,6 +10,11 @@ import UserAvatar from "@/components/UserAvatar";
 import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
 
 export const dynamic = "force-dynamic";
+
+function isProfileFieldVisible(profile: API.UserProfileVO | undefined, field: string) {
+  const visibleFields = profile?.profileVisibleFieldList;
+  return !Array.isArray(visibleFields) || visibleFields.includes(field);
+}
 
 function formatDate(date?: string) {
   if (!date) {
@@ -110,37 +115,50 @@ export default async function PublicUserProfilePage({
   }
 
   const statCards = [
-    {
+    isProfileFieldVisible(profile, "stats") ? {
       key: "practice",
       label: "累计刷题",
       value: profile.totalQuestionCount || 0,
       icon: <BookOpen className="h-5 w-5 text-primary" />,
-    },
-    {
+    } : null,
+    isProfileFieldVisible(profile, "stats") ? {
       key: "mastered",
       label: "已掌握题目",
       value: profile.masteredQuestionCount || 0,
       icon: <Sparkles className="h-5 w-5 text-emerald-500" />,
-    },
-    {
+    } : null,
+    isProfileFieldVisible(profile, "stats") ? {
+      key: "active",
+      label: "活跃天数",
+      value: profile.activeDays || 0,
+      icon: <Activity className="h-5 w-5 text-sky-500" />,
+    } : null,
+    isProfileFieldVisible(profile, "stats") ? {
       key: "streak",
       label: "连续学习",
       value: profile.currentStreak || 0,
       icon: <Flame className="h-5 w-5 text-rose-500" />,
-    },
-    {
+    } : null,
+    isProfileFieldVisible(profile, "content") ? {
       key: "submission",
       label: "公开题目",
       value: profile.approvedQuestionCount || 0,
       icon: <PenSquare className="h-5 w-5 text-amber-500" />,
-    },
-    {
+    } : null,
+    isProfileFieldVisible(profile, "content") ? {
       key: "bank",
       label: "公开题库",
       value: profile.approvedQuestionBankCount || 0,
       icon: <NotebookPen className="h-5 w-5 text-violet-500" />,
-    },
-  ];
+    } : null,
+  ].filter(Boolean);
+  const hasProfileBasics =
+    isProfileFieldVisible(profile, "city") ||
+    isProfileFieldVisible(profile, "career") ||
+    isProfileFieldVisible(profile, "joinTime");
+  const showActivity = isProfileFieldVisible(profile, "activity");
+  const showContent = isProfileFieldVisible(profile, "content");
+  const showRelation = isProfileFieldVisible(profile, "relation");
 
   return (
     <div className="space-y-8 pb-20">
@@ -172,26 +190,34 @@ export default async function PublicUserProfilePage({
                   </span>
                 ) : null}
               </div>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-slate-500">
-                {profile.user.userProfile || "这位用户还没有填写个人简介。"}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3 text-sm font-medium text-slate-500">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  最近登录城市：{profile.user.city || "暂未识别"}
-                </span>
-                {profile.user.careerDirection ? (
+              {isProfileFieldVisible(profile, "profile") ? (
+                <p className="mt-4 max-w-3xl text-base leading-8 text-slate-500">
+                  {profile.user.userProfile || "这位用户还没有填写个人简介。"}
+                </p>
+              ) : null}
+              {hasProfileBasics ? (
+                <div className="mt-5 flex flex-wrap gap-3 text-sm font-medium text-slate-500">
+                {isProfileFieldVisible(profile, "city") ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    最近登录城市：{profile.user.city || "暂未识别"}
+                  </span>
+                ) : null}
+                {isProfileFieldVisible(profile, "career") && profile.user.careerDirection ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-4 py-2 text-violet-700">
                     <BriefcaseBusiness className="h-4 w-4" />
                     {profile.user.careerDirection}
                   </span>
                 ) : null}
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
-                  <CalendarClock className="h-4 w-4 text-primary" />
-                  加入于 {formatDate(profile.user.createTime)}
-                </span>
-              </div>
-              {profile.user.interestTagList?.length ? (
+                {isProfileFieldVisible(profile, "joinTime") ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
+                    <CalendarClock className="h-4 w-4 text-primary" />
+                    加入于 {formatDate(profile.user.createTime)}
+                  </span>
+                ) : null}
+                </div>
+              ) : null}
+              {isProfileFieldVisible(profile, "tags") && profile.user.interestTagList?.length ? (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {profile.user.interestTagList.map((tag) => (
                     <span
@@ -207,35 +233,40 @@ export default async function PublicUserProfilePage({
           </div>
 
           <div className="rounded-[2rem] border border-primary/10 bg-primary/5 px-5 py-4 text-sm leading-7 text-slate-600 lg:max-w-sm">
-            这里展示的是公开资料、公开学习数据以及关注关系。你可以直接查看 Ta 的粉丝和关注列表，也可以在这里完成关注。
+            这里展示的是用户选择公开的资料、学习数据和内容贡献。部分模块可能会根据对方的公开主页设置隐藏。
           </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {statCards.length ? (
+        <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
           {statCards.map((item) => (
             <div
-              key={item.key}
+              key={item!.key}
               className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 px-5 py-5"
             >
               <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
-                {item.icon}
-                <span>{item.label}</span>
+                {item!.icon}
+                <span>{item!.label}</span>
               </div>
               <div className="mt-3 text-3xl font-black tracking-tight text-slate-900">
-                {item.value}
+                {item!.value}
               </div>
             </div>
           ))}
         </div>
+        ) : null}
 
+        {showRelation ? (
         <UserRelationPanel
           user={profile.user}
           initialFollowerCount={profile.followerCount}
           initialFollowingCount={profile.followingCount}
           initialHasFollowed={profile.hasFollowed}
         />
+        ) : null}
       </section>
 
+      {showActivity ? (
       <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -294,7 +325,9 @@ export default async function PublicUserProfilePage({
           )}
         </div>
       </section>
+      ) : null}
 
+      {showContent ? (
       <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
         {questionBankList.length ? (
           <div className="mb-10 space-y-6">
@@ -379,6 +412,7 @@ export default async function PublicUserProfilePage({
         </div>
         </div>
       </section>
+      ) : null}
     </div>
   );
 }

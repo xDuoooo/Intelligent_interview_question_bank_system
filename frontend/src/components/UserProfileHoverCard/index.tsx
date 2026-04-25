@@ -77,6 +77,11 @@ function formatJoinDate(date?: string) {
   }
 }
 
+function isProfileFieldVisible(profile: API.UserProfileVO | undefined, field: string) {
+  const visibleFields = profile?.profileVisibleFieldList;
+  return !Array.isArray(visibleFields) || visibleFields.includes(field);
+}
+
 /**
  * 公开用户悬浮名片
  */
@@ -102,9 +107,18 @@ export default function UserProfileHoverCard({
   const canOpen = Boolean(user?.id);
   const displayUser = useMemo(() => profile?.user || user, [profile?.user, user]);
   const isSelf = Boolean(loginUser?.id && displayUser?.id && loginUser.id === displayUser.id);
+  const hasResolvedProfile = Boolean(profile);
+  const showProfile = hasResolvedProfile && isProfileFieldVisible(profile, "profile");
+  const showStats = hasResolvedProfile && isProfileFieldVisible(profile, "stats");
+  const showCity = hasResolvedProfile && isProfileFieldVisible(profile, "city");
+  const showJoinTime = hasResolvedProfile && isProfileFieldVisible(profile, "joinTime");
+  const showCareer = hasResolvedProfile && isProfileFieldVisible(profile, "career");
+  const showTags = hasResolvedProfile && isProfileFieldVisible(profile, "tags");
+  const showRelation = hasResolvedProfile && isProfileFieldVisible(profile, "relation");
+  const showContent = hasResolvedProfile && isProfileFieldVisible(profile, "content");
 
   const stats = useMemo(
-    () => [
+    () => showStats ? [
       {
         key: "practice",
         label: "刷题",
@@ -129,8 +143,8 @@ export default function UserProfileHoverCard({
         value: profile?.currentStreak ?? 0,
         icon: <Flame className="h-4 w-4 text-rose-500" />,
       },
-    ],
-    [profile],
+    ] : [],
+    [profile, showStats],
   );
 
   const loadProfile = async () => {
@@ -190,9 +204,11 @@ export default function UserProfileHoverCard({
               </span>
             ) : null}
           </div>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
-            {displayUser?.userProfile || "这个人还没有填写个人简介。"}
-          </p>
+          {showProfile ? (
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+              {displayUser?.userProfile || "这个人还没有填写个人简介。"}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -200,6 +216,7 @@ export default function UserProfileHoverCard({
         <Skeleton active paragraph={{ rows: 3 }} title={false} />
       ) : (
         <>
+          {showStats ? (
           <div className="grid grid-cols-2 gap-3">
             {stats.map((item) => (
               <div
@@ -214,21 +231,26 @@ export default function UserProfileHoverCard({
               </div>
             ))}
           </div>
+          ) : null}
 
+          {showCity || showJoinTime ? (
           <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
+            {showCity ? (
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />
               最近登录城市：{displayUser?.city || "暂未识别"}
             </span>
-            <span>加入于 {formatJoinDate(displayUser?.createTime)}</span>
+            ) : <span />}
+            {showJoinTime ? <span>加入于 {formatJoinDate(displayUser?.createTime)}</span> : null}
           </div>
+          ) : null}
 
-          {displayUser?.careerDirection || displayUser?.interestTagList?.length ? (
+          {(showCareer && displayUser?.careerDirection) || (showTags && displayUser?.interestTagList?.length) ? (
             <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
-              {displayUser.careerDirection ? (
+              {showCareer && displayUser.careerDirection ? (
                 <div className="text-sm font-semibold text-slate-700">方向：{displayUser.careerDirection}</div>
               ) : null}
-              {displayUser.interestTagList?.length ? (
+              {showTags && displayUser.interestTagList?.length ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {displayUser.interestTagList.slice(0, 5).map((tag) => (
                     <span
@@ -243,6 +265,7 @@ export default function UserProfileHoverCard({
             </div>
           ) : null}
 
+          {showRelation ? (
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3">
               <div className="text-xs font-bold text-slate-400">粉丝</div>
@@ -253,10 +276,13 @@ export default function UserProfileHoverCard({
               <div className="mt-2 text-lg font-black text-slate-900">{profile?.followingCount ?? 0}</div>
             </div>
           </div>
+          ) : null}
 
+          {showContent ? (
           <div className="rounded-2xl border border-dashed border-slate-200 px-4 py-3 text-sm text-slate-500">
             公开题目 {profile?.approvedQuestionCount ?? 0} 道，点击主页可以查看完整公开资料和最近题目。
           </div>
+          ) : null}
         </>
       )}
 

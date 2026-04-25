@@ -15,7 +15,7 @@ import ACCESS_ENUM from "@/access/accessEnum";
 import getAccessibleMenus from "@/access/menuAccess";
 import { menus } from "../../../config/menu";
 import { cn, validateImageSrc } from "@/lib/utils";
-import { Search, Menu, X, LogOut, User, Crown, ChevronDown } from "lucide-react";
+import { Search, Menu, X, LogOut, User, Crown, ChevronDown, ExternalLink } from "lucide-react";
 
 const NotificationPopover = dynamic(() => import("../NotificationPopover"), {
   ssr: false,
@@ -208,6 +208,9 @@ export default function GlobalHeader() {
                     </div>
                     <Link href="/user/center" className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted transition-colors">
                       <User className="h-4 w-4" /> 个人中心
+                    </Link>
+                    <Link href={`/user/${loginUser.id}`} className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted transition-colors">
+                      <ExternalLink className="h-4 w-4" /> 公开主页
                     </Link>
                     {loginUser.userRole === ACCESS_ENUM.ADMIN && (
                       <Link href="/admin" className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-xl hover:bg-muted text-primary transition-colors">
