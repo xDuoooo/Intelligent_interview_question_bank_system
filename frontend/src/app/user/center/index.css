@@ -101,6 +101,24 @@
   transform: translate(30%, -30%);
 }
 
+.achievement-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.achievement-scroll::-webkit-scrollbar {
+  height: 8px;
+}
+
+.achievement-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.achievement-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   #userCenterPage .ant-card {
