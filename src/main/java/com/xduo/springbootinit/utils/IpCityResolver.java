@@ -4,12 +4,19 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
+import org.lionsoul.ip2region.service.Config;
+import org.lionsoul.ip2region.service.Ip2Region;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,10 +41,28 @@ public class IpCityResolver {
             "X-Client-City"
     );
 
+    private final ResourceLoader resourceLoader;
+
+    public IpCityResolver(ResourceLoader resourceLoader) {
+        this.resourceLoader = resourceLoader;
+    }
+
     @Value("${app.ip-location.dev-city:}")
     private String devCity;
 
-    @Value("${app.ip-location.lookup-enabled:true}")
+    @Value("${app.ip-location.ip2region.enabled:true}")
+    private boolean ip2RegionEnabled;
+
+    @Value("${app.ip-location.ip2region.v4-xdb-location:classpath:ip2region/ip2region_v4.xdb}")
+    private String ip2RegionV4XdbLocation;
+
+    @Value("${app.ip-location.ip2region.v6-xdb-location:}")
+    private String ip2RegionV6XdbLocation;
+
+    @Value("${app.ip-location.ip2region.searchers:20}")
+    private int ip2RegionSearchers;
+
+    @Value("${app.ip-location.lookup-enabled:false}")
     private boolean lookupEnabled;
 
     @Value("${app.ip-location.lookup-url-template:https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip}}")
@@ -45,6 +70,50 @@ public class IpCityResolver {
 
     @Value("${app.ip-location.lookup-timeout-ms:1500}")
     private int lookupTimeoutMs;
+
+    private volatile Ip2Region ip2Region;
+
+    @PostConstruct
+    public void initIp2Region() {
+        if (!ip2RegionEnabled) {
+            return;
+        }
+        InputStream v4InputStream = null;
+        InputStream v6InputStream = null;
+        try {
+            v4InputStream = openXdbInputStream(ip2RegionV4XdbLocation);
+            v6InputStream = openXdbInputStream(ip2RegionV6XdbLocation);
+            Config v4Config = v4InputStream == null ? null : Config.custom()
+                    .setCachePolicy(Config.BufferCache)
+                    .setSearchers(Math.max(1, ip2RegionSearchers))
+                    .setXdbInputStream(v4InputStream)
+                    .asV4();
+            Config v6Config = v6InputStream == null ? null : Config.custom()
+                    .setCachePolicy(Config.BufferCache)
+                    .setSearchers(Math.max(1, ip2RegionSearchers))
+                    .setXdbInputStream(v6InputStream)
+                    .asV6();
+            if (v4Config == null && v6Config == null) {
+                log.warn("ip2region 离线库未加载：未配置可用 xdb 文件，将回退到在线 IP 查询");
+                return;
+            }
+            ip2Region = Ip2Region.create(v4Config, v6Config);
+            log.info("ip2region 离线库加载完成: v4={}, v6={}",
+                    v4Config != null,
+                    v6Config != null);
+        } catch (Exception e) {
+            log.warn("ip2region 离线库初始化失败，将回退到在线 IP 查询: {}", e.getMessage());
+            closeIp2RegionQuietly();
+        } finally {
+            closeQuietly(v4InputStream);
+            closeQuietly(v6InputStream);
+        }
+    }
+
+    @PreDestroy
+    public void destroy() {
+        closeIp2RegionQuietly();
+    }
 
     /**
      * 解析系统支持的城市名称
@@ -73,7 +142,28 @@ public class IpCityResolver {
         if (isLocalOrPrivateIp(ip)) {
             return CityUtils.normalizeSupportedCity(devCity);
         }
+        String offlineResolvedCity = resolveSupportedCityByIp2Region(ip);
+        if (StringUtils.isNotBlank(offlineResolvedCity)) {
+            return offlineResolvedCity;
+        }
         return resolveSupportedCityByPublicIp(ip);
+    }
+
+    private InputStream openXdbInputStream(String location) {
+        if (StringUtils.isBlank(location)) {
+            return null;
+        }
+        try {
+            Resource resource = resourceLoader.getResource(location.trim());
+            if (!resource.exists()) {
+                log.warn("ip2region xdb 文件不存在: {}", location);
+                return null;
+            }
+            return resource.getInputStream();
+        } catch (Exception e) {
+            log.warn("ip2region xdb 文件读取失败: {}, message={}", location, e.getMessage());
+            return null;
+        }
     }
 
     private boolean isLocalOrPrivateIp(String ip) {
@@ -102,6 +192,25 @@ public class IpCityResolver {
             }
         }
         return false;
+    }
+
+    private String resolveSupportedCityByIp2Region(String ip) {
+        Ip2Region currentIp2Region = ip2Region;
+        if (!ip2RegionEnabled || currentIp2Region == null || StringUtils.isBlank(ip)) {
+            return null;
+        }
+        try {
+            String region = currentIp2Region.search(ip.trim());
+            String supportedCity = CityUtils.extractSupportedCity(region);
+            if (StringUtils.isBlank(supportedCity)) {
+                log.debug("ip2region 未命中支持城市: ip={}, region={}", ip, region);
+                return null;
+            }
+            return supportedCity;
+        } catch (Exception e) {
+            log.warn("ip2region 城市解析异常: ip={}, message={}", ip, e.getMessage());
+            return null;
+        }
     }
 
     private String resolveSupportedCityByPublicIp(String ip) {
@@ -178,5 +287,28 @@ public class IpCityResolver {
             }
         }
         return null;
+    }
+
+    private void closeIp2RegionQuietly() {
+        Ip2Region currentIp2Region = ip2Region;
+        ip2Region = null;
+        if (currentIp2Region == null) {
+            return;
+        }
+        try {
+            currentIp2Region.close();
+        } catch (Exception e) {
+            log.debug("关闭 ip2region 查询服务失败: {}", e.getMessage());
+        }
+    }
+
+    private void closeQuietly(InputStream inputStream) {
+        if (inputStream == null) {
+            return;
+        }
+        try {
+            inputStream.close();
+        } catch (Exception ignored) {
+        }
     }
 }

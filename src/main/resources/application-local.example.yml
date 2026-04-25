@@ -224,8 +224,16 @@ app:
   ip-location:
     # 本地调试“按 IP 自动识别城市”时，可临时指定一个模拟城市（需是系统支持的城市）
     dev-city: 杭州
-    # 是否在未命中 CDN / 网关城市请求头时，再按公网 IP 调第三方接口查询城市
-    lookup-enabled: true
+    ip2region:
+      # 是否启用 ip2region xdb 离线库查询；会优先于在线接口
+      enabled: true
+      # 默认读取项目内置 IPv4 离线库，也可改成 file:/app/data/ip2region_v4.xdb
+      v4-xdb-location: classpath:ip2region/ip2region_v4.xdb
+      # 如需要 IPv6，可额外放置 v6 xdb 后配置该路径
+      v6-xdb-location: ""
+      searchers: 20
+    # 是否在未命中 CDN / 网关城市请求头和 ip2region 离线库时，再按公网 IP 调第三方接口查询城市
+    lookup-enabled: false
     # {ip} 会自动替换为客户端公网 IP；如后续你切换为自建服务或别的供应商，只改这里即可
     lookup-url-template: https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip}
     # 第三方 IP 城市查询超时时间（毫秒）

@@ -49,7 +49,12 @@ app:
     mock-enabled: false
   ip-location:
     dev-city: ""
-    lookup-enabled: true
+    ip2region:
+      enabled: true
+      v4-xdb-location: classpath:ip2region/ip2region_v4.xdb
+      v6-xdb-location: ""
+      searchers: 20
+    lookup-enabled: false
     lookup-url-template: https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={ip}
     lookup-timeout-ms: 1500
   upload:
