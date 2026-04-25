@@ -1,3 +1,7 @@
+"use client";
+
+import { Tooltip } from "antd";
+
 type PublicHistoryRecord = {
   date?: string;
   count?: number | string;
@@ -81,13 +85,31 @@ export default function PublicLearningHeatmap({
           className="grid auto-cols-[14px] grid-flow-col gap-1"
           style={{ gridTemplateRows: "repeat(7, 14px)" }}
         >
-          {days.map((day, index) => (
-            <div
-              key={day.date || `empty-${index}`}
-              title={day.date ? `${day.date}：${day.count || 0} 道题` : undefined}
-              className={`h-3.5 w-3.5 rounded-[4px] ${day.date ? getIntensity(day.count || 0) : "bg-transparent"}`}
-            />
-          ))}
+          {days.map((day, index) => {
+            if (!day.date) {
+              return <div key={`empty-${index}`} className="h-3.5 w-3.5 rounded-[4px] bg-transparent" />;
+            }
+
+            const count = day.count || 0;
+            return (
+              <Tooltip
+                key={day.date}
+                mouseEnterDelay={0.05}
+                title={
+                  <div className="space-y-1">
+                    <div>{day.date}</div>
+                    <div>做题 {count} 道</div>
+                  </div>
+                }
+              >
+                <button
+                  type="button"
+                  aria-label={`${day.date} 做题 ${count} 道`}
+                  className={`h-3.5 w-3.5 rounded-[4px] transition-transform hover:scale-110 ${getIntensity(count)}`}
+                />
+              </Tooltip>
+            );
+          })}
         </div>
       </div>
 

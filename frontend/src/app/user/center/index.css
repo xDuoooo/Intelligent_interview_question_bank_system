@@ -19,7 +19,7 @@
 
 .user-tabs-card .ant-card-head {
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-  padding: 0 8px;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -30,28 +30,57 @@
 
 .user-tabs-card .ant-tabs-nav {
   margin: 0;
-  padding: 0 24px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: thin;
+  padding: 0 16px;
+}
+
+.user-tabs-card .ant-tabs-nav::before {
+  left: 16px;
+  right: 16px;
 }
 
 .user-tabs-card .ant-tabs-nav-wrap {
   min-width: 0;
-  overflow: visible;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.user-tabs-card .ant-tabs-nav-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.user-tabs-card .ant-tabs-nav-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-tabs-card .ant-tabs-nav-wrap::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 999px;
 }
 
 .user-tabs-card .ant-tabs-nav-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 2px;
   min-width: max-content;
+}
+
+.user-tabs-card .ant-tabs-nav-operations {
+  display: none !important;
 }
 
 .user-tabs-card .ant-tabs-tab {
   flex: 0 0 auto;
+  margin: 0;
   min-width: max-content;
+  padding: 14px 12px;
 }
 
 .user-tabs-card .ant-tabs-tab-btn,
 .user-tabs-card .ant-tabs-tab-btn > span {
+  display: inline-flex;
+  align-items: center;
   min-width: max-content;
   white-space: nowrap;
 }
@@ -59,6 +88,10 @@
 @media (max-width: 768px) {
   .user-tabs-card .ant-tabs-nav {
     padding: 0 16px;
+  }
+
+  .user-tabs-card .ant-tabs-tab {
+    padding: 14px 10px;
   }
 }
 
