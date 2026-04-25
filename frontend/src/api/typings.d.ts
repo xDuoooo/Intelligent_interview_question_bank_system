@@ -1290,17 +1290,26 @@ declare namespace API {
   type UserProfileVO = {
     activeDays?: number;
     achievementList?: Record<string, any>[];
+    averageStudyDurationSeconds?: number;
     approvedQuestionBankCount?: number;
     approvedQuestionCount?: number;
     currentStreak?: number;
+    dailyTarget?: number;
+    favourCount?: number;
     followerCount?: number;
     followingCount?: number;
+    goalCompletedToday?: boolean;
     hasFollowed?: boolean;
     masteredQuestionCount?: number;
     profileVisibleFieldList?: string[];
     questionHistoryRecordList?: Record<string, any>[];
+    recommendedDifficulty?: string;
     recentActivityList?: UserActivityVO[];
+    studySessionCount?: number;
+    todayCount?: number;
+    todayStudyDurationSeconds?: number;
     totalQuestionCount?: number;
+    totalStudyDurationSeconds?: number;
     user?: UserVO;
   };
 

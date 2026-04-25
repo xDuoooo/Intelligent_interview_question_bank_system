@@ -43,6 +43,51 @@ public class UserProfileVO implements Serializable {
     private Long currentStreak;
 
     /**
+     * 收藏题目数
+     */
+    private Long favourCount;
+
+    /**
+     * 今日刷题数
+     */
+    private Long todayCount;
+
+    /**
+     * 每日目标题数
+     */
+    private Long dailyTarget;
+
+    /**
+     * 今日是否完成目标
+     */
+    private Boolean goalCompletedToday;
+
+    /**
+     * 推荐练习难度
+     */
+    private String recommendedDifficulty;
+
+    /**
+     * 累计学习时长（秒）
+     */
+    private Long totalStudyDurationSeconds;
+
+    /**
+     * 今日学习时长（秒）
+     */
+    private Long todayStudyDurationSeconds;
+
+    /**
+     * 学习会话数
+     */
+    private Long studySessionCount;
+
+    /**
+     * 平均学习时长（秒）
+     */
+    private Long averageStudyDurationSeconds;
+
+    /**
      * 成就进度
      */
     private List<Map<String, Object>> achievementList;

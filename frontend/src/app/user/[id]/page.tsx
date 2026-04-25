@@ -8,6 +8,7 @@ import QuestionBankList from "@/components/QuestionBankList";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
 import PublicAchievementStrip from "@/app/user/[id]/components/PublicAchievementStrip";
+import PublicLearningInsights from "@/app/user/[id]/components/PublicLearningInsights";
 import PublicLearningHeatmap from "@/app/user/[id]/components/PublicLearningHeatmap";
 import PublicProfileOwnerActions from "@/app/user/[id]/components/PublicProfileOwnerActions";
 import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
@@ -287,7 +288,11 @@ export default async function PublicUserProfilePage({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <div className="mt-6">
+          <PublicLearningInsights profile={profile} />
+        </div>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <PublicAchievementStrip achievementList={profile.achievementList} />
           <PublicLearningHeatmap recordList={profile.questionHistoryRecordList} />
         </div>

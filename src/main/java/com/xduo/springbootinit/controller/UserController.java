@@ -772,6 +772,15 @@ public class UserController {
             userProfileVO.setMasteredQuestionCount(getLongValue(stats.get("masteredCount")));
             userProfileVO.setActiveDays(getLongValue(stats.get("activeDays")));
             userProfileVO.setCurrentStreak(getLongValue(stats.get("currentStreak")));
+            userProfileVO.setFavourCount(getLongValue(stats.get("favourCount")));
+            userProfileVO.setTodayCount(getLongValue(stats.get("todayCount")));
+            userProfileVO.setDailyTarget(getLongValue(stats.get("dailyTarget")));
+            userProfileVO.setGoalCompletedToday(Boolean.TRUE.equals(stats.get("goalCompletedToday")));
+            userProfileVO.setRecommendedDifficulty((String) stats.get("recommendedDifficulty"));
+            userProfileVO.setTotalStudyDurationSeconds(getLongValue(stats.get("totalStudyDurationSeconds")));
+            userProfileVO.setTodayStudyDurationSeconds(getLongValue(stats.get("todayStudyDurationSeconds")));
+            userProfileVO.setStudySessionCount(getLongValue(stats.get("studySessionCount")));
+            userProfileVO.setAverageStudyDurationSeconds(getLongValue(stats.get("averageStudyDurationSeconds")));
             userProfileVO.setAchievementList(getMapListValue(stats.get("achievementList")));
             userProfileVO.setQuestionHistoryRecordList(userQuestionHistoryService.getUserQuestionHistoryRecord(
                     user.getId(),
