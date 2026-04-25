@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 公开用户主页视图
@@ -40,6 +41,16 @@ public class UserProfileVO implements Serializable {
      * 连续学习天数
      */
     private Long currentStreak;
+
+    /**
+     * 成就进度
+     */
+    private List<Map<String, Object>> achievementList;
+
+    /**
+     * 刷题热力图记录
+     */
+    private List<Map<String, Object>> questionHistoryRecordList;
 
     /**
      * 已通过审核的公开题目数

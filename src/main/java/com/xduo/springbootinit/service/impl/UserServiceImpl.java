@@ -533,6 +533,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             return null;
         }
         if (user != null) {
+            user = syncUserCityFromRequest(user, request);
             StpUtil.getSession().set(USER_LOGIN_STATE, user);
         }
         return user;
@@ -1070,6 +1071,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!updated) {
             return user;
         }
+        log.info("用户最近登录城市已更新: userId={}, city={}", user.getId(), resolvedCity);
         User latestUser = this.getById(user.getId());
         return latestUser == null ? user : latestUser;
     }

@@ -212,12 +212,12 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
               {achievementList.length === 0 ? (
                 <Empty description="还没有成就数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <div className="achievement-scroll -mx-1 overflow-x-auto pb-2">
-                  <div className="flex min-w-max snap-x snap-mandatory gap-3 px-1">
+                <div className="achievement-scroll -mx-1 max-h-none overflow-x-auto overflow-y-hidden pb-2 lg:max-h-[520px] lg:overflow-x-hidden lg:overflow-y-auto lg:pr-2">
+                  <div className="flex min-w-max snap-x snap-mandatory gap-3 px-1 lg:min-w-0 lg:flex-col lg:snap-none">
                   {achievementList.map((item: any) => (
                     <div
                       key={item.key}
-                      className={`flex w-[280px] shrink-0 snap-start flex-col rounded-2xl border p-4 transition-all sm:w-[320px] ${
+                      className={`flex w-[280px] shrink-0 snap-start flex-col rounded-2xl border p-4 transition-all sm:w-[320px] lg:w-full lg:snap-start ${
                         item.maxLevel
                           ? "border-emerald-200 bg-emerald-50/70"
                           : item.currentLevel > 0

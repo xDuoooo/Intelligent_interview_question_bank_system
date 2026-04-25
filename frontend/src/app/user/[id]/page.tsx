@@ -7,6 +7,9 @@ import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import QuestionBankList from "@/components/QuestionBankList";
 import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
+import PublicAchievementStrip from "@/app/user/[id]/components/PublicAchievementStrip";
+import PublicLearningHeatmap from "@/app/user/[id]/components/PublicLearningHeatmap";
+import PublicProfileOwnerActions from "@/app/user/[id]/components/PublicProfileOwnerActions";
 import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
 
 export const dynamic = "force-dynamic";
@@ -159,6 +162,7 @@ export default async function PublicUserProfilePage({
   const showActivity = isProfileFieldVisible(profile, "activity");
   const showContent = isProfileFieldVisible(profile, "content");
   const showRelation = isProfileFieldVisible(profile, "relation");
+  const showStats = isProfileFieldVisible(profile, "stats");
 
   return (
     <div className="space-y-8 pb-20">
@@ -234,6 +238,7 @@ export default async function PublicUserProfilePage({
 
           <div className="rounded-[2rem] border border-primary/10 bg-primary/5 px-5 py-4 text-sm leading-7 text-slate-600 lg:max-w-sm">
             这里展示的是用户选择公开的资料、学习数据和内容贡献。部分模块可能会根据对方的公开主页设置隐藏。
+            <PublicProfileOwnerActions userId={profile.user.id} />
           </div>
         </div>
 
@@ -265,6 +270,29 @@ export default async function PublicUserProfilePage({
         />
         ) : null}
       </section>
+
+      {showStats ? (
+      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+              Learning Profile
+            </div>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
+              成就进度与刷题轨迹
+            </h2>
+          </div>
+          <div className="text-sm text-slate-400">
+            {new Date().getFullYear()} 年
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <PublicAchievementStrip achievementList={profile.achievementList} />
+          <PublicLearningHeatmap recordList={profile.questionHistoryRecordList} />
+        </div>
+      </section>
+      ) : null}
 
       {showActivity ? (
       <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">

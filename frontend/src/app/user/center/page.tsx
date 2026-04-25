@@ -202,9 +202,15 @@ function UserCenterContent() {
     const tab = currentSearchParams.get("tab");
     const error = currentSearchParams.get("error");
     const msg = currentSearchParams.get("msg");
+    const editProfile = currentSearchParams.get("editProfile");
+    let shouldReplaceQuery = false;
     const normalizedTab = tab === "submissions" ? "submission" : tab === "achievement" ? "record" : tab;
     if (normalizedTab && validTabKeySet.current.has(normalizedTab)) {
       setActiveTabKey(normalizedTab);
+    }
+    if (editProfile === "1") {
+      setIsEditModalVisible(true);
+      shouldReplaceQuery = true;
     }
     if ((error || msg) && !hasShownMessage.current) {
       if (error) message.error(error);
@@ -213,9 +219,13 @@ function UserCenterContent() {
       if (!tab) {
         setActiveTabKey("security");
       }
+      shouldReplaceQuery = true;
+    }
+    if (shouldReplaceQuery) {
       const nextSearchParams = new URLSearchParams(window.location.search);
       nextSearchParams.delete("error");
       nextSearchParams.delete("msg");
+      nextSearchParams.delete("editProfile");
       const nextQuery = nextSearchParams.toString();
       router.replace(nextQuery ? `${window.location.pathname}?${nextQuery}` : window.location.pathname);
     }

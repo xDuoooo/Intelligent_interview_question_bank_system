@@ -772,6 +772,11 @@ public class UserController {
             userProfileVO.setMasteredQuestionCount(getLongValue(stats.get("masteredCount")));
             userProfileVO.setActiveDays(getLongValue(stats.get("activeDays")));
             userProfileVO.setCurrentStreak(getLongValue(stats.get("currentStreak")));
+            userProfileVO.setAchievementList(getMapListValue(stats.get("achievementList")));
+            userProfileVO.setQuestionHistoryRecordList(userQuestionHistoryService.getUserQuestionHistoryRecord(
+                    user.getId(),
+                    java.time.LocalDate.now(java.time.ZoneId.of("Asia/Shanghai")).getYear()
+            ));
         }
 
         if (isProfileFieldVisible(visibleFieldList, "content")) {
@@ -902,5 +907,16 @@ public class UserController {
 
     private long getLongValue(Object value) {
         return value instanceof Number ? ((Number) value).longValue() : 0L;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> getMapListValue(Object value) {
+        if (!(value instanceof List<?>)) {
+            return Collections.emptyList();
+        }
+        return ((List<?>) value).stream()
+                .filter(Map.class::isInstance)
+                .map(item -> (Map<String, Object>) item)
+                .collect(Collectors.toList());
     }
 }
