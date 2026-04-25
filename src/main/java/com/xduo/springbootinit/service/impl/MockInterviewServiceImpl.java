@@ -139,8 +139,11 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
                 messageList.add(new InterviewMessage(trimmedAnswer, false, System.currentTimeMillis(), answerRound, "answer"));
 
                 RoundAnalysis roundAnalysis = buildRoundAnalysis(mockInterview, messageList, answerRound, currentPlan);
-                if (shouldForceElaboration(trimmedAnswer, roundAnalysis.getScore())) {
+                boolean hasProbedThisRound = countAiMessagesByRoundAndStage(messageList, answerRound, "probe") > 0;
+                if (shouldForceElaboration(mockInterview, trimmedAnswer, roundAnalysis.getScore()) && !hasProbedThisRound) {
                     roundAnalysis = buildElaborationAnalysis(mockInterview, currentPlan, answerRound, trimmedAnswer, roundAnalysis);
+                } else if (roundAnalysis.isProbe() && hasProbedThisRound) {
+                    roundAnalysis.setProbe(false);
                 }
 
                 interviewReport.getRoundRecords().add(new RoundRecord(
@@ -484,14 +487,80 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
         return answeredRoundSet.size() + answerCountWithoutRound;
     }
 
+    private String buildInterviewerPersona(MockInterview mockInterview) {
+        String interviewType = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getInterviewType(), "技术深挖");
+        String difficulty = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getDifficulty(), "中等");
+        String persona = switch (interviewType) {
+            case "项目拷打" -> "你是一位真实的一线技术面试官，风格偏项目深挖，会围绕候选人亲历细节、职责边界、技术决策、量化结果和复盘持续追问。";
+            case "系统设计" -> "你是一位系统设计面试官，风格冷静、结构化，会围绕需求澄清、容量估算、架构拆分、数据模型、瓶颈、容灾和成本取舍追问。";
+            case "HR" -> "你是一位有经验的 HR 面试官，风格温和但敏锐，会用行为面试法追问动机、协作、冲突、压力、稳定性和岗位匹配度。";
+            default -> "你是一位高标准但克制的真实技术面试官，会围绕基础原理、项目经验、场景落地、边界条件和技术取舍追问。";
+        };
+        return persona + switch (difficulty) {
+            case "初级" -> "难度为初级：多用引导式问题，允许候选人先讲思路，但仍要追问基础概念是否真正理解。";
+            case "高级" -> "难度为高级：按中高级候选人标准提问，重点追问复杂场景、线上故障、设计取舍、数据指标、跨团队推进和复盘深度。";
+            default -> "难度为中等：问题要贴近真实业务，既看基础准确性，也看项目落地和分析能力。";
+        };
+    }
+
+    private String buildQuestionPolicy(MockInterview mockInterview) {
+        String interviewType = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getInterviewType(), "技术深挖");
+        return switch (interviewType) {
+            case "项目拷打" -> "追问策略：优先抓候选人回答里的具体名词、指标或方案继续问；如果回答只说“我们做了”，要追问“你具体负责哪一块、为什么这样做、结果怎么证明”。";
+            case "系统设计" -> "追问策略：先逼候选人明确约束和量级，再进入架构；如果回答缺少容量估算、关键接口、数据一致性或降级方案，要优先追问这些缺口。";
+            case "HR" -> "追问策略：优先要求候选人用具体事件回答；如果回答是价值观口号，要追问当时背景、行动、冲突、结果和复盘。";
+            default -> "追问策略：每次只问一个具体问题，优先围绕候选人最新回答里的薄弱点继续问，避免一次性罗列多个方向。";
+        };
+    }
+
+    private String buildScoringPolicy(MockInterview mockInterview) {
+        String difficulty = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getDifficulty(), "中等");
+        return switch (difficulty) {
+            case "初级" -> "评分策略：初级难度下，能讲清基础概念、基本流程和个人参与部分可给中等分；但概念错误、答非所问或完全没有实践细节仍要扣分。";
+            case "高级" -> "评分策略：高级难度下，只有回答包含真实项目细节、关键指标、技术取舍、边界场景、故障处理或复盘改进时才可给高分；泛泛而谈通常不超过 65 分。";
+            default -> "评分策略：评分要真实，不要默认给高分。候选人回答空泛、没有量化结果、没有技术取舍、没有边界场景时，应明显扣分。";
+        };
+    }
+
+    private int getShortAnswerThreshold(MockInterview mockInterview) {
+        String difficulty = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getDifficulty(), "中等");
+        return switch (difficulty) {
+            case "初级" -> 30;
+            case "高级" -> 60;
+            default -> SHORT_ANSWER_THRESHOLD;
+        };
+    }
+
+    private int getLowScoreProbeThreshold(MockInterview mockInterview) {
+        String difficulty = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getDifficulty(), "中等");
+        return switch (difficulty) {
+            case "初级" -> 52;
+            case "高级" -> 65;
+            default -> 58;
+        };
+    }
+
+    private int getDifficultyScoreBias(MockInterview mockInterview) {
+        String difficulty = StringUtils.defaultIfBlank(mockInterview == null ? null : mockInterview.getDifficulty(), "中等");
+        return switch (difficulty) {
+            case "初级" -> 4;
+            case "高级" -> -8;
+            default -> 0;
+        };
+    }
+
     private String buildOpeningIntro(MockInterview mockInterview) {
-        return String.format("你好，欢迎参加这场 %s 模拟面试。岗位是 %s，我会尽量按照真实面试节奏，围绕你的项目经历、技术深度和分析能力逐步追问。",
+        return String.format("你好，欢迎参加这场 %s 模拟面试。岗位是 %s，难度按%s处理。我会按真实面试节奏，围绕你的项目经历、技术深度和分析能力逐步追问。",
                 StringUtils.defaultIfBlank(mockInterview.getInterviewType(), "技术"),
-                StringUtils.defaultIfBlank(mockInterview.getJobPosition(), "目标岗位"));
+                StringUtils.defaultIfBlank(mockInterview.getJobPosition(), "目标岗位"),
+                StringUtils.defaultIfBlank(mockInterview.getDifficulty(), "中等"));
     }
 
     private String buildOpeningQuestion(MockInterview mockInterview, InterviewPlanItem planItem) {
-        String systemPrompt = "你是一位专业技术面试官。请像真实面试一样提出第一道问题。输出必须是一句自然的问题，不要输出 markdown，不要附带答案。";
+        String systemPrompt = buildInterviewerPersona(mockInterview)
+                + buildQuestionPolicy(mockInterview)
+                + "要求：只问一个问题；问题要贴合岗位、技术方向和候选人背景；不要输出 markdown；不要附带答案。"
+                + "除非是 HR 面试，否则不要只问泛泛的自我介绍。";
         String userPrompt = String.format(
                 "岗位：%s；工作年限：%s；难度：%s；面试类型：%s；技术方向：%s；候选人背景：%s。"
                         + "第一轮考察重点：%s；问题类型：%s。请给出开场问题。",
@@ -511,12 +580,23 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
                                              int completedRounds,
                                              InterviewPlanItem currentPlan) {
         InterviewPlanItem nextPlan = getPlanByRound(mockInterview, completedRounds + 1);
-        String systemPrompt = "你是一位专业技术面试官。请严格输出 JSON 对象，不要输出 markdown。"
-                + "字段必须包含：shortComment、focus、score、communicationScore、technicalScore、problemSolvingScore、questionStyle、recommendedAnswerSeconds、verdict、improvementTags、nextQuestion、shouldFinish。";
+        String latestQuestion = getLatestQuestion(messageList);
+        String latestAnswer = getLatestCandidateAnswer(messageList);
+        int probeCount = (int) countAiMessagesByRoundAndStage(messageList, completedRounds, "probe");
+        boolean canProbe = probeCount == 0;
+        String systemPrompt = buildInterviewerPersona(mockInterview)
+                + buildQuestionPolicy(mockInterview)
+                + buildScoringPolicy(mockInterview)
+                + "请严格输出 JSON 对象，不要输出 markdown。"
+                + "字段必须包含：shortComment、focus、score、communicationScore、technicalScore、problemSolvingScore、questionStyle、recommendedAnswerSeconds、verdict、improvementTags、nextActionHint、nextQuestion、shouldFinish、probe。"
+                + "nextQuestion 必须只包含一个问题，且要结合候选人最新回答追问具体细节，不要机械复述题纲。"
+                + "probe=true 表示继续深挖本轮同一考点；只有当本轮还没有追问过、且最新回答缺少关键判断依据时才允许 probe=true。"
+                + "如果本轮已经追问过一次，必须 probe=false 并进入下一考点。";
         String userPrompt = String.format(
                 "岗位：%s；工作年限：%s；难度：%s；面试类型：%s；技术方向：%s；计划轮次：%d；当前已完成轮次：%d；候选人背景：%s。"
-                        + "当前轮考察重点：%s；当前问题类型：%s。下一轮建议考察重点：%s。"
-                        + "请根据以下对话，对候选人最新回答做专业判断，并给出下一问。\n%s",
+                        + "当前轮考察重点：%s；当前问题类型：%s；下一轮建议考察重点：%s；本轮已追问次数：%d；是否还能继续深挖本轮：%s。"
+                        + "最新问题：%s\n最新回答：%s\n"
+                        + "请根据以下完整对话，对候选人最新回答做专业判断，并给出下一问。\n%s",
                 StringUtils.defaultIfBlank(mockInterview.getJobPosition(), "技术岗位"),
                 StringUtils.defaultIfBlank(mockInterview.getWorkExperience(), "不限"),
                 StringUtils.defaultIfBlank(mockInterview.getDifficulty(), "中等"),
@@ -528,15 +608,21 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
                 currentPlan == null ? "技术深挖" : currentPlan.getFocusTopic(),
                 currentPlan == null ? "追问" : currentPlan.getQuestionStyle(),
                 nextPlan == null ? "总结归纳" : nextPlan.getFocusTopic(),
+                probeCount,
+                canProbe ? "是" : "否",
+                StringUtils.defaultIfBlank(latestQuestion, "暂无"),
+                StringUtils.defaultIfBlank(latestAnswer, "暂无"),
                 buildTranscript(messageList));
         String fallbackJson = JSONUtil.toJsonStr(buildRoundFallback(mockInterview, completedRounds, currentPlan, nextPlan));
-        return parseRoundAnalysis(chatWithFallback(systemPrompt, userPrompt, fallbackJson), mockInterview, completedRounds, currentPlan, nextPlan);
+        return parseRoundAnalysis(chatWithFallback(systemPrompt, userPrompt, fallbackJson), mockInterview, completedRounds, currentPlan, nextPlan, canProbe);
     }
 
     private SummaryResult buildSummary(MockInterview mockInterview, List<InterviewMessage> messageList, InterviewReport interviewReport) {
-        String systemPrompt = "你是一位专业技术面试官。请严格输出 JSON 对象，不要输出 markdown。"
+        String systemPrompt = buildInterviewerPersona(mockInterview)
+                + buildScoringPolicy(mockInterview)
+                + "请严格输出 JSON 对象，不要输出 markdown。"
                 + "字段必须包含：overallScore、summary、strengths、improvements、suggestedTopics、communicationScore、technicalScore、problemSolvingScore、readinessLevel、recommendedNextAction、displayText。"
-                + "displayText 必须以【面试结束】开头。";
+                + "displayText 必须以【面试结束】开头。总结要具体指出 2 到 3 个真实短板，不要写空泛鼓励。";
         String userPrompt = String.format(
                 "岗位：%s；工作年限：%s；难度：%s；面试类型：%s；技术方向：%s；计划轮次：%d；实际完成轮次：%d；候选人背景：%s。"
                         + "请总结以下面试记录，并结合已有轮次评语给出结构化终评。\n轮次评语：%s\n对话记录：\n%s",
@@ -630,6 +716,27 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
         return "";
     }
 
+    private String getLatestCandidateAnswer(List<InterviewMessage> messageList) {
+        for (int i = messageList.size() - 1; i >= 0; i--) {
+            InterviewMessage interviewMessage = messageList.get(i);
+            if (!interviewMessage.isAI && !"end".equals(interviewMessage.stage)) {
+                return interviewMessage.content;
+            }
+        }
+        return "";
+    }
+
+    private long countAiMessagesByRoundAndStage(List<InterviewMessage> messageList, Integer round, String stage) {
+        if (round == null || round <= 0 || StringUtils.isBlank(stage)) {
+            return 0;
+        }
+        return messageList.stream()
+                .filter(message -> message.isAI)
+                .filter(message -> round.equals(message.round))
+                .filter(message -> stage.equals(message.stage))
+                .count();
+    }
+
     private String buildResumePrompt(InterviewReport interviewReport) {
         String focus = StringUtils.defaultIfBlank(interviewReport.getCurrentFocus(), "当前轮次重点");
         String style = StringUtils.defaultIfBlank(interviewReport.getCurrentQuestionStyle(), "继续追问");
@@ -659,13 +766,14 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
                                              int completedRounds,
                                              InterviewPlanItem currentPlan,
                                              InterviewPlanItem nextPlan) {
+        int difficultyBias = getDifficultyScoreBias(mockInterview);
         RoundAnalysis roundAnalysis = new RoundAnalysis();
         roundAnalysis.setShortComment(completedRounds <= 2 ? "回答方向基本正确，但还可以再深入一些细节。" : "回答有一定深度，建议继续补充边界场景和量化结果。");
         roundAnalysis.setFocus(currentPlan == null ? "继续深挖项目细节、技术取舍和稳定性思路" : currentPlan.getFocusTopic());
-        roundAnalysis.setScore(Math.max(60, Math.min(88, 66 + completedRounds * 4)));
-        roundAnalysis.setCommunicationScore(Math.max(58, Math.min(86, 64 + completedRounds * 3)));
-        roundAnalysis.setTechnicalScore(Math.max(60, Math.min(90, 65 + completedRounds * 4)));
-        roundAnalysis.setProblemSolvingScore(Math.max(58, Math.min(88, 63 + completedRounds * 4)));
+        roundAnalysis.setScore(Math.max(50, Math.min(88, 66 + completedRounds * 4 + difficultyBias)));
+        roundAnalysis.setCommunicationScore(Math.max(50, Math.min(86, 64 + completedRounds * 3 + difficultyBias)));
+        roundAnalysis.setTechnicalScore(Math.max(50, Math.min(90, 65 + completedRounds * 4 + difficultyBias)));
+        roundAnalysis.setProblemSolvingScore(Math.max(50, Math.min(88, 63 + completedRounds * 4 + difficultyBias)));
         roundAnalysis.setQuestionStyle(nextPlan == null ? "总结收束" : nextPlan.getQuestionStyle());
         roundAnalysis.setRecommendedAnswerSeconds(nextPlan == null ? 90 : nextPlan.getRecommendedAnswerSeconds());
         roundAnalysis.setNextActionHint(buildNextActionHint(nextPlan));
@@ -699,7 +807,8 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
                                              MockInterview mockInterview,
                                              int completedRounds,
                                              InterviewPlanItem currentPlan,
-                                             InterviewPlanItem nextPlan) {
+                                             InterviewPlanItem nextPlan,
+                                             boolean canProbe) {
         try {
             Map<?, ?> result = JSONUtil.toBean(extractJsonContent(content), Map.class);
             RoundAnalysis fallback = buildRoundFallback(mockInterview, completedRounds, currentPlan, nextPlan);
@@ -718,7 +827,7 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
             roundAnalysis.setImprovementTags(getStringList(result.get("improvementTags"), fallback.getImprovementTags()));
             roundAnalysis.setNextQuestion(getString(result.get("nextQuestion"), fallback.getNextQuestion()));
             roundAnalysis.setShouldFinish(Boolean.parseBoolean(String.valueOf(result.get("shouldFinish"))));
-            roundAnalysis.setProbe(false);
+            roundAnalysis.setProbe(canProbe && Boolean.parseBoolean(String.valueOf(result.get("probe"))));
             return roundAnalysis;
         } catch (Exception e) {
             return buildRoundFallback(mockInterview, completedRounds, currentPlan, nextPlan);
@@ -774,7 +883,9 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
     }
 
     private String buildElaborationQuestion(MockInterview mockInterview, InterviewPlanItem currentPlan, int currentRound, String userAnswer) {
-        String systemPrompt = "你是一位专业技术面试官。候选人的回答偏简略。请输出一句自然的追问，让候选人补充关键细节，不要输出 markdown。";
+        String systemPrompt = buildInterviewerPersona(mockInterview)
+                + buildQuestionPolicy(mockInterview)
+                + "候选人的回答偏简略。请输出一句自然的追问，让候选人补充关键细节，不要输出 markdown。";
         String userPrompt = String.format(
                 "岗位：%s；面试类型：%s；当前轮次：%d；当前考察重点：%s；候选人刚才的回答：%s。"
                         + "请给出一个补充追问，要求候选人把背景、方案、量化结果和复盘说完整。",
@@ -787,8 +898,11 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
         return chatWithFallback(systemPrompt, userPrompt, fallback);
     }
 
-    private boolean shouldForceElaboration(String userAnswer, Integer score) {
-        return StringUtils.length(StringUtils.trimToEmpty(userAnswer)) < SHORT_ANSWER_THRESHOLD || (score != null && score < 58);
+    private boolean shouldForceElaboration(MockInterview mockInterview, String userAnswer, Integer score) {
+        int answerLengthThreshold = getShortAnswerThreshold(mockInterview);
+        int scoreThreshold = getLowScoreProbeThreshold(mockInterview);
+        return StringUtils.length(StringUtils.trimToEmpty(userAnswer)) < answerLengthThreshold
+                || (score != null && score < scoreThreshold);
     }
 
     private String extractJsonContent(String content) {
@@ -870,6 +984,7 @@ public class MockInterviewServiceImpl extends ServiceImpl<MockInterviewMapper, M
             String content = aiManager.doChat(systemPrompt, userPrompt);
             return StringUtils.isBlank(content) ? fallback : content.trim();
         } catch (Exception e) {
+            log.warn("模拟面试 AI 调用失败，使用兜底回复: " + e.getMessage());
             return fallback;
         }
     }
