@@ -4,14 +4,9 @@ import { Activity, ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame,
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import { listQuestionVoByPageUsingPost } from "@/api/questionController";
-import QuestionBankList from "@/components/QuestionBankList";
-import TagList from "@/components/TagList";
 import UserAvatar from "@/components/UserAvatar";
-import PublicAchievementStrip from "@/app/user/[id]/components/PublicAchievementStrip";
-import PublicLearningInsights from "@/app/user/[id]/components/PublicLearningInsights";
-import PublicLearningHeatmap from "@/app/user/[id]/components/PublicLearningHeatmap";
 import PublicProfileOwnerActions from "@/app/user/[id]/components/PublicProfileOwnerActions";
-import UserRelationPanel from "@/app/user/[id]/components/UserRelationPanel";
+import PublicProfileTabs from "@/app/user/[id]/components/PublicProfileTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -163,6 +158,7 @@ export default async function PublicUserProfilePage({
   const showActivity = isProfileFieldVisible(profile, "activity");
   const showContent = isProfileFieldVisible(profile, "content");
   const showRelation = isProfileFieldVisible(profile, "relation");
+  const showRelationList = isProfileFieldVisible(profile, "relationList");
   const showStats = isProfileFieldVisible(profile, "stats");
 
   return (
@@ -261,191 +257,18 @@ export default async function PublicUserProfilePage({
           ))}
         </div>
         ) : null}
-
-        {showRelation ? (
-        <UserRelationPanel
-          user={profile.user}
-          initialFollowerCount={profile.followerCount}
-          initialFollowingCount={profile.followingCount}
-          initialHasFollowed={profile.hasFollowed}
-        />
-        ) : null}
       </section>
 
-      {showStats ? (
-      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Learning Profile
-            </div>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
-              成就进度与刷题轨迹
-            </h2>
-          </div>
-          <div className="text-sm text-slate-400">
-            {new Date().getFullYear()} 年
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <PublicLearningInsights profile={profile} />
-        </div>
-
-        <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <PublicAchievementStrip achievementList={profile.achievementList} />
-          <PublicLearningHeatmap recordList={profile.questionHistoryRecordList} />
-        </div>
-      </section>
-      ) : null}
-
-      {showActivity ? (
-      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Recent Activity
-            </div>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
-              公开学习动态
-            </h2>
-          </div>
-          <div className="text-sm text-slate-400">
-            公开展示最近刷题、题目与题库动态
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4">
-          {profile.recentActivityList?.length ? (
-            profile.recentActivityList.map((activity, index) => (
-              <div
-                key={`${activity.type}-${activity.targetId || index}`}
-                className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 px-5 py-5"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-primary">
-                        {activity.badge || "动态"}
-                      </span>
-                      <div className="text-lg font-black text-slate-900 whitespace-normal break-words">
-                        {activity.title}
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm leading-7 text-slate-500">
-                      {activity.description}
-                    </div>
-                    {activity.targetUrl ? (
-                      <Link
-                        href={activity.targetUrl}
-                        className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-primary"
-                      >
-                        查看详情
-                        <NotebookPen className="h-4 w-4" />
-                      </Link>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 text-sm text-slate-400">
-                    {formatDate(activity.activityTime)}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="rounded-[1.75rem] border border-dashed border-slate-200 px-6 py-12 text-center text-sm text-slate-400">
-              这位用户暂时还没有公开学习动态。
-            </div>
-          )}
-        </div>
-      </section>
-      ) : null}
-
-      {showContent ? (
-      <section className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-2xl shadow-slate-200/40">
-        {questionBankList.length ? (
-          <div className="mb-10 space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-                  Public Banks
-                </div>
-                <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
-                  公开题库
-                </h2>
-              </div>
-              <div className="text-sm text-slate-400">
-                只展示通过审核后对外公开的题库
-              </div>
-            </div>
-            <QuestionBankList questionBankList={questionBankList} />
-          </div>
-        ) : null}
-
-        <div className={questionBankList.length ? "border-t border-slate-100 pt-10" : ""}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-primary">
-              Latest Contributions
-            </div>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-900">
-              最近公开题目
-            </h2>
-          </div>
-          <div className="text-sm text-slate-400">
-            已通过审核的题目会展示在这里
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-4">
-          {questionList.length ? (
-            questionList.map((question) => (
-              <Link
-                key={question.id}
-                href={`/question/${question.id}`}
-                className="rounded-[1.75rem] border border-slate-100 bg-slate-50/70 px-5 py-5 transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:bg-white hover:shadow-xl hover:shadow-slate-200/30"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="min-w-0">
-                    <div className="text-lg font-black text-slate-900 whitespace-normal break-words">
-                      {question.title}
-                    </div>
-                    <div className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">
-                      {question.content}
-                    </div>
-                    <div className="mt-4">
-                      <TagList tagList={question.tagList} />
-                    </div>
-                    {question.difficulty ? (
-                      <div className="mt-3">
-                        <span
-                          className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                            question.difficulty === "简单"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : question.difficulty === "困难"
-                                ? "bg-orange-50 text-orange-700"
-                                : "bg-blue-50 text-blue-700"
-                          }`}
-                        >
-                          题目难度：{question.difficulty}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 text-sm text-slate-400">
-                    发布于 {formatDate(question.createTime)}
-                  </div>
-                </div>
-              </Link>
-            ))
-          ) : (
-            <div className="rounded-[1.75rem] border border-dashed border-slate-200 px-6 py-12 text-center text-sm text-slate-400">
-              这位用户暂时还没有公开题目。
-            </div>
-          )}
-        </div>
-        </div>
-      </section>
-      ) : null}
+      <PublicProfileTabs
+        profile={profile}
+        questionList={questionList}
+        questionBankList={questionBankList}
+        showStats={showStats}
+        showActivity={showActivity}
+        showContent={showContent}
+        showRelation={showRelation}
+        showRelationList={showRelationList}
+      />
     </div>
   );
 }

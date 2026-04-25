@@ -68,7 +68,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             "stats",
             "activity",
             "content",
-            "relation"
+            "relation",
+            "relationList"
     );
 
     @Resource

@@ -22,7 +22,7 @@ export default function PublicProfileOwnerActions({ userId }: Props) {
 
   return (
     <Link
-      href="/user/center?editProfile=1"
+      href="/user/public-profile/settings"
       className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 text-sm font-black text-white shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
     >
       <Settings className="h-4 w-4" />

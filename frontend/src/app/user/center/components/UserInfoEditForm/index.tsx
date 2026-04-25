@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Button, Checkbox, Form, Input, Select, message, Typography, Upload } from "antd";
+import { Button, Form, Input, Select, message, Typography, Upload } from "antd";
 import { 
   updateMyUserUsingPost, 
   getLoginUserUsingGet
@@ -8,7 +8,7 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
-import { User, FileText, ArrowRight, Camera, Loader2, MapPin, Eye } from "lucide-react";
+import { User, FileText, ArrowRight, Camera, Loader2, MapPin } from "lucide-react";
 import { validateImageSrc } from "@/lib/utils";
 import { buildApiUrl } from "@/libs/request";
 
@@ -21,30 +21,6 @@ const CAREER_DIRECTION_OPTIONS = [
   { label: "测试开发", value: "测试开发" },
   { label: "运维 / 云原生", value: "运维 / 云原生" },
   { label: "产品 / 运营技术", value: "产品 / 运营技术" },
-];
-
-const DEFAULT_PROFILE_VISIBLE_FIELDS = [
-  "profile",
-  "city",
-  "career",
-  "tags",
-  "joinTime",
-  "stats",
-  "activity",
-  "content",
-  "relation",
-];
-
-const PROFILE_VISIBLE_FIELD_OPTIONS = [
-  { label: "个人简介", value: "profile" },
-  { label: "最近登录城市", value: "city" },
-  { label: "就业方向", value: "career" },
-  { label: "兴趣标签", value: "tags" },
-  { label: "加入时间", value: "joinTime" },
-  { label: "学习数据", value: "stats" },
-  { label: "学习动态", value: "activity" },
-  { label: "公开题目/题库", value: "content" },
-  { label: "粉丝/关注", value: "relation" },
 ];
 
 interface Props {
@@ -69,9 +45,6 @@ const UserInfoEditForm = (props: Props) => {
     form.setFieldsValue({
       ...user,
       interestTags: user.interestTagList,
-      profileVisibleFields: Array.isArray(user.profileVisibleFieldList)
-        ? user.profileVisibleFieldList
-        : DEFAULT_PROFILE_VISIBLE_FIELDS,
     });
     setAvatarUrl(user.userAvatar || "");
   }, [user, form]);
@@ -274,27 +247,6 @@ const UserInfoEditForm = (props: Props) => {
             />
           </Form.Item>
 
-          <Form.Item
-            label={
-              <span className="font-bold text-slate-700 flex items-center gap-2 text-sm">
-                <Eye size={16} className="text-primary"/> 公开主页展示
-              </span>
-            }
-            name="profileVisibleFields"
-            extra="默认全部公开；取消勾选后，对应信息不会出现在你的公开主页和用户悬浮名片里。"
-          >
-            <Checkbox.Group className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-              {PROFILE_VISIBLE_FIELD_OPTIONS.map((item) => (
-                <Checkbox
-                  key={item.value}
-                  value={item.value}
-                  className="m-0 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 font-semibold text-slate-600 transition-all hover:border-primary/40 hover:bg-white"
-                >
-                  {item.label}
-                </Checkbox>
-              ))}
-            </Checkbox.Group>
-          </Form.Item>
         </div>
 
         <div className="pt-8 flex justify-center border-t border-slate-50 mt-10">

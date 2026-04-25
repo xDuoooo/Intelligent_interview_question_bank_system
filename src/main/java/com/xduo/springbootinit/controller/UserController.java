@@ -78,7 +78,8 @@ public class UserController {
             "stats",
             "activity",
             "content",
-            "relation"
+            "relation",
+            "relationList"
     );
 
     @Resource
