@@ -1240,6 +1240,10 @@ declare namespace API {
     email?: string;
   };
 
+  type UserInterestTagsMergeRequest = {
+    interestTags?: string[];
+  };
+
   type UserChangePasswordRequest = {
     oldPassword?: string;
     newPassword?: string;

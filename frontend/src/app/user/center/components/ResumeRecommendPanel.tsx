@@ -4,14 +4,18 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Empty, Input, List, Space, Tag, Typography, Upload, message } from "antd";
 import type { UploadProps } from "antd";
+import { useDispatch } from "react-redux";
 import { ArrowRight, FileSearch, Paperclip, Sparkles, Target, UploadCloud, X } from "lucide-react";
 import {
   logRecommendClickUsingPost,
   recommendQuestionsByResumeFileUsingPost,
   recommendQuestionsByResumeUsingPost,
 } from "@/api/questionController";
+import { mergeMyInterestTagsUsingPost } from "@/api/userController";
 import TagList from "@/components/TagList";
 import { QUESTION_DIFFICULTY_COLOR_MAP } from "@/constants/question";
+import type { AppDispatch } from "@/stores";
+import { setLoginUser } from "@/stores/loginUser";
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -26,9 +30,11 @@ const DEMO_RESUME_TEXT = [
  * 简历驱动推荐面板
  */
 const ResumeRecommendPanel: React.FC = () => {
+  const dispatch = useDispatch<AppDispatch>();
   const [resumeText, setResumeText] = useState("");
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savingTags, setSavingTags] = useState(false);
   const [result, setResult] = useState<API.ResumeQuestionRecommendVO>();
 
   const handleRecommend = async () => {
@@ -66,6 +72,26 @@ const ResumeRecommendPanel: React.FC = () => {
       message.error("文件解析失败：" + (error?.message || "请稍后重试"));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMergeTagsToProfile = async () => {
+    const tagList = result?.extractedTags?.filter(Boolean) || [];
+    if (!tagList.length) {
+      message.warning("暂未识别到可添加的技能标签");
+      return;
+    }
+    setSavingTags(true);
+    try {
+      const res = await mergeMyInterestTagsUsingPost({ interestTags: tagList });
+      if (res.data) {
+        dispatch(setLoginUser(res.data));
+      }
+      message.success("技能标签已添加到个人资料");
+    } catch (error: any) {
+      message.error("添加失败：" + (error?.message || "请稍后重试"));
+    } finally {
+      setSavingTags(false);
     }
   };
 
@@ -204,7 +230,20 @@ const ResumeRecommendPanel: React.FC = () => {
               </div>
 
               <div>
-                <div className="mb-3 font-semibold text-slate-800">识别出的技能标签</div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <div className="font-semibold text-slate-800">识别出的技能标签</div>
+                  {result.extractedTags?.length ? (
+                    <Button
+                      size="small"
+                      type="primary"
+                      loading={savingTags}
+                      onClick={handleMergeTagsToProfile}
+                      className="rounded-full"
+                    >
+                      添加到我的资料
+                    </Button>
+                  ) : null}
+                </div>
                 {result.extractedTags?.length ? (
                   <TagList tagList={result.extractedTags} />
                 ) : (

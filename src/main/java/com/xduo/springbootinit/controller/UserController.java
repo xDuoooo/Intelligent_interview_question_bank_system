@@ -15,6 +15,7 @@ import com.xduo.springbootinit.annotation.RateLimit;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
 import com.xduo.springbootinit.model.dto.user.UserAddRequest;
+import com.xduo.springbootinit.model.dto.user.UserInterestTagsMergeRequest;
 import com.xduo.springbootinit.model.dto.user.UserLoginRequest;
 import com.xduo.springbootinit.model.dto.user.UserQueryRequest;
 import com.xduo.springbootinit.model.dto.user.UserRegisterRequest;
@@ -443,6 +444,38 @@ public class UserController {
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 将简历解析出的技能标签合并到个人资料兴趣标签
+     *
+     * @param mergeRequest 标签合并请求
+     * @param request      HTTP 请求
+     * @return 最新登录用户信息
+     */
+    @PostMapping("/interest_tags/merge")
+    @RateLimit(key = "user:interestTagsMerge", maxRequests = 30, windowSeconds = 60)
+    public BaseResponse<LoginUserVO> mergeMyInterestTags(@RequestBody UserInterestTagsMergeRequest mergeRequest,
+                                                         HttpServletRequest request) {
+        ThrowUtils.throwIf(mergeRequest == null || mergeRequest.getInterestTags() == null,
+                ErrorCode.PARAMS_ERROR, "请选择要添加的技能标签");
+        User loginUser = userService.getLoginUser(request);
+        User latestUser = userService.getById(loginUser.getId());
+        ThrowUtils.throwIf(latestUser == null, ErrorCode.NOT_FOUND_ERROR, "用户不存在");
+
+        LinkedHashSet<String> mergedTagSet = new LinkedHashSet<>(parseInterestTagList(latestUser.getInterestTags()));
+        mergeRequest.getInterestTags().stream()
+                .filter(StringUtils::isNotBlank)
+                .map(String::trim)
+                .forEach(mergedTagSet::add);
+        ThrowUtils.throwIf(mergedTagSet.isEmpty(), ErrorCode.PARAMS_ERROR, "请选择要添加的技能标签");
+
+        User user = new User();
+        user.setId(latestUser.getId());
+        user.setInterestTags(normalizeInterestTags(new ArrayList<>(mergedTagSet)));
+        boolean result = userService.updateById(user);
+        ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        return ResultUtils.success(userService.getLoginUserVO(userService.getById(latestUser.getId())));
     }
 
     private String normalizeOptionalSupportedCity(String city, boolean allowEmpty) {
