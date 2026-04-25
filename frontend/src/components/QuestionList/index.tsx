@@ -35,17 +35,17 @@ const QuestionList = (props: Props) => {
                   ? `/bank/${questionBankId}/question/${item.id}`
                   : `/question/${item.id}`
               }
-              className="group flex items-center justify-between p-5 rounded-3xl bg-white border border-slate-100 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
+              className="group flex w-full min-w-0 flex-col justify-between overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 sm:flex-row sm:items-center"
             >
-              <div className="flex flex-col gap-2 flex-1 min-w-0 pr-4">
-                <span className="text-base font-bold text-foreground group-hover:text-primary transition-colors truncate">
+              <div className="flex min-w-0 flex-1 flex-col gap-2 pr-0 sm:pr-4">
+                <span className="break-words text-base font-bold text-foreground transition-colors group-hover:text-primary sm:truncate">
                   {item.title}
                 </span>
                 <div className="scale-95 origin-left opacity-90 group-hover:opacity-100 transition-opacity">
                   <TagList tagList={item.tagList} />
                 </div>
               </div>
-              <div className="flex items-center justify-center h-10 w-10 rounded-2xl bg-slate-50 group-hover:bg-primary/10 transition-colors">
+              <div className="mt-4 flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-2xl bg-slate-50 transition-colors group-hover:bg-primary/10 sm:mt-0 sm:self-auto">
                 <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5" />
               </div>
             </Link>
@@ -65,4 +65,3 @@ const QuestionList = (props: Props) => {
 };
 
 export default QuestionList;
-

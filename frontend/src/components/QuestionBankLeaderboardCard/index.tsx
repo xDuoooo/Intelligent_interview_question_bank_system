@@ -83,7 +83,15 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
               key={`bank-rank-${item.userId}`}
               className={`flex flex-col gap-3 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between ${index !== topList.length - 1 ? "border-b border-slate-100" : ""}`}
             >
-              <UserProfileHoverCard user={item} placement="topLeft">
+              <UserProfileHoverCard
+                user={{
+                  id: item.userId,
+                  userName: item.userName,
+                  userAvatar: item.userAvatar,
+                  userRole: item.userRole,
+                } as any}
+                placement="topLeft"
+              >
                 <div className="flex min-w-0 items-center gap-3">
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black ${getRankBadgeClass(item.rank)}`}
@@ -125,7 +133,15 @@ export default function QuestionBankLeaderboardCard({ leaderboard }: Props) {
             我的当前位置
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <UserProfileHoverCard user={leaderboard.currentUserItem} placement="topLeft">
+            <UserProfileHoverCard
+              user={{
+                id: leaderboard.currentUserItem.userId,
+                userName: leaderboard.currentUserItem.userName,
+                userAvatar: leaderboard.currentUserItem.userAvatar,
+                userRole: leaderboard.currentUserItem.userRole,
+              } as any}
+              placement="topLeft"
+            >
               <div className="flex min-w-0 items-center gap-3">
                 <div
                   className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black ${getRankBadgeClass(leaderboard.currentUserItem.rank)}`}

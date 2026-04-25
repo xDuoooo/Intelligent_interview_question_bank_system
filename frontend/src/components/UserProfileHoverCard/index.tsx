@@ -17,8 +17,12 @@ type PublicUser = Pick<
   "id" | "userName" | "userAvatar" | "userProfile" | "userRole" | "city" | "createTime" | "careerDirection" | "interestTagList"
 >;
 
+type HoverCardUser = PublicUser & {
+  userId?: string | number;
+};
+
 interface Props {
-  user?: PublicUser | null;
+  user?: HoverCardUser | null;
   children: React.ReactNode;
   placement?: PopoverProps["placement"];
   triggerClassName?: string;
@@ -95,19 +99,36 @@ export default function UserProfileHoverCard({
   const loginUser = useSelector((state: RootState) => state.loginUser);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const targetUserId = useMemo(() => user?.id ?? user?.userId, [user?.id, user?.userId]);
   const [profile, setProfile] = useState<API.UserProfileVO | undefined>(() =>
-    user?.id ? profileCache.get(getProfileCacheKey(user.id)) : undefined,
+    targetUserId ? profileCache.get(getProfileCacheKey(targetUserId)) : undefined,
   );
   const [loadError, setLoadError] = useState<string>("");
 
   useEffect(() => {
-    setProfile(user?.id ? profileCache.get(getProfileCacheKey(user.id)) : undefined);
+    setProfile(targetUserId ? profileCache.get(getProfileCacheKey(targetUserId)) : undefined);
     setLoadError("");
-  }, [user?.id]);
+  }, [targetUserId]);
 
-  const canOpen = Boolean(user?.id);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    const mediaQuery = window.matchMedia("(hover: none), (pointer: coarse)");
+    const syncTouchState = (matches: boolean) => setIsTouchDevice(matches);
+    syncTouchState(mediaQuery.matches);
+    const listener = (event: MediaQueryListEvent) => syncTouchState(event.matches);
+    mediaQuery.addEventListener("change", listener);
+    return () => mediaQuery.removeEventListener("change", listener);
+  }, []);
+
+  const canOpen = Boolean(targetUserId);
   const displayUser = useMemo(() => profile?.user || user, [profile?.user, user]);
-  const isSelf = Boolean(loginUser?.id && displayUser?.id && loginUser.id === displayUser.id);
+  const resolvedDisplayUserId = displayUser?.id ?? targetUserId;
+  const isSelf = Boolean(
+    loginUser?.id && resolvedDisplayUserId && String(loginUser.id) === String(resolvedDisplayUserId),
+  );
   const hasResolvedProfile = Boolean(profile);
   const showProfile = hasResolvedProfile && isProfileFieldVisible(profile, "profile");
   const showStats = hasResolvedProfile && isProfileFieldVisible(profile, "stats");
@@ -149,13 +170,13 @@ export default function UserProfileHoverCard({
   );
 
   const loadProfile = async () => {
-    if (!user?.id || loading || profile) {
+    if (!targetUserId || loading || profile) {
       return;
     }
     setLoading(true);
     setLoadError("");
     try {
-      const nextProfile = await fetchUserProfile(user.id);
+      const nextProfile = await fetchUserProfile(targetUserId);
       setProfile(nextProfile);
       if (!nextProfile) {
         setLoadError("暂时无法加载该用户资料");
@@ -168,7 +189,6 @@ export default function UserProfileHoverCard({
   };
 
   const handleFollowChange = (nextFollowed: boolean) => {
-    const targetUserId = user?.id;
     if (!targetUserId) {
       return;
     }
@@ -292,14 +312,14 @@ export default function UserProfileHoverCard({
       <div className={cn("grid gap-3", isSelf ? "grid-cols-1" : "grid-cols-2")}>
         {!isSelf ? (
           <UserFollowButton
-            userId={displayUser?.id}
+            userId={resolvedDisplayUserId}
             initialFollowed={Boolean(profile?.hasFollowed)}
             onChange={handleFollowChange}
             className="h-10 rounded-xl font-bold"
           />
         ) : null}
         <Link
-          href={`/user/${user?.id}`}
+          href={`/user/${targetUserId}`}
           prefetch={false}
           className="flex h-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
         >
@@ -314,16 +334,23 @@ export default function UserProfileHoverCard({
   }
 
   const triggerNode = (
-    <Link
-      href={`/user/${user?.id}`}
-      prefetch={false}
+    <span
+      role="button"
+      tabIndex={0}
       className={cn(
         "inline-flex min-w-0 cursor-pointer hover:no-underline",
         triggerClassName,
       )}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          setOpen(true);
+          void loadProfile();
+        }
+      }}
     >
       {children}
-    </Link>
+    </span>
   );
 
   return (
@@ -335,7 +362,7 @@ export default function UserProfileHoverCard({
           void loadProfile();
         }
       }}
-      trigger={["hover"]}
+      trigger={isTouchDevice ? ["click"] : ["hover"]}
       placement={placement}
       mouseEnterDelay={0.12}
       getPopupContainer={() => document.body}
