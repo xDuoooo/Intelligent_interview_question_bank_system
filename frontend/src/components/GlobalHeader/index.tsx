@@ -135,14 +135,14 @@ export default function GlobalHeader() {
           </Link>
 
           {/* Nav Links - Desktop */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden xl:flex flex-nowrap items-center gap-1">
             {accessibleMenus.map((menu) => (
               <Link
                 key={menu.path}
                 href={menu.path || "#"}
                 target={menu.target}
                 className={cn(
-                  "px-4 py-2 text-sm font-semibold rounded-full transition-all flex items-center gap-2",
+                  "shrink-0 whitespace-nowrap px-4 py-2 text-sm font-semibold rounded-full transition-all flex items-center gap-2",
                   isActiveMenu(menu.path, pathname)
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -157,7 +157,7 @@ export default function GlobalHeader() {
           {/* Right Actions */}
           <div className="flex items-center gap-2 sm:gap-4 ml-auto">
             {/* Search - Desktop */}
-            <div className="hidden lg:flex relative group items-center">
+            <div className="hidden xl:flex relative group items-center">
               <Search className="absolute left-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <input
                 type="text"
@@ -237,7 +237,7 @@ export default function GlobalHeader() {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
+              className="xl:hidden h-9 w-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
             >
               {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
@@ -247,7 +247,7 @@ export default function GlobalHeader() {
 
       {/* Mobile Nav Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-background animate-in slide-in-from-top duration-300">
+        <div className="xl:hidden border-t bg-background animate-in slide-in-from-top duration-300">
           <div className="container mx-auto px-4 py-6 space-y-4">
             {/* Mobile Search */}
             <div className="relative group items-center">
