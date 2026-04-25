@@ -526,12 +526,16 @@ public class QuestionController {
         }
         Page<Question> questionPage;
         boolean fallbackToDb = false;
-        try {
-            questionPage = questionService.searchFromEs(questionQueryRequest);
-        } catch (Exception e) {
-            log.warn("题目搜索 ES 不可用，已降级到数据库查询，searchText={}", questionQueryRequest.getSearchText(), e);
+        if (shouldSearchQuestionFromEs(questionQueryRequest)) {
+            try {
+                questionPage = questionService.searchFromEs(questionQueryRequest);
+            } catch (Exception e) {
+                log.warn("题目搜索 ES 不可用，已降级到数据库查询，searchText={}", questionQueryRequest.getSearchText(), e);
+                questionPage = questionService.listQuestionByPage(questionQueryRequest);
+                fallbackToDb = true;
+            }
+        } else {
             questionPage = questionService.listQuestionByPage(questionQueryRequest);
-            fallbackToDb = true;
         }
         if (StringUtils.isNotBlank(questionQueryRequest.getSearchText())) {
             try {
@@ -548,6 +552,13 @@ public class QuestionController {
             }
         }
         return ResultUtils.success(questionService.getQuestionVOPage(questionPage, request));
+    }
+
+    private boolean shouldSearchQuestionFromEs(QuestionQueryRequest questionQueryRequest) {
+        return StringUtils.isNotBlank(questionQueryRequest.getSearchText())
+                || StringUtils.isNotBlank(questionQueryRequest.getTitle())
+                || StringUtils.isNotBlank(questionQueryRequest.getContent())
+                || StringUtils.isNotBlank(questionQueryRequest.getAnswer());
     }
 
     /**

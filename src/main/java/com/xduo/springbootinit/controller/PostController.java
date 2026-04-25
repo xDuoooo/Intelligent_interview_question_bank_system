@@ -320,13 +320,23 @@ public class PostController {
         // 限制爬虫
         ThrowUtils.throwIf(current < 1 || size < 1 || size > 20, ErrorCode.PARAMS_ERROR, "分页参数不合法");
         Page<Post> postPage;
-        try {
-            postPage = postService.searchFromEs(postQueryRequest);
-        } catch (Exception e) {
-            log.warn("post search fallback to database, reason={}", e.getMessage());
+        if (shouldSearchPostFromEs(postQueryRequest)) {
+            try {
+                postPage = postService.searchFromEs(postQueryRequest);
+            } catch (Exception e) {
+                log.warn("post search fallback to database, reason={}", e.getMessage());
+                postPage = postService.page(new Page<>(current, size), postService.getQueryWrapper(postQueryRequest));
+            }
+        } else {
             postPage = postService.page(new Page<>(current, size), postService.getQueryWrapper(postQueryRequest));
         }
         return ResultUtils.success(postService.getPostVOPage(postPage, request));
+    }
+
+    private boolean shouldSearchPostFromEs(PostQueryRequest postQueryRequest) {
+        return StringUtils.isNotBlank(postQueryRequest.getSearchText())
+                || StringUtils.isNotBlank(postQueryRequest.getTitle())
+                || StringUtils.isNotBlank(postQueryRequest.getContent());
     }
 
     /**

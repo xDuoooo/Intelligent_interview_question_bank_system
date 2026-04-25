@@ -86,6 +86,7 @@ mybatis-plus:
 # 本地黑名单配置来源
 nacos:
   config:
+    sync-enabled: false
     data-id: black-ip-list.yml
     group: DEFAULT_GROUP
 
@@ -212,6 +213,11 @@ ai:
 # 前端联调地址
 app:
   frontend-url: http://localhost:3000
+  elasticsearch:
+    # ES 不可用时快速降级到数据库，避免搜索接口卡 30 秒
+    connect-timeout-ms: 1000
+    socket-timeout-ms: 3000
+    connection-request-timeout-ms: 1000
   email:
     # 本地开发建议默认开启模拟发信，避免误发真实邮件
     mock-enabled: true
