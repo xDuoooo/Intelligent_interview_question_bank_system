@@ -517,6 +517,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ErrorCode.NOT_LOGIN_ERROR);
         }
         ensureUserAvailable(user);
+        user = syncUserCityFromRequest(user, request);
         StpUtil.getSession().set(USER_LOGIN_STATE, user);
         return user;
     }
