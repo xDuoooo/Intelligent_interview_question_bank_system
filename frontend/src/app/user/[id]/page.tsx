@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { Activity, ArrowLeft, BookOpen, BriefcaseBusiness, CalendarClock, Flame, MapPin, NotebookPen, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import { listQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
@@ -7,6 +6,8 @@ import { listQuestionVoByPageUsingPost } from "@/api/questionController";
 import UserAvatar from "@/components/UserAvatar";
 import PublicProfileOwnerActions from "@/app/user/[id]/components/PublicProfileOwnerActions";
 import PublicProfileTabs from "@/app/user/[id]/components/PublicProfileTabs";
+import { formatIpLocation } from "@/lib/location";
+import { buildServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,7 @@ export default async function PublicUserProfilePage({
     );
   }
 
-  const requestOptions = {
-    headers: {
-      cookie: headers().get("cookie") || "",
-    },
-  };
+  const requestOptions = buildServerRequestOptions();
 
   const [profileResult, questionResult, questionBankResult] = await Promise.allSettled([
     getUserProfileVoByIdUsingGet({ id: userId }, requestOptions),
@@ -201,7 +198,7 @@ export default async function PublicUserProfilePage({
                 {isProfileFieldVisible(profile, "city") ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-4 py-2">
                     <MapPin className="h-4 w-4 text-primary" />
-                    最近登录城市：{profile.user.city || "暂未识别"}
+                    {formatIpLocation(profile.user.city)}
                   </span>
                 ) : null}
                 {isProfileFieldVisible(profile, "career") && profile.user.careerDirection ? (

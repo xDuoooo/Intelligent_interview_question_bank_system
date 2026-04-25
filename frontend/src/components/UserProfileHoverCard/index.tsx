@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import { Activity, BookOpen, Flame, MapPin, PenSquare, Sparkles } from "lucide-react";
 import { getUserProfileVoByIdUsingGet } from "@/api/userController";
 import UserFollowButton from "@/components/UserFollowButton";
+import { formatIpLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import UserAvatar from "@/components/UserAvatar";
 import { RootState } from "@/stores";
@@ -238,7 +239,7 @@ export default function UserProfileHoverCard({
             {showCity ? (
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-3.5 w-3.5" />
-              最近登录城市：{displayUser?.city || "暂未识别"}
+              {formatIpLocation(displayUser?.city)}
             </span>
             ) : <span />}
             {showJoinTime ? <span>加入于 {formatJoinDate(displayUser?.createTime)}</span> : null}

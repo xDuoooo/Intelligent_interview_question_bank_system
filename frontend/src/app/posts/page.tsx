@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import {
   listMyPostVoByPageUsingPost,
@@ -8,6 +7,7 @@ import {
 import PostList from "@/components/PostList";
 import PostSearchPanel from "@/components/PostSearchPanel";
 import { FilePlus2 } from "lucide-react";
+import { buildServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,7 @@ export default async function PostsPage({
     page?: string | string[];
   };
 }) {
-  const cookie = headers().get("cookie") || "";
+  const requestOptions = buildServerRequestOptions();
   let postList: API.PostVO[] = [];
   let myPostList: API.PostVO[] = [];
   let total = 0;
@@ -63,16 +63,8 @@ export default async function PostsPage({
 
   const [postListResult, myPostListResult] = await Promise.allSettled([
     (keyword || activeTag || activeFeatured
-      ? searchPostVoByPageUsingPost(postQueryRequest, {
-          headers: {
-            cookie,
-          },
-        })
-      : listPostVoByPageUsingPost(postQueryRequest, {
-          headers: {
-            cookie,
-          },
-        })),
+      ? searchPostVoByPageUsingPost(postQueryRequest, requestOptions)
+      : listPostVoByPageUsingPost(postQueryRequest, requestOptions)),
     listMyPostVoByPageUsingPost(
       {
         current: 1,
@@ -80,11 +72,7 @@ export default async function PostsPage({
         sortField: "createTime",
         sortOrder: "descend",
       },
-      {
-        headers: {
-          cookie,
-        },
-      },
+      requestOptions,
     ),
   ]);
 

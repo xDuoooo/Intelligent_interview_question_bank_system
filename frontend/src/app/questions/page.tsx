@@ -7,7 +7,7 @@ import {
   QUESTION_REVIEW_STATUS_TEXT_MAP,
 } from "@/constants/question";
 import { Sparkles } from "lucide-react";
-import { headers } from "next/headers";
+import { buildServerRequestOptions, type ServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,7 @@ function buildQuestionTableKey(params: API.QuestionQueryRequest) {
   });
 }
 
-async function loadMyDraftQuestions(requestOptions: { headers: { cookie: string } }) {
+async function loadMyDraftQuestions(requestOptions: ServerRequestOptions) {
   const sectionResults = await Promise.all(
     MY_DRAFT_SECTIONS.map(async (section) => {
       const res = (await listMyQuestionVoByPageUsingPost(
@@ -118,12 +118,7 @@ export default async function QuestionsPage({
     page?: string | string[];
   };
 }) {
-  const cookieHeader = headers().get("cookie") || "";
-  const requestOptions = {
-    headers: {
-      cookie: cookieHeader,
-    },
-  };
+  const requestOptions = buildServerRequestOptions();
   const defaultSearchParams: API.QuestionQueryRequest = {
     searchText: getSingleParam(searchParams.q),
     title: getSingleParam(searchParams.title),

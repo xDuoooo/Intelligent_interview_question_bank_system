@@ -22,6 +22,7 @@ import {
   MessageSquareText,
 } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
+import { formatIpLocation } from "@/lib/location";
 
 import { getMyQuestionStatsUsingGet } from "@/api/userQuestionHistoryController";
 import { USER_ROLE_ENUM, USER_ROLE_TEXT_MAP } from "@/constants/user";
@@ -284,7 +285,7 @@ function UserCenterContent() {
                 </Tag>
                 {user.city ? (
                   <Tag className="rounded-full px-3 m-0 bg-emerald-50 border-emerald-100 text-emerald-700">
-                    最近登录城市: {user.city}
+                    {formatIpLocation(user.city)}
                   </Tag>
                 ) : null}
                 {user.careerDirection ? (

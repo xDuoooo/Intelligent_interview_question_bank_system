@@ -1061,7 +1061,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null || request == null) {
             return user;
         }
-        String resolvedCity = ipCityResolver.resolveSupportedCity(request);
+        String resolvedCity = ipCityResolver.resolveLocationLabel(request);
         if (StringUtils.isBlank(resolvedCity) || StringUtils.equals(resolvedCity, user.getCity())) {
             return user;
         }

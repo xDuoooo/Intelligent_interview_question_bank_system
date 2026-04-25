@@ -118,15 +118,15 @@ public class IpCityResolver {
     /**
      * 解析系统支持的城市名称
      */
-    public String resolveSupportedCity(HttpServletRequest request) {
+    public String resolveLocationLabel(HttpServletRequest request) {
         if (request == null) {
             return null;
         }
         for (String headerName : CITY_HEADER_CANDIDATES) {
             String headerValue = request.getHeader(headerName);
-            String supportedCity = CityUtils.extractSupportedCity(headerValue);
-            if (StringUtils.isNotBlank(supportedCity)) {
-                return supportedCity;
+            String locationLabel = CityUtils.extractLocationLabel(headerValue);
+            if (StringUtils.isNotBlank(locationLabel)) {
+                return locationLabel;
             }
         }
         String regionHint = String.join(" ",
@@ -134,29 +134,33 @@ public class IpCityResolver {
                 StringUtils.defaultString(request.getHeader("X-Region")),
                 StringUtils.defaultString(request.getHeader("X-Area")),
                 StringUtils.defaultString(request.getHeader("X-City-Name")));
-        String supportedCity = CityUtils.extractSupportedCity(regionHint);
-        if (StringUtils.isNotBlank(supportedCity)) {
-            return supportedCity;
+        String locationLabel = CityUtils.extractLocationLabel(regionHint);
+        if (StringUtils.isNotBlank(locationLabel)) {
+            return locationLabel;
         }
         String ip = NetUtils.getIpAddress(request);
         boolean localOrPrivateIp = isLocalOrPrivateIp(ip);
         if (localOrPrivateIp) {
-            String devSupportedCity = CityUtils.normalizeSupportedCity(devCity);
-            if (StringUtils.isBlank(devSupportedCity)) {
+            String devLocationLabel = CityUtils.normalizeLocationLabel(devCity);
+            if (StringUtils.isBlank(devLocationLabel)) {
                 logUnresolvedCityDiagnostics(request, ip, true, regionHint, null, "private-ip-without-dev-city");
             }
-            return devSupportedCity;
+            return devLocationLabel;
         }
         String ip2RegionRegion = searchIp2Region(ip);
-        String offlineResolvedCity = CityUtils.extractSupportedCity(ip2RegionRegion);
-        if (StringUtils.isNotBlank(offlineResolvedCity)) {
-            return offlineResolvedCity;
+        String offlineResolvedLocation = CityUtils.extractLocationLabel(ip2RegionRegion);
+        if (StringUtils.isNotBlank(offlineResolvedLocation)) {
+            return offlineResolvedLocation;
         }
-        String onlineResolvedCity = resolveSupportedCityByPublicIp(ip);
-        if (StringUtils.isBlank(onlineResolvedCity)) {
+        String onlineResolvedLocation = resolveLocationLabelByPublicIp(ip);
+        if (StringUtils.isBlank(onlineResolvedLocation)) {
             logUnresolvedCityDiagnostics(request, ip, false, regionHint, ip2RegionRegion, "no-supported-city");
         }
-        return onlineResolvedCity;
+        return onlineResolvedLocation;
+    }
+
+    public String resolveSupportedCity(HttpServletRequest request) {
+        return resolveLocationLabel(request);
     }
 
     private InputStream openXdbInputStream(String location) {
@@ -206,11 +210,11 @@ public class IpCityResolver {
 
     private String resolveSupportedCityByIp2Region(String ip) {
         String region = searchIp2Region(ip);
-        String supportedCity = CityUtils.extractSupportedCity(region);
-        if (StringUtils.isBlank(supportedCity) && StringUtils.isNotBlank(region)) {
+        String locationLabel = CityUtils.extractLocationLabel(region);
+        if (StringUtils.isBlank(locationLabel) && StringUtils.isNotBlank(region)) {
             log.debug("ip2region 未命中支持城市: ip={}, region={}", ip, region);
         }
-        return supportedCity;
+        return locationLabel;
     }
 
     private String searchIp2Region(String ip) {
@@ -226,7 +230,7 @@ public class IpCityResolver {
         }
     }
 
-    private String resolveSupportedCityByPublicIp(String ip) {
+    private String resolveLocationLabelByPublicIp(String ip) {
         if (!lookupEnabled || StringUtils.isBlank(ip) || StringUtils.isBlank(lookupUrlTemplate)) {
             return null;
         }
@@ -243,12 +247,12 @@ public class IpCityResolver {
             if (payload == null) {
                 return null;
             }
-            String resolvedCity = extractSupportedCityFromPayload(payload);
-            if (StringUtils.isBlank(resolvedCity)) {
+            String resolvedLocation = extractLocationLabelFromPayload(payload);
+            if (StringUtils.isBlank(resolvedLocation)) {
                 log.debug("IP 城市解析未命中支持城市: ip={}, payload={}", ip, payload);
                 return null;
             }
-            return resolvedCity;
+            return resolvedLocation;
         } catch (Exception e) {
             log.warn("IP 城市解析异常: ip={}, message={}", ip, e.getMessage());
             return null;
@@ -277,8 +281,9 @@ public class IpCityResolver {
         return JSONUtil.parseObj(jsonText);
     }
 
-    private String extractSupportedCityFromPayload(JSONObject payload) {
+    private String extractLocationLabelFromPayload(JSONObject payload) {
         List<String> candidates = new ArrayList<>();
+        candidates.add(payload.getStr("country"));
         candidates.add(payload.getStr("city"));
         candidates.add(payload.getStr("region"));
         candidates.add(payload.getStr("regionNames"));
@@ -287,6 +292,7 @@ public class IpCityResolver {
         candidates.add(payload.getStr("addr"));
         JSONObject data = payload.getJSONObject("data");
         if (data != null) {
+            candidates.add(data.getStr("country"));
             candidates.add(data.getStr("city"));
             candidates.add(data.getStr("district"));
             candidates.add(data.getStr("prov"));
@@ -294,9 +300,9 @@ public class IpCityResolver {
             candidates.add(data.getStr("addr"));
         }
         for (String candidate : candidates) {
-            String supportedCity = CityUtils.extractSupportedCity(candidate);
-            if (StringUtils.isNotBlank(supportedCity)) {
-                return supportedCity;
+            String locationLabel = CityUtils.extractLocationLabel(candidate);
+            if (StringUtils.isNotBlank(locationLabel)) {
+                return locationLabel;
             }
         }
         return null;

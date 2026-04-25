@@ -5,9 +5,9 @@ import {
   QUESTION_REVIEW_STATUS_ENUM,
 } from "@/constants/question";
 import { Compass } from "lucide-react";
-import { headers } from "next/headers";
 import BanksExplorer from "./components/BanksExplorer";
 import QuestionBankList from "@/components/QuestionBankList";
+import { buildServerRequestOptions, type ServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ const MY_DRAFT_BANK_SECTIONS = [
   },
 ] as const;
 
-async function loadMyDraftQuestionBanks(requestOptions: { headers: { cookie: string } }) {
+async function loadMyDraftQuestionBanks(requestOptions: ServerRequestOptions) {
   const sectionResults = await Promise.all(
     MY_DRAFT_BANK_SECTIONS.map(async (section) => {
       const res = (await listMyQuestionBankVoByPageUsingPost(
@@ -57,12 +57,7 @@ async function loadMyDraftQuestionBanks(requestOptions: { headers: { cookie: str
  * @constructor
  */
 export default async function BanksPage() {
-  const cookieHeader = headers().get("cookie") || "";
-  const requestOptions = {
-    headers: {
-      cookie: cookieHeader,
-    },
-  };
+  const requestOptions = buildServerRequestOptions();
   let questionBankList: API.QuestionBankVO[] = [];
   let total = 0;
   let myDraftSections: Array<
