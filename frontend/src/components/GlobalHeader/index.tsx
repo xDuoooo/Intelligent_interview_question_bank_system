@@ -213,7 +213,7 @@ export default function GlobalHeader() {
 
                 {/* Dropdown Menu */}
                 {isUserDropdownOpen && (
-                  <div className="absolute right-0 z-[80] mt-2 w-56 rounded-2xl border bg-popover p-2 shadow-xl ring-1 ring-foreground/5 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
+                  <div className="absolute right-0 z-[80] mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl ring-1 ring-slate-200/80 animate-in fade-in zoom-in-95 duration-150 origin-top-right">
                     <div className="px-3 py-2 border-b mb-1">
                       <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">我的账号</p>
                     </div>

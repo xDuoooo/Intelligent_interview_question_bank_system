@@ -207,7 +207,7 @@ export default function UserProfileHoverCard({
   };
 
   const content = (
-    <div className="w-[320px] space-y-4">
+    <div className="w-[320px] space-y-4 rounded-[28px] bg-white">
       <div className="flex items-start gap-3">
         <UserAvatar
           src={displayUser?.userAvatar}
@@ -368,6 +368,11 @@ export default function UserProfileHoverCard({
       getPopupContainer={() => document.body}
       zIndex={1600}
       overlayClassName="user-profile-hover-card"
+      overlayInnerStyle={{
+        padding: 16,
+        backgroundColor: "#ffffff",
+        borderRadius: 28,
+      }}
       content={content}
     >
       {triggerNode}

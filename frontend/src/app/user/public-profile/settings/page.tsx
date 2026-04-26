@@ -123,6 +123,8 @@ export default function PublicProfileSettingsPage() {
 
   const setAllVisible = () => setSelectedFields(DEFAULT_PROFILE_VISIBLE_FIELDS);
   const setAllHidden = () => setSelectedFields([]);
+  const secondaryActionClassName =
+    "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 transition-colors hover:border-primary hover:text-primary";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-20">
@@ -149,16 +151,16 @@ export default function PublicProfileSettingsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button className="h-11 rounded-2xl font-bold" onClick={setAllVisible} icon={<Eye className="h-4 w-4" />}>
+            <Button className={secondaryActionClassName} onClick={setAllVisible} icon={<Eye className="h-4 w-4" />}>
               全部公开
             </Button>
-            <Button className="h-11 rounded-2xl font-bold" onClick={setAllHidden} icon={<EyeOff className="h-4 w-4" />}>
+            <Button className={secondaryActionClassName} onClick={setAllHidden} icon={<EyeOff className="h-4 w-4" />}>
               全部隐藏
             </Button>
             {loginUser?.id ? (
               <Link
                 href={`/user/${loginUser.id}`}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 text-sm font-bold text-slate-600 transition-colors hover:border-primary hover:text-primary"
+                className={secondaryActionClassName}
               >
                 <ExternalLink className="h-4 w-4" />
                 查看主页

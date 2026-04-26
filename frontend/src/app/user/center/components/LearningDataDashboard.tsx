@@ -163,10 +163,10 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[16, 16]} align="stretch">
         <Col xs={24} lg={10}>
-          <Card loading={loading} bordered={false} className="stats-card">
-            <div className="space-y-5">
+          <Card loading={loading} bordered={false} className="stats-card h-full lg:h-[520px]">
+            <div className="flex h-full flex-col gap-5">
               <div>
                 <Title level={5} style={{ marginBottom: 8 }}>每日学习目标</Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -178,7 +178,7 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
                 本周你已经累计了 <span className="font-semibold text-slate-800">{stats.studySessionCount || 0}</span> 次专注学习，
                 当前平均单次投入 <span className="font-semibold text-slate-800">{formatDuration(stats.averageStudyDurationSeconds)}</span>。
               </div>
-              <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+              <Space direction="vertical" size="middle" style={{ width: "100%", marginTop: "auto" }}>
                 <div className="flex items-center justify-between">
                   <Text strong>每日目标</Text>
                   <InputNumber
@@ -200,8 +200,8 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
           </Card>
         </Col>
         <Col xs={24} lg={14}>
-          <Card loading={loading} bordered={false} className="stats-card">
-            <div className="space-y-4">
+          <Card loading={loading} bordered={false} className="stats-card h-full lg:h-[520px]">
+            <div className="flex h-full flex-col gap-4">
               <div className="flex items-center justify-between">
                 <Title level={5} style={{ marginBottom: 0 }}>成就进度</Title>
                 <Space>
@@ -212,7 +212,7 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
               {achievementList.length === 0 ? (
                 <Empty description="还没有成就数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <div className="achievement-scroll -mx-1 max-h-none overflow-x-auto overflow-y-hidden pb-2 lg:max-h-[520px] lg:overflow-x-hidden lg:overflow-y-auto lg:pr-2">
+                <div className="achievement-scroll -mx-1 max-h-none overflow-x-auto overflow-y-hidden pb-2 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-2">
                   <div className="flex min-w-max snap-x snap-mandatory gap-3 px-1 lg:min-w-0 lg:flex-col lg:snap-none">
                   {achievementList.map((item: any) => (
                     <div
