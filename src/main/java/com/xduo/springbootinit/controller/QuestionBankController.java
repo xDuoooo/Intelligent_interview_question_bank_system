@@ -17,6 +17,7 @@ import com.xduo.springbootinit.constant.QuestionBankConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.manager.SystemAccessManager;
 import com.xduo.springbootinit.model.dto.question.QuestionQueryRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankAddRequest;
 import com.xduo.springbootinit.model.dto.questionbank.QuestionBankEditRequest;
@@ -58,6 +59,9 @@ public class QuestionBankController {
     private UserService userService;
     @Resource
     private NotificationService notificationService;
+
+    @Resource
+    private SystemAccessManager systemAccessManager;
 
     /**
      * 创建题库
@@ -195,6 +199,7 @@ public class QuestionBankController {
         // 是否要关联查询题库下的题目列表
         boolean needQueryQuestionList = questionBankQueryRequest.isNeedQueryQuestionList();
         if (needQueryQuestionList) {
+            systemAccessManager.ensureGuestQuestionAccessAllowed(request);
             QuestionQueryRequest questionQueryRequest = new QuestionQueryRequest();
             questionQueryRequest.setQuestionBankId(id);
             questionQueryRequest.setCurrent(questionBankQueryRequest.getCurrent());

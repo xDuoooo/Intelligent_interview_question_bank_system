@@ -22,6 +22,7 @@ import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.manager.SystemAccessManager;
 import com.xduo.springbootinit.mapper.CounterManager;
 import com.xduo.springbootinit.model.dto.question.*;
 import com.xduo.springbootinit.model.entity.Question;
@@ -109,6 +110,9 @@ public class QuestionController {
 
     @Resource
     private TagSyncService tagSyncService;
+
+    @Resource
+    private SystemAccessManager systemAccessManager;
 
     /**
      * 创建题目
@@ -213,6 +217,7 @@ public class QuestionController {
     @GetMapping("/get/vo")
     public BaseResponse<QuestionVO> getQuestionVOById(Long id, HttpServletRequest request) {
         ThrowUtils.throwIf(id == null || id <= 0, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestQuestionAccessAllowed(request);
         // 查询数据库
         Question question = questionService.getById(id);
         ThrowUtils.throwIf(question == null, ErrorCode.NOT_FOUND_ERROR);
@@ -247,6 +252,7 @@ public class QuestionController {
                                                                 @RequestParam(defaultValue = "6") Integer size,
                                                                 HttpServletRequest request) {
         ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestQuestionAccessAllowed(request);
         User loginUser = userService.getLoginUserPermitNull(request);
         List<QuestionVO> questionVOList = questionService.listRelatedQuestionVO(questionId, size, request);
         logRecommendationExposure(loginUser == null ? null : loginUser.getId(), "related", questionVOList);
@@ -372,6 +378,7 @@ public class QuestionController {
     public BaseResponse<Page<QuestionVO>> listQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
                                                                HttpServletRequest request) {
         ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestQuestionAccessAllowed(request);
         long current = questionQueryRequest.getCurrent();
         long size = questionQueryRequest.getPageSize();
         Entry entry = null;
@@ -526,6 +533,7 @@ public class QuestionController {
     public BaseResponse<Page<QuestionVO>> searchQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
                                                                  HttpServletRequest request) {
         ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestQuestionAccessAllowed(request);
         long size = questionQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 200, ErrorCode.PARAMS_ERROR);

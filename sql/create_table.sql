@@ -416,6 +416,8 @@ create table if not exists system_config
     enableSiteNotification tinyint default 1           not null comment '是否开启站内通知',
     enableEmailNotification tinyint default 1          not null comment '是否开启邮件提醒',
     enableLearningGoalReminder tinyint default 1       not null comment '是否开启学习目标提醒任务',
+    allowGuestViewQuestion tinyint default 1           not null comment '是否允许未登录用户访问题目模块',
+    allowGuestViewPost tinyint default 1               not null comment '是否允许未登录用户访问论坛模块',
     createTime      datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     updateTime      datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
 ) comment '系统配置' collate = utf8mb4_unicode_ci;

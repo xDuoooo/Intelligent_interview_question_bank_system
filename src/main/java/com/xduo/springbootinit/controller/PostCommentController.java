@@ -9,6 +9,7 @@ import com.xduo.springbootinit.common.ResultUtils;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.manager.SystemAccessManager;
 import com.xduo.springbootinit.model.dto.comment.CommentActivityQueryRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentAddRequest;
 import com.xduo.springbootinit.model.dto.postcomment.PostCommentAdminQueryRequest;
@@ -42,6 +43,9 @@ public class PostCommentController {
     @Resource
     private UserService userService;
 
+    @Resource
+    private SystemAccessManager systemAccessManager;
+
     @PostMapping("/add")
     public BaseResponse<PostCommentSubmitResultVO> addComment(@RequestBody PostCommentAddRequest request,
                                                               HttpServletRequest httpRequest) {
@@ -64,6 +68,7 @@ public class PostCommentController {
     public BaseResponse<Page<PostCommentVO>> listCommentVOByPage(@RequestBody PostCommentQueryRequest request,
                                                                  HttpServletRequest httpRequest) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestPostAccessAllowed(httpRequest);
         ThrowUtils.throwIf(request.getPageSize() > 50, ErrorCode.PARAMS_ERROR, "每页最多 50 条");
         return ResultUtils.success(postCommentService.listCommentVOByPage(request, httpRequest));
     }

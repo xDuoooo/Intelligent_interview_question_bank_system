@@ -12,6 +12,7 @@ import com.xduo.springbootinit.constant.PostConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.manager.SystemAccessManager;
 import com.xduo.springbootinit.model.dto.post.PostAddRequest;
 import com.xduo.springbootinit.model.dto.post.PostEditRequest;
 import com.xduo.springbootinit.model.dto.post.PostOperateRequest;
@@ -81,6 +82,9 @@ public class PostController {
 
     @Resource
     private TagSyncService tagSyncService;
+
+    @Resource
+    private SystemAccessManager systemAccessManager;
 
     // region 增删改查
 
@@ -193,6 +197,7 @@ public class PostController {
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         Post post = postService.getById(id);
         if (post == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
@@ -228,6 +233,7 @@ public class PostController {
      */
     @GetMapping("/hot/list")
     public BaseResponse<List<PostVO>> listHotPost(HttpServletRequest request) {
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         return ResultUtils.success(postService.listHotPostVO(6, request));
     }
 
@@ -236,6 +242,7 @@ public class PostController {
      */
     @GetMapping("/featured/list")
     public BaseResponse<List<PostVO>> listFeaturedPost(HttpServletRequest request) {
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         return ResultUtils.success(postService.listFeaturedPostVO(4, request));
     }
 
@@ -247,6 +254,7 @@ public class PostController {
                                                       Integer size,
                                                       HttpServletRequest request) {
         ThrowUtils.throwIf(postId <= 0, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         return ResultUtils.success(postService.listRelatedPostVO(postId, size == null ? 4 : size, request));
     }
 
@@ -279,6 +287,7 @@ public class PostController {
     public BaseResponse<Page<PostVO>> listPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
         ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         postQueryRequest.setReviewStatus(PostConstant.REVIEW_STATUS_APPROVED);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();
@@ -326,6 +335,7 @@ public class PostController {
     public BaseResponse<Page<PostVO>> searchPostVOByPage(@RequestBody PostQueryRequest postQueryRequest,
             HttpServletRequest request) {
         ThrowUtils.throwIf(postQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        systemAccessManager.ensureGuestPostAccessAllowed(request);
         postQueryRequest.setReviewStatus(PostConstant.REVIEW_STATUS_APPROVED);
         long current = postQueryRequest.getCurrent();
         long size = postQueryRequest.getPageSize();

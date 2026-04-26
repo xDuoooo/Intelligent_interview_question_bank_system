@@ -12,6 +12,7 @@ import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.constant.UserConstant;
 import com.xduo.springbootinit.exception.BusinessException;
 import com.xduo.springbootinit.exception.ThrowUtils;
+import com.xduo.springbootinit.manager.SystemAccessManager;
 import com.xduo.springbootinit.model.entity.Question;
 import com.xduo.springbootinit.model.entity.QuestionBank;
 import com.xduo.springbootinit.model.dto.question.QuestionBatchDeleteRequest;
@@ -55,6 +56,9 @@ public class QuestionBankQuestionController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private SystemAccessManager systemAccessManager;
 
     /**
      * 向题库添加题目（需登录）
@@ -104,6 +108,7 @@ public class QuestionBankQuestionController {
                                                         HttpServletRequest request) {
         ThrowUtils.throwIf(questionBankId == null || questionBankId <= 0, ErrorCode.PARAMS_ERROR, "题库非法");
         ThrowUtils.throwIf(questionId == null || questionId <= 0, ErrorCode.PARAMS_ERROR, "题目非法");
+        systemAccessManager.ensureGuestQuestionAccessAllowed(request);
         User loginUser = userService.getLoginUserPermitNull(request);
         QuestionBank questionBank = questionBankService.getById(questionBankId);
         ThrowUtils.throwIf(questionBank == null, ErrorCode.NOT_FOUND_ERROR, "题库不存在");
