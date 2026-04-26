@@ -185,6 +185,7 @@ create table if not exists post
     id           bigint                             not null comment 'id' primary key,
     title        varchar(80)                       not null comment '标题',
     content      text                              not null comment '内容',
+    ipLocation   varchar(64)                       null comment '发布时 IP 归属地',
     tags         varchar(1024)                     null comment '标签列表 json',
     thumbNum     int      default 0                not null comment '点赞数',
     favourNum    int      default 0                not null comment '收藏数',

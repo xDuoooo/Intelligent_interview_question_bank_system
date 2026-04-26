@@ -31,6 +31,7 @@ import com.xduo.springbootinit.mapper.PostReportMapper;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.manager.AiManager;
 import java.util.List;
 import java.util.Date;
@@ -74,6 +75,9 @@ public class PostController {
     @Resource
     private PostReportMapper postReportMapper;
 
+    @Resource
+    private IpCityResolver ipCityResolver;
+
     // region 增删改查
 
     /**
@@ -97,6 +101,7 @@ public class PostController {
         postService.validPost(post, true);
         User loginUser = userService.getLoginUser(request);
         post.setUserId(loginUser.getId());
+        post.setIpLocation(ipCityResolver.resolveLocationLabel(request));
         post.setFavourNum(0);
         post.setThumbNum(0);
         applyPostReviewPolicy(post, loginUser, true);

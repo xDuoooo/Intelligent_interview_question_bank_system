@@ -797,6 +797,7 @@ declare namespace API {
     hasFavour?: boolean;
     hasThumb?: boolean;
     id?: string | number;
+    ipLocation?: string;
     isFeatured?: number;
     isTop?: number;
     reportNum?: number;

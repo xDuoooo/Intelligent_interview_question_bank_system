@@ -29,7 +29,7 @@ const MY_DRAFT_BANK_SECTIONS = [
   },
 ] as const;
 
-const MY_DRAFT_BANK_FETCH_PAGE_SIZE = 24;
+const MY_DRAFT_BANK_FETCH_PAGE_SIZE = 20;
 const MY_DRAFT_BANK_FETCH_MAX_PAGES = 20;
 
 async function loadAllMyDraftQuestionBanksByStatus(

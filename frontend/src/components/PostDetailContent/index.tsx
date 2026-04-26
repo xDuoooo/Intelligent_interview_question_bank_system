@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Tag } from "antd";
 import { CalendarClock, Heart, ThumbsUp } from "lucide-react";
+import { formatIpLocation } from "@/lib/location";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
 
@@ -100,6 +101,9 @@ export default function PostDetailContent({ post, relatedPostList = [] }: Props)
                 <CalendarClock className="h-4 w-4" />
                 {post.createTime ? new Date(post.createTime).toLocaleString("zh-CN") : "刚刚"}
               </span>
+              {post.ipLocation ? (
+                <span className="text-xs font-medium text-slate-400">{formatIpLocation(post.ipLocation)}</span>
+              ) : null}
               <span className="inline-flex items-center gap-1">
                 <ThumbsUp className="h-4 w-4" />
                 {post.thumbNum || 0}
