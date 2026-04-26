@@ -208,12 +208,6 @@ export default async function QuestionsPage({
          </div>
       </section>
 
-      <QuestionListRecommendSection
-        questionList={personalRecommendQuestionList}
-        isLoggedIn={isLoggedIn}
-        hasActiveSearch={hasActiveSearchFilters(defaultSearchParams)}
-      />
-
       {myDraftSections.length ? (
         <section className="rounded-[3rem] border border-blue-100 bg-blue-50/70 p-6 sm:p-8 shadow-xl shadow-blue-100/40">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -295,6 +289,12 @@ export default async function QuestionsPage({
           defaultSearchParams={defaultSearchParams}
         />
       </section>
+
+      <QuestionListRecommendSection
+        questionList={personalRecommendQuestionList}
+        isLoggedIn={isLoggedIn}
+        hasActiveSearch={hasActiveSearchFilters(defaultSearchParams)}
+      />
     </div>
   );
 }
