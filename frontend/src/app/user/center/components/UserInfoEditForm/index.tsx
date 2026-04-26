@@ -12,6 +12,7 @@ import { User, FileText, ArrowRight, Camera, Loader2, MapPin } from "lucide-reac
 import { formatIpLocation } from "@/lib/location";
 import { validateImageSrc } from "@/lib/utils";
 import { buildApiUrl } from "@/libs/request";
+import TagSearchSelect from "@/components/TagSearchSelect";
 
 const { Text } = Typography;
 const CAREER_DIRECTION_OPTIONS = [
@@ -207,12 +208,12 @@ const UserInfoEditForm = (props: Props) => {
             name="interestTags"
             extra="最多 8 个标签，用于个性化推荐和公开主页展示。"
           >
-            <Select
-              mode="tags"
+            <TagSearchSelect
+              scene="interest"
               placeholder="输入你关注的技术方向，例如：MySQL、Redis、并发"
               tokenSeparators={[",", " "]}
+              maxCount={8}
               maxTagCount="responsive"
-              size="large"
             />
           </Form.Item>
 

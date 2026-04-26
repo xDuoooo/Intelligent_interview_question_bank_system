@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import TagSearchSelect from "@/components/TagSearchSelect";
 import TagList from "@/components/TagList";
 import { ChevronLeft, ChevronRight, Filter, Loader2, Search, Sparkles } from "lucide-react";
 import { Button, Input, Select, Tag, message } from "antd";
@@ -260,14 +261,12 @@ const QuestionTable: React.FC<Props> = (props) => {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_160px] lg:items-center">
-            <Select
-              mode="tags"
-              size="large"
+            <TagSearchSelect
+              scene="question"
               value={selectedTags}
               onChange={(value) => setSelectedTags(value)}
               tokenSeparators={[",", " "]}
               placeholder="输入一个或多个标签，例如：MySQL、索引、Java"
-              allowClear
             />
             <Button
               type="primary"
