@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { listMyQuestionVoByPageUsingPost, searchQuestionVoByPageUsingPost } from "@/api/questionController";
+import {
+  listMyQuestionVoByPageUsingPost,
+  listPersonalRecommendQuestionVoUsingGet,
+  searchQuestionVoByPageUsingPost,
+} from "@/api/questionController";
 import { getLoginUserUsingGet } from "@/api/userController";
 import QuestionTable from "@/components/QuestionTable";
 import {
@@ -8,6 +12,7 @@ import {
 } from "@/constants/question";
 import { Sparkles } from "lucide-react";
 import { buildServerRequestOptions, type ServerRequestOptions } from "@/libs/serverRequestOptions";
+import QuestionListRecommendSection from "./components/QuestionListRecommendSection";
 
 export const dynamic = "force-dynamic";
 
@@ -76,6 +81,17 @@ function buildQuestionTableKey(params: API.QuestionQueryRequest) {
   });
 }
 
+function hasActiveSearchFilters(params: API.QuestionQueryRequest) {
+  return Boolean(
+    params.searchText ||
+      params.title ||
+      params.content ||
+      params.answer ||
+      params.difficulty ||
+      params.tags?.length,
+  );
+}
+
 async function loadMyDraftQuestions(requestOptions: ServerRequestOptions) {
   const sectionResults = await Promise.all(
     MY_DRAFT_SECTIONS.map(async (section) => {
@@ -134,6 +150,8 @@ export default async function QuestionsPage({
   // 题目列表和总数
   let questionList: API.QuestionVO[] = [];
   let total = 0;
+  let personalRecommendQuestionList: API.QuestionVO[] = [];
+  let isLoggedIn = false;
   let myDraftSections: Array<
     (typeof MY_DRAFT_SECTIONS)[number] & { records: API.QuestionVO[]; total: number }
   > = [];
@@ -150,7 +168,22 @@ export default async function QuestionsPage({
     questionList = res?.data?.records ?? [];
     total = res?.data?.total ?? 0;
     if (loginRes.status === "fulfilled" && loginRes.value?.data?.id) {
-      myDraftSections = await loadMyDraftQuestions(requestOptions);
+      isLoggedIn = true;
+      const [draftSectionResult, personalRecommendResult] = await Promise.allSettled([
+        loadMyDraftQuestions(requestOptions),
+        listPersonalRecommendQuestionVoUsingGet(
+          {
+            size: 4,
+          },
+          requestOptions,
+        ),
+      ]);
+      if (draftSectionResult.status === "fulfilled") {
+        myDraftSections = draftSectionResult.value;
+      }
+      if (personalRecommendResult.status === "fulfilled") {
+        personalRecommendQuestionList = personalRecommendResult.value.data || [];
+      }
     }
   } catch (e) {
     console.error("获取题目列表失败", e);
@@ -174,6 +207,12 @@ export default async function QuestionsPage({
             </p>
          </div>
       </section>
+
+      <QuestionListRecommendSection
+        questionList={personalRecommendQuestionList}
+        isLoggedIn={isLoggedIn}
+        hasActiveSearch={hasActiveSearchFilters(defaultSearchParams)}
+      />
 
       {myDraftSections.length ? (
         <section className="rounded-[3rem] border border-blue-100 bg-blue-50/70 p-6 sm:p-8 shadow-xl shadow-blue-100/40">

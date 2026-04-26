@@ -404,45 +404,6 @@ function UserCenterContent() {
             {activeTabKey === "overview" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <div className="space-y-8">
-                  <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-xl shadow-slate-200/30">
-                    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                      <div className="space-y-3">
-                        <Title level={4} style={{ margin: 0 }}>
-                          {user.userName || "同学"}，欢迎来到你的个人概览
-                        </Title>
-                        <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                          这里更适合快速查看当前学习状态和常用入口；更完整的目标、成就、热力图和刷题记录已经集中放到“成就看板”里了。
-                        </Paragraph>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <Button type="primary" onClick={() => setActiveTabKey("record")}>
-                          查看成就看板
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("submission")}>
-                          我的题目
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("banks")}>
-                          我的题库
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("notes")}>
-                          我的笔记
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("comments")}>
-                          评论足迹
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("posts")}>
-                          社区足迹
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("favour")}>
-                          查看收藏题目
-                        </Button>
-                        <Button onClick={() => setActiveTabKey("security")}>
-                          账号安全
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
                   <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} xl={6}>
                       <Card bordered={false} className="stats-card">
