@@ -50,7 +50,7 @@ public class QuestionCommentController {
                                                           HttpServletRequest httpRequest) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(httpRequest);
-        CommentSubmitResultVO result = questionCommentService.addComment(request, loginUser);
+        CommentSubmitResultVO result = questionCommentService.addComment(request, loginUser, httpRequest);
         return ResultUtils.success(result);
     }
 

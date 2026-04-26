@@ -21,6 +21,8 @@ public class PostCommentVO implements Serializable {
 
     private String content;
 
+    private String ipLocation;
+
     /**
      * 0正常 1待审核 2已驳回
      */

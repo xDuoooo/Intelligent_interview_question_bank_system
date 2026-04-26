@@ -43,6 +43,11 @@ public class PostComment {
     private String content;
 
     /**
+     * 发布时 IP 归属地
+     */
+    private String ipLocation;
+
+    /**
      * 状态：0正常 1待审核 2已驳回
      */
     private Integer status;

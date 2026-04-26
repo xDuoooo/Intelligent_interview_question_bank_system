@@ -47,7 +47,7 @@ public class PostCommentController {
                                                               HttpServletRequest httpRequest) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         User loginUser = userService.getLoginUser(httpRequest);
-        return ResultUtils.success(postCommentService.addComment(request, loginUser));
+        return ResultUtils.success(postCommentService.addComment(request, loginUser, httpRequest));
     }
 
     @PostMapping("/delete")

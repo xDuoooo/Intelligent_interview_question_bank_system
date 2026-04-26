@@ -27,6 +27,7 @@ import com.xduo.springbootinit.manager.AiManager;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.QuestionCommentService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.IpCityResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -80,12 +81,15 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
     @Resource
     private AiManager aiManager;
 
+    @Resource
+    private IpCityResolver ipCityResolver;
+
     // ----------------------------------------------------------------
     //  1. 发表评论
     // ----------------------------------------------------------------
 
     @Override
-    public CommentSubmitResultVO addComment(CommentAddRequest request, User loginUser) {
+    public CommentSubmitResultVO addComment(CommentAddRequest request, User loginUser, HttpServletRequest httpRequest) {
         // 参数校验
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         Long questionId = request.getQuestionId();
@@ -119,6 +123,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         comment.setParentId(parentId);
         comment.setReplyToId(request.getReplyToId());
         comment.setContent(content);
+        comment.setIpLocation(resolveCommentIpLocation(httpRequest));
         comment.setLikeNum(0);
         comment.setReportNum(0);
         comment.setIsPinned(0);
@@ -470,6 +475,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
         vo.setParentId(comment.getParentId());
         vo.setReplyToId(comment.getReplyToId());
         vo.setContent(comment.getContent());
+        vo.setIpLocation(comment.getIpLocation());
         vo.setLikeNum(comment.getLikeNum());
         vo.setIsPinned(comment.getIsPinned());
         vo.setIsOfficial(comment.getIsOfficial());
@@ -498,6 +504,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
                     childVO.setParentId(child.getParentId());
                     childVO.setReplyToId(child.getReplyToId());
                     childVO.setContent(child.getContent());
+                    childVO.setIpLocation(child.getIpLocation());
                     childVO.setLikeNum(child.getLikeNum());
                     childVO.setIsPinned(child.getIsPinned());
                     childVO.setIsOfficial(child.getIsOfficial());
@@ -575,6 +582,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
             commentVO.setParentId(comment.getParentId());
             commentVO.setReplyToId(comment.getReplyToId());
             commentVO.setContent(comment.getContent());
+            commentVO.setIpLocation(comment.getIpLocation());
             commentVO.setLikeNum(comment.getLikeNum());
             commentVO.setIsPinned(comment.getIsPinned());
             commentVO.setIsOfficial(comment.getIsOfficial());
@@ -848,6 +856,7 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
             vo.setParentId(comment.getParentId());
             vo.setReplyToId(comment.getReplyToId());
             vo.setContent(comment.getContent());
+            vo.setIpLocation(comment.getIpLocation());
             vo.setLikeNum(comment.getLikeNum());
             vo.setStatus(comment.getStatus());
             vo.setReviewMessage(comment.getReviewMessage());
@@ -878,5 +887,13 @@ public class QuestionCommentServiceImpl extends ServiceImpl<QuestionCommentMappe
     }
 
     private record CommentAutoReviewResult(int status, String reviewMessage) {
+    }
+
+    private String resolveCommentIpLocation(HttpServletRequest httpRequest) {
+        if (httpRequest == null) {
+            return null;
+        }
+        String resolvedLocation = StringUtils.trimToNull(ipCityResolver.resolveLocationLabel(httpRequest));
+        return StringUtils.abbreviate(resolvedLocation, 64);
     }
 }

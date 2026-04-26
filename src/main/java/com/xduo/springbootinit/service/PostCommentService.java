@@ -20,7 +20,7 @@ import java.util.List;
  */
 public interface PostCommentService extends IService<PostComment> {
 
-    PostCommentSubmitResultVO addComment(PostCommentAddRequest request, User loginUser);
+    PostCommentSubmitResultVO addComment(PostCommentAddRequest request, User loginUser, HttpServletRequest httpRequest);
 
     boolean deleteComment(Long commentId, User loginUser);
 

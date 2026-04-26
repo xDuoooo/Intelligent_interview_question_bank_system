@@ -25,6 +25,7 @@ import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostCommentService;
 import com.xduo.springbootinit.service.UserService;
+import com.xduo.springbootinit.utils.IpCityResolver;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -66,8 +67,11 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
     @Resource
     private AiManager aiManager;
 
+    @Resource
+    private IpCityResolver ipCityResolver;
+
     @Override
-    public PostCommentSubmitResultVO addComment(PostCommentAddRequest request, User loginUser) {
+    public PostCommentSubmitResultVO addComment(PostCommentAddRequest request, User loginUser, HttpServletRequest httpRequest) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         Long postId = request.getPostId();
         String content = request.getContent();
@@ -106,6 +110,7 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
         comment.setParentId(parentId);
         comment.setReplyToId(request.getReplyToId());
         comment.setContent(content);
+        comment.setIpLocation(resolveCommentIpLocation(httpRequest));
         CommentAutoReviewResult autoReviewResult = autoReviewComment(content);
         comment.setStatus(autoReviewResult.status());
         comment.setReviewMessage(autoReviewResult.reviewMessage());
@@ -381,6 +386,7 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
         vo.setParentId(comment.getParentId());
         vo.setReplyToId(comment.getReplyToId());
         vo.setContent(comment.getContent());
+        vo.setIpLocation(comment.getIpLocation());
         vo.setStatus(comment.getStatus());
         vo.setReviewMessage(comment.getReviewMessage());
         vo.setCreateTime(comment.getCreateTime());
@@ -451,6 +457,7 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
             vo.setParentId(comment.getParentId());
             vo.setReplyToId(comment.getReplyToId());
             vo.setContent(comment.getContent());
+            vo.setIpLocation(comment.getIpLocation());
             vo.setStatus(comment.getStatus());
             vo.setReviewMessage(comment.getReviewMessage());
             vo.setCreateTime(comment.getCreateTime());
@@ -558,5 +565,13 @@ public class PostCommentServiceImpl extends ServiceImpl<PostCommentMapper, PostC
     }
 
     private record CommentAutoReviewResult(int status, String reviewMessage) {
+    }
+
+    private String resolveCommentIpLocation(HttpServletRequest httpRequest) {
+        if (httpRequest == null) {
+            return null;
+        }
+        String resolvedLocation = StringUtils.trimToNull(ipCityResolver.resolveLocationLabel(httpRequest));
+        return StringUtils.abbreviate(resolvedLocation, 64);
     }
 }

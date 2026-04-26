@@ -14,6 +14,7 @@ import {
 } from "@/api/postCommentController";
 import UserAvatar from "@/components/UserAvatar";
 import UserProfileHoverCard from "@/components/UserProfileHoverCard";
+import { formatIpLocation } from "@/lib/location";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -159,6 +160,9 @@ function PostCommentCard({ comment, loginUser, onDelete, onReply, depth = 0 }: C
             ) : null}
             {isRejected ? (
               <span className="rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">已驳回</span>
+            ) : null}
+            {comment.ipLocation ? (
+              <span className="text-xs font-medium text-slate-400">{formatIpLocation(comment.ipLocation)}</span>
             ) : null}
             <span className="ml-auto text-xs font-medium text-slate-400">{timeAgo(comment.createTime)}</span>
           </div>

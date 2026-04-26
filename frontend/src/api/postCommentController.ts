@@ -49,6 +49,7 @@ export interface PostCommentVO {
   parentId?: number | string | null;
   replyToId?: number | string | null;
   content?: string;
+  ipLocation?: string;
   status?: number;
   reviewMessage?: string;
   createTime?: string;
@@ -71,6 +72,7 @@ export interface PostCommentActivityVO {
   parentId?: number | string | null;
   replyToId?: number | string | null;
   content?: string;
+  ipLocation?: string;
   status?: number;
   reviewMessage?: string;
   createTime?: string;
