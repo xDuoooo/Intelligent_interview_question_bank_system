@@ -10,7 +10,7 @@ import MyDraftQuestionBankSections from "./components/MyDraftQuestionBankSection
 import { buildServerRequestOptions, type ServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
-const MY_DRAFT_BANK_PAGE_SIZE = 8;
+const MY_DRAFT_BANK_PAGE_SIZE = 4;
 
 const MY_DRAFT_BANK_SECTIONS = [
   {

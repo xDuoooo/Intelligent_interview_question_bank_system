@@ -92,7 +92,7 @@ const MyDraftQuestionBankSections: React.FC<Props> = ({ sections, pageSize }) =>
               </div>
               <div className="rounded-2xl bg-slate-50 px-4 py-3 text-center ring-1 ring-slate-100">
                 <div className="text-lg font-black text-slate-900">{section.total}</div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">当前数量</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">总数量</div>
               </div>
             </div>
 
@@ -104,20 +104,37 @@ const MyDraftQuestionBankSections: React.FC<Props> = ({ sections, pageSize }) =>
               />
             </Spin>
 
-            {section.total > pageSize ? (
-              <div className="flex justify-center pt-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm font-medium text-slate-500">
+                当前显示{" "}
+                <span className="font-bold text-slate-700">
+                  {section.total === 0 ? 0 : (section.current - 1) * pageSize + 1}
+                </span>
+                {" - "}
+                <span className="font-bold text-slate-700">
+                  {Math.min(section.current * pageSize, section.total)}
+                </span>
+                {" / 共 "}
+                <span className="font-bold text-slate-700">{section.total}</span>
+                {" 个"}
+              </div>
+
+              {section.total > pageSize ? (
+                <div className="flex justify-center sm:justify-end">
                 <Pagination
                   current={section.current}
                   total={section.total}
                   pageSize={pageSize}
                   showSizeChanger={false}
+                  showLessItems
                   disabled={!!loadingStatusMap[section.status]}
                   onChange={(page) => {
                     void handlePageChange(section.status, page);
                   }}
                 />
-              </div>
-            ) : null}
+                </div>
+              ) : null}
+            </div>
           </div>
         ))}
       </div>

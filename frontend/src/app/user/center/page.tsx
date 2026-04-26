@@ -206,7 +206,14 @@ function UserCenterContent() {
     const msg = currentSearchParams.get("msg");
     const editProfile = currentSearchParams.get("editProfile");
     let shouldReplaceQuery = false;
-    const normalizedTab = tab === "submissions" ? "submission" : tab === "achievement" ? "record" : tab;
+    const normalizedTab =
+      tab === "submissions"
+        ? "submission"
+        : tab === "achievement"
+          ? "record"
+          : tab === "status"
+            ? "history"
+            : tab;
     if (normalizedTab && validTabKeySet.current.has(normalizedTab)) {
       setActiveTabKey(normalizedTab);
     }
