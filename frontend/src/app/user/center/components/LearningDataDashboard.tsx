@@ -165,7 +165,12 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
 
       <Row gutter={[16, 16]} align="stretch">
         <Col xs={24} lg={10}>
-          <Card loading={loading} bordered={false} className="stats-card h-full lg:h-[520px]">
+          <Card
+            loading={loading}
+            bordered={false}
+            className="stats-card h-full lg:h-[520px]"
+            bodyStyle={{ height: "100%", display: "flex", flexDirection: "column" }}
+          >
             <div className="flex h-full flex-col gap-5">
               <div>
                 <Title level={5} style={{ marginBottom: 8 }}>每日学习目标</Title>
@@ -200,7 +205,12 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
           </Card>
         </Col>
         <Col xs={24} lg={14}>
-          <Card loading={loading} bordered={false} className="stats-card h-full lg:h-[520px]">
+          <Card
+            loading={loading}
+            bordered={false}
+            className="stats-card h-full lg:h-[520px]"
+            bodyStyle={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}
+          >
             <div className="flex h-full flex-col gap-4">
               <div className="flex items-center justify-between">
                 <Title level={5} style={{ marginBottom: 0 }}>成就进度</Title>
@@ -212,7 +222,7 @@ const LearningDataDashboard: React.FC<Props> = ({ stats = {}, statsLoading = fal
               {achievementList.length === 0 ? (
                 <Empty description="还没有成就数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
-                <div className="achievement-scroll -mx-1 max-h-none overflow-x-auto overflow-y-hidden pb-2 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-2">
+                <div className="achievement-scroll -mx-1 max-h-none overflow-x-auto overflow-y-hidden pb-2 touch-pan-x lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-2 lg:touch-pan-y">
                   <div className="flex min-w-max snap-x snap-mandatory gap-3 px-1 lg:min-w-0 lg:flex-col lg:snap-none">
                   {achievementList.map((item: any) => (
                     <div

@@ -123,9 +123,9 @@ export default function PostEditorForm({
             }}
             placeholder={"建议结构：\n1. 面试背景或问题场景\n2. 你的回答/解决方案\n3. 面试官追问\n4. 你的复盘与建议"}
           />
-          <div className="flex flex-col gap-1 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <span className="leading-5">一篇有价值的经验帖，通常会写清楚背景、过程、取舍和结果。</span>
-            <span className="shrink-0 font-medium">{content.length} 字</span>
+          <div className="space-y-1 text-xs text-slate-400">
+            <span className="block leading-5">一篇有价值的经验帖，通常会写清楚背景、过程、取舍和结果。</span>
+            <span className="block text-right font-medium">{content.length} 字</span>
           </div>
         </div>
       </Form.Item>

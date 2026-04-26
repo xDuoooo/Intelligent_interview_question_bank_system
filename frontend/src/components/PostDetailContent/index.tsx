@@ -123,11 +123,21 @@ export default function PostDetailContent({ post, relatedPostList = [] }: Props)
             initialHasThumb={!!post.hasThumb}
             initialHasFavour={!!post.hasFavour}
             showThumbAndFavour={false}
+            showReport={false}
           />
 
           <div className="prose prose-slate max-w-none prose-headings:font-black prose-headings:text-slate-900">
             <MdViewer value={post.content} />
           </div>
+
+          <PostActionBar
+            postId={post.id ?? ""}
+            initialThumbNum={post.thumbNum || 0}
+            initialFavourNum={post.favourNum || 0}
+            initialHasThumb={!!post.hasThumb}
+            initialHasFavour={!!post.hasFavour}
+            showThumbAndFavour={false}
+          />
         </div>
       </section>
 

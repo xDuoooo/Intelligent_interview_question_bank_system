@@ -30,7 +30,7 @@ function NotificationListContent({
   onRead: (item: API.NotificationVO) => void;
 }) {
   return (
-    <div className="w-full max-w-[min(92vw,420px)]">
+    <div className="w-full max-w-[min(94vw,520px)]">
       <div
         style={{
           display: "flex",
@@ -61,7 +61,7 @@ function NotificationListContent({
           <List.Item
             style={{
               cursor: "pointer",
-              padding: "12px 0",
+              padding: "14px 0",
               opacity: item.status === 1 ? 0.6 : 1,
               transition: "background 0.3s",
             }}
@@ -256,7 +256,7 @@ const NotificationPopover: React.FC = () => {
         <Drawer
           title="我的通知"
           placement="right"
-          width="min(100vw, 420px)"
+          width="min(100vw, 520px)"
           open={open}
           onClose={() => handleOpenChange(false)}
           destroyOnClose
@@ -274,7 +274,7 @@ const NotificationPopover: React.FC = () => {
       placement="bottomRight"
       open={open}
       onOpenChange={handleOpenChange}
-      overlayStyle={{ paddingTop: 12, maxWidth: "min(92vw, 440px)" }}
+      overlayStyle={{ paddingTop: 12, maxWidth: "min(94vw, 540px)" }}
       getPopupContainer={(triggerNode) => triggerNode.parentElement ?? document.body}
     >
       {triggerNode}
