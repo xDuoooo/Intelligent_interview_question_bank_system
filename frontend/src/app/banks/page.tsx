@@ -10,6 +10,7 @@ import MyDraftQuestionBankSections from "./components/MyDraftQuestionBankSection
 import { buildServerRequestOptions, type ServerRequestOptions } from "@/libs/serverRequestOptions";
 
 export const dynamic = "force-dynamic";
+const MY_DRAFT_BANK_PAGE_SIZE = 8;
 
 const MY_DRAFT_BANK_SECTIONS = [
   {
@@ -29,51 +30,36 @@ const MY_DRAFT_BANK_SECTIONS = [
   },
 ] as const;
 
-const MY_DRAFT_BANK_FETCH_PAGE_SIZE = 20;
-const MY_DRAFT_BANK_FETCH_MAX_PAGES = 20;
-
-async function loadAllMyDraftQuestionBanksByStatus(
+async function loadMyDraftQuestionBankPageByStatus(
   requestOptions: ServerRequestOptions,
   reviewStatus: number,
+  current = 1,
 ) {
-  const mergedRecords: API.QuestionBankVO[] = [];
-  let current = 1;
-  let total = 0;
-
-  while (current <= MY_DRAFT_BANK_FETCH_MAX_PAGES) {
-    const res = (await listMyQuestionBankVoByPageUsingPost(
-      {
-        current,
-        pageSize: MY_DRAFT_BANK_FETCH_PAGE_SIZE,
-        reviewStatus,
-        sortField: "updateTime",
-        sortOrder: "descend",
-      },
-      requestOptions,
-    )) as API.BaseResponsePageQuestionBankVO_;
-
-    const records = res.data?.records || [];
-    total = Number(res.data?.total) || 0;
-    mergedRecords.push(...records);
-
-    if (!records.length || mergedRecords.length >= total) {
-      break;
-    }
-    current += 1;
-  }
+  const res = (await listMyQuestionBankVoByPageUsingPost(
+    {
+      current,
+      pageSize: MY_DRAFT_BANK_PAGE_SIZE,
+      reviewStatus,
+      sortField: "updateTime",
+      sortOrder: "descend",
+    },
+    requestOptions,
+  )) as API.BaseResponsePageQuestionBankVO_;
 
   return {
-    records: mergedRecords,
-    total,
+    current,
+    records: res.data?.records || [],
+    total: Number(res.data?.total) || 0,
   };
 }
 
 async function loadMyDraftQuestionBanks(requestOptions: ServerRequestOptions) {
   const sectionResults = await Promise.all(
     MY_DRAFT_BANK_SECTIONS.map(async (section) => {
-      const res = await loadAllMyDraftQuestionBanksByStatus(requestOptions, section.status);
+      const res = await loadMyDraftQuestionBankPageByStatus(requestOptions, section.status);
       return {
         ...section,
+        current: res.current,
         records: res.records,
         total: res.total,
       };
@@ -91,7 +77,7 @@ export default async function BanksPage() {
   let questionBankList: API.QuestionBankVO[] = [];
   let total = 0;
   let myDraftSections: Array<
-    (typeof MY_DRAFT_BANK_SECTIONS)[number] & { records: API.QuestionBankVO[]; total: number }
+    (typeof MY_DRAFT_BANK_SECTIONS)[number] & { current: number; records: API.QuestionBankVO[]; total: number }
   > = [];
   const pageSize = 12;
 
@@ -142,7 +128,7 @@ export default async function BanksPage() {
       </section>
 
       {myDraftSections.length ? (
-        <MyDraftQuestionBankSections sections={myDraftSections} />
+        <MyDraftQuestionBankSections sections={myDraftSections} pageSize={MY_DRAFT_BANK_PAGE_SIZE} />
       ) : null}
 
       <BanksExplorer initialQuestionBankList={questionBankList} initialTotal={total} initialPageSize={pageSize} />

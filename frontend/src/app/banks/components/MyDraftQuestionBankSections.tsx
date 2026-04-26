@@ -1,40 +1,63 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { Pagination } from "antd";
+import { message, Pagination, Spin } from "antd";
+import { listMyQuestionBankVoByPageUsingPost } from "@/api/questionBankController";
 import QuestionBankList from "@/components/QuestionBankList";
 
 type DraftQuestionBankSection = {
   status: number;
   title: string;
   description: string;
+  current: number;
   records: API.QuestionBankVO[];
   total: number;
 };
 
 interface Props {
   sections: DraftQuestionBankSection[];
+  pageSize: number;
 }
 
-const PAGE_SIZE = 8;
+const MyDraftQuestionBankSections: React.FC<Props> = ({ sections, pageSize }) => {
+  const [sectionStateList, setSectionStateList] = useState(sections);
+  const [loadingStatusMap, setLoadingStatusMap] = useState<Record<number, boolean>>({});
 
-const MyDraftQuestionBankSections: React.FC<Props> = ({ sections }) => {
-  const [currentPageMap, setCurrentPageMap] = useState<Record<number, number>>({});
-
-  const normalizedSections = useMemo(
-    () =>
-      sections.map((section) => {
-        const current = currentPageMap[section.status] || 1;
-        const startIndex = (current - 1) * PAGE_SIZE;
-        return {
-          ...section,
-          current,
-          currentRecords: section.records.slice(startIndex, startIndex + PAGE_SIZE),
-        };
-      }),
-    [currentPageMap, sections],
-  );
+  const handlePageChange = async (status: number, page: number) => {
+    setLoadingStatusMap((prev) => ({
+      ...prev,
+      [status]: true,
+    }));
+    try {
+      const res = await listMyQuestionBankVoByPageUsingPost({
+        current: page,
+        pageSize,
+        reviewStatus: status,
+        sortField: "updateTime",
+        sortOrder: "descend",
+      });
+      setSectionStateList((prev) =>
+        prev.map((section) =>
+          section.status === status
+            ? {
+                ...section,
+                current: page,
+                records: res.data?.records || [],
+                total: Number(res.data?.total) || 0,
+              }
+            : section,
+        ),
+      );
+    } catch (error: any) {
+      message.error(error?.message || "加载题库失败，请稍后重试");
+    } finally {
+      setLoadingStatusMap((prev) => ({
+        ...prev,
+        [status]: false,
+      }));
+    }
+  };
 
   return (
     <section className="rounded-[3rem] border border-white bg-white/50 p-6 shadow-2xl shadow-slate-200/50 backdrop-blur-sm sm:p-10">
@@ -57,7 +80,7 @@ const MyDraftQuestionBankSections: React.FC<Props> = ({ sections }) => {
       </div>
 
       <div className="mt-8 space-y-8">
-        {normalizedSections.map((section) => (
+        {sectionStateList.map((section) => (
           <div
             key={section.status}
             className="space-y-4 rounded-[2rem] border border-slate-100 bg-white/70 p-5 shadow-sm shadow-slate-200/40"
@@ -73,24 +96,24 @@ const MyDraftQuestionBankSections: React.FC<Props> = ({ sections }) => {
               </div>
             </div>
 
-            <QuestionBankList
-              questionBankList={section.currentRecords}
-              showReviewStatus
-              showUpdateTime
-            />
+            <Spin spinning={!!loadingStatusMap[section.status]}>
+              <QuestionBankList
+                questionBankList={section.records}
+                showReviewStatus
+                showUpdateTime
+              />
+            </Spin>
 
-            {section.total > PAGE_SIZE ? (
+            {section.total > pageSize ? (
               <div className="flex justify-center pt-2">
                 <Pagination
                   current={section.current}
                   total={section.total}
-                  pageSize={PAGE_SIZE}
+                  pageSize={pageSize}
                   showSizeChanger={false}
+                  disabled={!!loadingStatusMap[section.status]}
                   onChange={(page) => {
-                    setCurrentPageMap((prev) => ({
-                      ...prev,
-                      [section.status]: page,
-                    }));
+                    void handlePageChange(section.status, page);
                   }}
                 />
               </div>
