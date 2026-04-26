@@ -31,6 +31,7 @@ import com.xduo.springbootinit.model.vo.UserProfileVO;
 import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.TagSyncService;
 import com.xduo.springbootinit.service.UserFollowService;
 import com.xduo.springbootinit.service.UserQuestionHistoryService;
 import com.xduo.springbootinit.service.UserService;
@@ -84,6 +85,9 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private TagSyncService tagSyncService;
 
     @Resource
     private UserQuestionHistoryService userQuestionHistoryService;
@@ -242,6 +246,7 @@ public class UserController {
         user.setPasswordConfigured(1);
         boolean result = userService.save(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        tagSyncService.syncInterestTags(null, user.getInterestTags());
         return ResultUtils.success(user.getId());
     }
 
@@ -268,6 +273,9 @@ public class UserController {
             ThrowUtils.throwIf(userService.count(adminQueryWrapper) <= 1, ErrorCode.OPERATION_ERROR, "至少保留一个管理员账号");
         }
         boolean b = userService.removeById(deleteRequest.getId());
+        if (b) {
+            tagSyncService.syncInterestTags(targetUser.getInterestTags(), null);
+        }
         return ResultUtils.success(b);
     }
 
@@ -305,6 +313,8 @@ public class UserController {
         user.setInterestTags(normalizeInterestTags(userUpdateRequest.getInterestTags()));
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        User latestUser = userService.getById(userUpdateRequest.getId());
+        tagSyncService.syncInterestTags(oldUser.getInterestTags(), latestUser == null ? null : latestUser.getInterestTags());
         return ResultUtils.success(true);
     }
 
@@ -418,6 +428,10 @@ public class UserController {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User loginUser = userService.getLoginUser(request);
+        User currentUser = userService.getById(loginUser.getId());
+        if (currentUser != null) {
+            loginUser = currentUser;
+        }
         if (userUpdateMyRequest.getUserAccount() != null) {
             String userAccount = StringUtils.trimToNull(userUpdateMyRequest.getUserAccount());
             ThrowUtils.throwIf(userAccount == null, ErrorCode.PARAMS_ERROR, "登录账号不能为空");
@@ -463,6 +477,9 @@ public class UserController {
         user.setId(loginUser.getId());
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        User latestUser = userService.getById(loginUser.getId());
+        tagSyncService.syncInterestTags(currentUser == null ? null : currentUser.getInterestTags(),
+                latestUser == null ? null : latestUser.getInterestTags());
         return ResultUtils.success(true);
     }
 
@@ -495,6 +512,7 @@ public class UserController {
         user.setInterestTags(normalizeInterestTags(new ArrayList<>(mergedTagSet)));
         boolean result = userService.updateById(user);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        tagSyncService.syncInterestTags(latestUser.getInterestTags(), user.getInterestTags());
         return ResultUtils.success(userService.getLoginUserVO(userService.getById(latestUser.getId())));
     }
 

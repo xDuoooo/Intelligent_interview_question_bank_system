@@ -30,6 +30,7 @@ import com.xduo.springbootinit.model.vo.PostReportVO;
 import com.xduo.springbootinit.mapper.PostReportMapper;
 import com.xduo.springbootinit.service.NotificationService;
 import com.xduo.springbootinit.service.PostService;
+import com.xduo.springbootinit.service.TagSyncService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.IpCityResolver;
 import com.xduo.springbootinit.manager.AiManager;
@@ -78,6 +79,9 @@ public class PostController {
     @Resource
     private IpCityResolver ipCityResolver;
 
+    @Resource
+    private TagSyncService tagSyncService;
+
     // region 增删改查
 
     /**
@@ -108,6 +112,7 @@ public class PostController {
         boolean result = postService.save(post);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         postService.syncPostToEs(post);
+        tagSyncService.syncPostTags(null, post.getTags());
         PostSubmitResultVO postSubmitResultVO = new PostSubmitResultVO();
         postSubmitResultVO.setId(post.getId());
         postSubmitResultVO.setReviewStatus(post.getReviewStatus());
@@ -139,6 +144,7 @@ public class PostController {
         boolean b = postService.removeById(id);
         if (b) {
             postService.deletePostFromEs(id);
+            tagSyncService.syncPostTags(oldPost.getTags(), null);
         }
         return ResultUtils.success(b);
     }
@@ -171,6 +177,7 @@ public class PostController {
         if (result) {
             Post latestPost = postService.getById(id);
             postService.syncPostToEs(latestPost);
+            tagSyncService.syncPostTags(oldPost.getTags(), latestPost == null ? null : latestPost.getTags());
         }
         return ResultUtils.success(result);
     }
@@ -378,6 +385,7 @@ public class PostController {
         if (result) {
             Post latestPost = postService.getById(id);
             postService.syncPostToEs(latestPost);
+            tagSyncService.syncPostTags(oldPost.getTags(), latestPost == null ? null : latestPost.getTags());
         }
         return ResultUtils.success(result);
     }
@@ -421,6 +429,7 @@ public class PostController {
         if (result) {
             Post latestPost = postService.getById(post.getId());
             postService.syncPostToEs(latestPost);
+            tagSyncService.syncPostTags(post.getTags(), latestPost == null ? null : latestPost.getTags());
         }
         return ResultUtils.success(result);
     }
@@ -504,6 +513,7 @@ public class PostController {
             if (postUpdated) {
                 Post latestPost = postService.getById(targetPost.getId());
                 postService.syncPostToEs(latestPost);
+                tagSyncService.syncPostTags(targetPost.getTags(), latestPost == null ? null : latestPost.getTags());
             }
         }
         return ResultUtils.success(true);
@@ -540,6 +550,7 @@ public class PostController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Post latestPost = postService.getById(oldPost.getId());
         postService.syncPostToEs(latestPost);
+        tagSyncService.syncPostTags(oldPost.getTags(), latestPost == null ? null : latestPost.getTags());
 
         notificationService.sendNotification(
                 oldPost.getUserId(),

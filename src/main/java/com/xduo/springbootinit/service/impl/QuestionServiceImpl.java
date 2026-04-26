@@ -30,6 +30,7 @@ import com.xduo.springbootinit.model.vo.UserVO;
 import com.xduo.springbootinit.service.QuestionBankQuestionService;
 import com.xduo.springbootinit.service.EsSyncTaskService;
 import com.xduo.springbootinit.service.QuestionService;
+import com.xduo.springbootinit.service.TagSyncService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -102,6 +103,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Resource
     private EsSyncTaskService esSyncTaskService;
+
+    @Resource
+    private TagSyncService tagSyncService;
 
     /**
      * 校验数据
@@ -446,11 +450,13 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // 题目可能还未加入任何题库，这里不应把 0 行删除视为异常。
         questionBankQuestionService.remove(relationQueryWrapper);
         for (Long questionId : distinctQuestionIdSet) {
+            Question oldQuestion = this.getById(questionId);
             boolean result = this.removeById(questionId);
             if (!result) {
                 throw new BusinessException(ErrorCode.OPERATION_ERROR, "删除题目失败");
             }
             deleteQuestionFromEs(questionId);
+            tagSyncService.syncQuestionTags(oldQuestion == null ? null : oldQuestion.getTags(), null);
         }
     }
     @Override

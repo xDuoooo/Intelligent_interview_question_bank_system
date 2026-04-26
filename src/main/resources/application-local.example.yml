@@ -266,3 +266,6 @@ app:
       full-sync-on-start: false
       incremental-fixed-rate-ms: 60000
       incremental-lookback-minutes: 5
+    tag:
+      # 标签索引推荐保持开启；启动时会全量重建一次 tag 索引，后续再按题目 / 帖子 / 兴趣标签变更增量维护
+      full-sync-on-start: true

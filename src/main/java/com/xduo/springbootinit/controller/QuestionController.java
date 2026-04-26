@@ -34,6 +34,7 @@ import com.xduo.springbootinit.service.QuestionRecommendLogService;
 import com.xduo.springbootinit.service.QuestionSearchLogService;
 import com.xduo.springbootinit.service.QuestionService;
 import com.xduo.springbootinit.service.SecurityAlertService;
+import com.xduo.springbootinit.service.TagSyncService;
 import com.xduo.springbootinit.service.UserService;
 import com.xduo.springbootinit.utils.NetUtils;
 import lombok.Data;
@@ -106,6 +107,9 @@ public class QuestionController {
     @Resource
     private QuestionRecommendLogService questionRecommendLogService;
 
+    @Resource
+    private TagSyncService tagSyncService;
+
     /**
      * 创建题目
      *
@@ -137,6 +141,7 @@ public class QuestionController {
         boolean result = questionService.save(question);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         questionService.syncQuestionToEs(question);
+        tagSyncService.syncQuestionTags(null, question.getTags());
         long newQuestionId = question.getId();
         return ResultUtils.success(newQuestionId);
     }
@@ -195,6 +200,7 @@ public class QuestionController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Question latestQuestion = questionService.getById(id);
         questionService.syncQuestionToEs(latestQuestion);
+        tagSyncService.syncQuestionTags(oldQuestion.getTags(), latestQuestion == null ? null : latestQuestion.getTags());
         return ResultUtils.success(true);
     }
 
@@ -481,6 +487,7 @@ public class QuestionController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Question latestQuestion = questionService.getById(id);
         questionService.syncQuestionToEs(latestQuestion);
+        tagSyncService.syncQuestionTags(oldQuestion.getTags(), latestQuestion == null ? null : latestQuestion.getTags());
         return ResultUtils.success(true);
     }
 
@@ -511,6 +518,7 @@ public class QuestionController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         Question latestQuestion = questionService.getById(oldQuestion.getId());
         questionService.syncQuestionToEs(latestQuestion);
+        tagSyncService.syncQuestionTags(oldQuestion.getTags(), latestQuestion == null ? null : latestQuestion.getTags());
         return ResultUtils.success(true);
     }
 
@@ -597,6 +605,7 @@ public class QuestionController {
 
         Question latestQuestion = questionService.getById(oldQuestion.getId());
         questionService.syncQuestionToEs(latestQuestion);
+        tagSyncService.syncQuestionTags(oldQuestion.getTags(), latestQuestion == null ? null : latestQuestion.getTags());
         notificationService.sendNotification(
                 latestQuestion.getUserId(),
                 QuestionConstant.REVIEW_STATUS_APPROVED == reviewStatus ? "你的题目已审核通过" : "你的题目未通过审核",
@@ -664,6 +673,7 @@ public class QuestionController {
                 questionService.validQuestion(question, true);
                 questionService.save(question);
                 questionService.syncQuestionToEs(question);
+                tagSyncService.syncQuestionTags(null, question.getTags());
                 successCount++;
             }
             ThrowUtils.throwIf(successCount == 0, ErrorCode.SYSTEM_ERROR, "AI 未生成可保存的题目");

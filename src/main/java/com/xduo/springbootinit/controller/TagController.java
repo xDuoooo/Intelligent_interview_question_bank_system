@@ -1,24 +1,17 @@
 package com.xduo.springbootinit.controller;
 
-import cn.hutool.json.JSONUtil;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import co.elastic.clients.elasticsearch._types.SortOptions;
+import co.elastic.clients.elasticsearch._types.SortOrder;
+import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import com.xduo.springbootinit.annotation.RateLimit;
 import com.xduo.springbootinit.common.BaseResponse;
 import com.xduo.springbootinit.common.ErrorCode;
 import com.xduo.springbootinit.common.ResultUtils;
-import com.xduo.springbootinit.constant.PostConstant;
-import com.xduo.springbootinit.constant.QuestionConstant;
 import com.xduo.springbootinit.exception.ThrowUtils;
-import com.xduo.springbootinit.mapper.PostMapper;
-import com.xduo.springbootinit.mapper.QuestionMapper;
-import com.xduo.springbootinit.mapper.UserMapper;
-import com.xduo.springbootinit.model.entity.Post;
-import com.xduo.springbootinit.model.entity.Question;
-import com.xduo.springbootinit.model.entity.User;
+import com.xduo.springbootinit.model.dto.tag.TagEsDTO;
 import jakarta.annotation.Resource;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -26,6 +19,11 @@ import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
+import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,7 +38,7 @@ public class TagController {
 
     private static final int DEFAULT_LIMIT = 12;
     private static final int MAX_LIMIT = 30;
-    private static final int SOURCE_ROW_LIMIT = 200;
+    private static final int QUERY_FETCH_LIMIT = 80;
     private static final Set<String> ALLOWED_SCENE_SET = Set.of("all", "question", "post", "interest");
     private static final List<String> DEFAULT_TAG_POOL = Arrays.asList(
             "Java", "Spring", "Spring Boot", "MySQL", "Redis", "JVM", "并发", "算法", "数据结构",
@@ -49,13 +47,7 @@ public class TagController {
     );
 
     @Resource
-    private QuestionMapper questionMapper;
-
-    @Resource
-    private PostMapper postMapper;
-
-    @Resource
-    private UserMapper userMapper;
+    private ElasticsearchOperations elasticsearchOperations;
 
     @GetMapping("/suggest")
     @RateLimit(key = "tag:suggest", maxRequests = 180, windowSeconds = 60, message = "标签联想过于频繁，请稍后再试")
@@ -71,15 +63,7 @@ public class TagController {
 
         Map<String, Integer> tagWeightMap = new LinkedHashMap<>();
         collectDefaultTags(finalKeyword, tagWeightMap);
-        if (shouldIncludeScene(normalizedScene, "question")) {
-            collectQuestionTags(finalKeyword, tagWeightMap);
-        }
-        if (shouldIncludeScene(normalizedScene, "post")) {
-            collectPostTags(finalKeyword, tagWeightMap);
-        }
-        if (shouldIncludeScene(normalizedScene, "interest")) {
-            collectInterestTags(finalKeyword, tagWeightMap);
-        }
+        collectTagsFromTagIndex(finalKeyword, normalizedScene, tagWeightMap);
 
         List<String> tagList = new ArrayList<>(tagWeightMap.keySet());
         tagList.sort((left, right) -> {
@@ -103,65 +87,52 @@ public class TagController {
         return ResultUtils.success(tagList);
     }
 
-    private boolean shouldIncludeScene(String scene, String target) {
-        return "all".equals(scene) || target.equals(scene);
-    }
-
     private void collectDefaultTags(String keyword, Map<String, Integer> tagWeightMap) {
         for (String tag : DEFAULT_TAG_POOL) {
             mergeTag(tagWeightMap, tag, keyword, 1);
         }
     }
 
-    private void collectQuestionTags(String keyword, Map<String, Integer> tagWeightMap) {
-        QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("tags")
-                .isNotNull("tags")
-                .ne("tags", "[]")
-                .and(qw -> qw.eq("reviewStatus", QuestionConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"))
-                .orderByDesc("updateTime")
-                .last("limit " + SOURCE_ROW_LIMIT);
-        if (StringUtils.isNotBlank(keyword)) {
-            queryWrapper.like("tags", keyword);
-        }
-        questionMapper.selectList(queryWrapper).forEach(question -> mergeJsonTagField(tagWeightMap, question.getTags(), keyword, 4));
-    }
-
-    private void collectPostTags(String keyword, Map<String, Integer> tagWeightMap) {
-        QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("tags")
-                .isNotNull("tags")
-                .ne("tags", "[]")
-                .and(qw -> qw.eq("reviewStatus", PostConstant.REVIEW_STATUS_APPROVED).or().isNull("reviewStatus"))
-                .orderByDesc("updateTime")
-                .last("limit " + SOURCE_ROW_LIMIT);
-        if (StringUtils.isNotBlank(keyword)) {
-            queryWrapper.like("tags", keyword);
-        }
-        postMapper.selectList(queryWrapper).forEach(post -> mergeJsonTagField(tagWeightMap, post.getTags(), keyword, 3));
-    }
-
-    private void collectInterestTags(String keyword, Map<String, Integer> tagWeightMap) {
-        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.select("interestTags")
-                .isNotNull("interestTags")
-                .ne("interestTags", "[]")
-                .orderByDesc("updateTime")
-                .last("limit " + SOURCE_ROW_LIMIT);
-        if (StringUtils.isNotBlank(keyword)) {
-            queryWrapper.like("interestTags", keyword);
-        }
-        userMapper.selectList(queryWrapper).forEach(user -> mergeJsonTagField(tagWeightMap, user.getInterestTags(), keyword, 2));
-    }
-
-    private void mergeJsonTagField(Map<String, Integer> tagWeightMap, String rawTagJson, String keyword, int weight) {
-        if (StringUtils.isBlank(rawTagJson) || "[]".equals(rawTagJson)) {
-            return;
-        }
+    private void collectTagsFromTagIndex(String keyword, String scene, Map<String, Integer> tagWeightMap) {
         try {
-            JSONUtil.toList(rawTagJson, String.class).forEach(tag -> mergeTag(tagWeightMap, tag, keyword, weight));
+            BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+            boolean hasCondition = false;
+            if (!"all".equals(scene)) {
+                boolQueryBuilder.filter(f -> f.term(t -> t.field("scenes").value(scene)));
+                hasCondition = true;
+            }
+            if (StringUtils.isNotBlank(keyword)) {
+                String normalizedKeyword = keyword.trim().toLowerCase(Locale.ROOT);
+                String escapedKeyword = escapeWildcardKeyword(normalizedKeyword);
+                boolQueryBuilder.must(m -> m.bool(b -> b
+                        .should(s -> s.term(t -> t.field("normalizedName").value(normalizedKeyword)))
+                        .should(s -> s.wildcard(w -> w.field("normalizedName").value(escapedKeyword + "*").caseInsensitive(true)))
+                        .should(s -> s.wildcard(w -> w.field("normalizedName").value("*" + escapedKeyword + "*").caseInsensitive(true)))
+                        .minimumShouldMatch("1")));
+                hasCondition = true;
+            }
+            var queryBuilder = NativeQuery.builder()
+                    .withSort(SortOptions.of(s -> s.field(f -> f.field("useCount").order(SortOrder.Desc))))
+                    .withSort(SortOptions.of(s -> s.field(f -> f.field("updateTime").order(SortOrder.Desc))))
+                    .withPageable(PageRequest.of(0, QUERY_FETCH_LIMIT));
+            if (hasCondition) {
+                queryBuilder.withQuery(q -> q.bool(boolQueryBuilder.build()));
+            } else {
+                queryBuilder.withQuery(q -> q.matchAll(m -> m));
+            }
+            SearchHits<TagEsDTO> searchHits = elasticsearchOperations.search(queryBuilder.build(), TagEsDTO.class);
+            if (!searchHits.hasSearchHits()) {
+                return;
+            }
+            for (SearchHit<TagEsDTO> hit : searchHits.getSearchHits()) {
+                TagEsDTO tagEsDTO = hit.getContent();
+                if (tagEsDTO == null) {
+                    continue;
+                }
+                mergeTag(tagWeightMap, tagEsDTO.getName(), keyword, tagEsDTO.getUseCount() == null ? 0 : tagEsDTO.getUseCount());
+            }
         } catch (Exception e) {
-            log.debug("parse tag json error: {}", rawTagJson, e);
+            log.warn("标签联想查询 tag ES 失败，已降级到默认标签池: {}", e.getMessage());
         }
     }
 
@@ -173,7 +144,14 @@ public class TagController {
         if (StringUtils.isNotBlank(keyword) && !StringUtils.containsIgnoreCase(normalizedTag, keyword)) {
             return;
         }
-        tagWeightMap.merge(normalizedTag, weight, Integer::sum);
+        tagWeightMap.merge(normalizedTag, Math.max(weight, 0), Integer::sum);
+    }
+
+    private String escapeWildcardKeyword(String keyword) {
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("*", "\\*")
+                .replace("?", "\\?");
     }
 
     private int getMatchPriority(String tag, String keyword) {
