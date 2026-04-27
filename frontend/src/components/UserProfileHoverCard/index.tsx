@@ -321,7 +321,7 @@ export default function UserProfileHoverCard({
         <Link
           href={`/user/${targetUserId}`}
           prefetch={false}
-          className="flex h-10 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-95"
+          className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition-all hover:border-primary/20 hover:text-primary active:scale-95"
         >
           进入主页
         </Link>
