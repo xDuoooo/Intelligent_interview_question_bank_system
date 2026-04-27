@@ -20,6 +20,7 @@ import {
   NotebookPen,
   BriefcaseBusiness,
   MessageSquareText,
+  FileSearch,
 } from "lucide-react";
 import UserAvatar from "@/components/UserAvatar";
 import { formatIpLocation } from "@/lib/location";
@@ -109,6 +110,7 @@ function UserCenterContent() {
       "comments",
       "posts",
       "history",
+      "resume",
       "achievement",
     ]),
   );
@@ -264,6 +266,7 @@ function UserCenterContent() {
     { key: "notes", label: <span className="flex items-center gap-2 whitespace-nowrap"><NotebookPen size={16} />我的笔记</span> },
     { key: "comments", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />评论足迹</span> },
     { key: "posts", label: <span className="flex items-center gap-2 whitespace-nowrap"><MessageSquareText size={16} />社区足迹</span> },
+    { key: "resume", label: <span className="flex items-center gap-2 whitespace-nowrap"><FileSearch size={16} />简历推荐</span> },
     { key: "security", label: <span className="flex items-center gap-2 whitespace-nowrap"><ShieldCheck size={16} />账号安全</span> },
     { key: "favour", label: <span className="flex items-center gap-2 whitespace-nowrap"><Heart size={16} />收藏题目</span> },
     { key: "history", label: <span className="flex items-center gap-2 whitespace-nowrap"><History size={16} />刷题轨迹</span> },
@@ -501,10 +504,6 @@ function UserCenterContent() {
                       </Card>
                     </Col>
                   </Row>
-
-                <div className="mb-8">
-                  <ResumeRecommendPanel />
-                </div>
                 </div>
               </div>
             )}
@@ -536,6 +535,11 @@ function UserCenterContent() {
             {activeTabKey === "posts" && (
               <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
                 <MyCommunityPostPanel />
+              </div>
+            )}
+            {activeTabKey === "resume" && (
+              <div className="fade-in animate-in slide-in-from-bottom-2 duration-500">
+                <ResumeRecommendPanel />
               </div>
             )}
             {activeTabKey === "record" && (

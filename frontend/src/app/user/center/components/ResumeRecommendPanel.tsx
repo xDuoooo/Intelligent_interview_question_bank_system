@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Empty, Input, List, Space, Tag, Typography, Upload, message } from "antd";
 import type { UploadProps } from "antd";
 import { useDispatch } from "react-redux";
-import { ArrowRight, FileSearch, Paperclip, Sparkles, Target, UploadCloud, X } from "lucide-react";
+import { ArrowRight, CheckCheck, FileSearch, Paperclip, Sparkles, Target, UploadCloud, X } from "lucide-react";
 import {
   logRecommendClickUsingPost,
   recommendQuestionsByResumeFileUsingPost,
@@ -18,6 +18,7 @@ import type { AppDispatch } from "@/stores";
 import { setLoginUser } from "@/stores/loginUser";
 
 const { Paragraph, Text, Title } = Typography;
+const { CheckableTag } = Tag;
 
 const DEMO_RESUME_TEXT = [
   "应聘方向：Java 后端开发工程师",
@@ -36,6 +37,20 @@ const ResumeRecommendPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savingTags, setSavingTags] = useState(false);
   const [result, setResult] = useState<API.ResumeQuestionRecommendVO>();
+  const [selectedExtractedTags, setSelectedExtractedTags] = useState<string[]>([]);
+
+  const extractedTagList = useMemo(
+    () => Array.from(new Set((result?.extractedTags || []).map((tag) => tag?.trim()).filter(Boolean) as string[])),
+    [result?.extractedTags],
+  );
+
+  const applyResult = (nextResult?: API.ResumeQuestionRecommendVO) => {
+    setResult(nextResult);
+    const nextTagList = Array.from(
+      new Set(((nextResult?.extractedTags || []).map((tag) => tag?.trim()).filter(Boolean) as string[])),
+    );
+    setSelectedExtractedTags(nextTagList);
+  };
 
   const handleRecommend = async () => {
     const trimmedText = resumeText.trim();
@@ -49,7 +64,7 @@ const ResumeRecommendPanel: React.FC = () => {
         resumeText: trimmedText,
         size: 4,
       });
-      setResult(res.data);
+      applyResult(res.data);
       message.success("简历解析完成");
     } catch (error: any) {
       message.error("解析失败：" + (error?.message || "请稍后重试"));
@@ -66,7 +81,7 @@ const ResumeRecommendPanel: React.FC = () => {
     setLoading(true);
     try {
       const res = await recommendQuestionsByResumeFileUsingPost(resumeFile, 4);
-      setResult(res.data);
+      applyResult(res.data);
       message.success("简历文件解析完成");
     } catch (error: any) {
       message.error("文件解析失败：" + (error?.message || "请稍后重试"));
@@ -76,9 +91,9 @@ const ResumeRecommendPanel: React.FC = () => {
   };
 
   const handleMergeTagsToProfile = async () => {
-    const tagList = result?.extractedTags?.filter(Boolean) || [];
+    const tagList = selectedExtractedTags.filter(Boolean);
     if (!tagList.length) {
-      message.warning("暂未识别到可添加的技能标签");
+      message.warning("请先选择要加入资料的技能标签");
       return;
     }
     setSavingTags(true);
@@ -93,6 +108,15 @@ const ResumeRecommendPanel: React.FC = () => {
     } finally {
       setSavingTags(false);
     }
+  };
+
+  const toggleExtractedTag = (tag: string, checked: boolean) => {
+    setSelectedExtractedTags((current) => {
+      if (checked) {
+        return Array.from(new Set([...current, tag]));
+      }
+      return current.filter((item) => item !== tag);
+    });
   };
 
   const uploadProps: UploadProps = {
@@ -184,7 +208,14 @@ const ResumeRecommendPanel: React.FC = () => {
             <Button onClick={() => setResumeText(DEMO_RESUME_TEXT)} className="rounded-2xl">
               填入示例简历
             </Button>
-            <Button onClick={() => { setResumeText(""); setResumeFile(null); setResult(undefined); }} className="rounded-2xl">
+            <Button
+              onClick={() => {
+                setResumeText("");
+                setResumeFile(null);
+                applyResult(undefined);
+              }}
+              className="rounded-2xl"
+            >
               清空内容
             </Button>
           </Space>
@@ -232,20 +263,53 @@ const ResumeRecommendPanel: React.FC = () => {
               <div>
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <div className="font-semibold text-slate-800">识别出的技能标签</div>
-                  {result.extractedTags?.length ? (
-                    <Button
-                      size="small"
-                      type="primary"
-                      loading={savingTags}
-                      onClick={handleMergeTagsToProfile}
-                      className="rounded-full"
-                    >
-                      添加到我的资料
-                    </Button>
+                  {extractedTagList.length ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="small"
+                        onClick={() => setSelectedExtractedTags(extractedTagList)}
+                        className="rounded-full"
+                      >
+                        全选
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => setSelectedExtractedTags([])}
+                        className="rounded-full"
+                      >
+                        清空
+                      </Button>
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<CheckCheck className="h-4 w-4" />}
+                        loading={savingTags}
+                        onClick={handleMergeTagsToProfile}
+                        className="rounded-full"
+                      >
+                        添加选中标签
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
-                {result.extractedTags?.length ? (
-                  <TagList tagList={result.extractedTags} />
+                {extractedTagList.length ? (
+                  <div className="space-y-3">
+                    <Text className="text-sm text-slate-500">
+                      已选择 {selectedExtractedTags.length} / {extractedTagList.length} 个标签加入个人资料
+                    </Text>
+                    <div className="flex flex-wrap gap-2">
+                      {extractedTagList.map((tag) => (
+                        <CheckableTag
+                          key={tag}
+                          checked={selectedExtractedTags.includes(tag)}
+                          onChange={(checked) => toggleExtractedTag(tag, checked)}
+                          className="!m-0 rounded-full border px-3 py-1 text-sm font-semibold transition"
+                        >
+                          {tag}
+                        </CheckableTag>
+                      ))}
+                    </div>
+                  </div>
                 ) : (
                   <Text type="secondary">暂未识别到明确标签</Text>
                 )}
