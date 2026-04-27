@@ -391,10 +391,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
         // 按关键词检索
         if (StringUtils.isNotBlank(searchText)) {
-            boolQueryBuilder.should(s -> s.match(m -> m.field("title").query(searchText)));
-            boolQueryBuilder.should(s -> s.match(m -> m.field("content").query(searchText)));
-            boolQueryBuilder.should(s -> s.match(m -> m.field("answer").query(searchText)));
-            boolQueryBuilder.minimumShouldMatch("1");
+            boolQueryBuilder.must(m -> m.bool(buildQuestionKeywordSearchQuery(searchText)));
         }
         // 排序
         SortOptions sortOptions;
@@ -432,6 +429,45 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         page.setRecords(resourceList);
         return page;
+    }
+
+    private BoolQuery buildQuestionKeywordSearchQuery(String rawKeyword) {
+        String keyword = StringUtils.trimToEmpty(rawKeyword);
+        String normalizedKeyword = keyword.toLowerCase(Locale.ROOT);
+        String escapedWildcardKeyword = escapeEsWildcardKeyword(normalizedKeyword);
+        BoolQuery.Builder searchQueryBuilder = new BoolQuery.Builder();
+        addKeywordShouldClauses(searchQueryBuilder, "title", keyword, escapedWildcardKeyword);
+        addKeywordShouldClauses(searchQueryBuilder, "content", keyword, escapedWildcardKeyword);
+        addKeywordShouldClauses(searchQueryBuilder, "answer", keyword, escapedWildcardKeyword);
+        searchQueryBuilder.should(s -> s.term(t -> t.field("tags").value(keyword)));
+        addKeywordShouldClauses(searchQueryBuilder, "tags", keyword, escapedWildcardKeyword);
+        searchQueryBuilder.minimumShouldMatch("1");
+        return searchQueryBuilder.build();
+    }
+
+    private void addKeywordShouldClauses(BoolQuery.Builder searchQueryBuilder,
+                                         String field,
+                                         String keyword,
+                                         String escapedWildcardKeyword) {
+        searchQueryBuilder.should(s -> s.match(m -> m.field(field).query(keyword)));
+        searchQueryBuilder.should(s -> s.matchPhrasePrefix(m -> m.field(field).query(keyword)));
+        searchQueryBuilder.should(s -> s.wildcard(w -> w
+                .field(field)
+                .value(escapedWildcardKeyword + "*")
+                .caseInsensitive(true)));
+        if (keyword.length() >= 2) {
+            searchQueryBuilder.should(s -> s.wildcard(w -> w
+                    .field(field)
+                    .value("*" + escapedWildcardKeyword + "*")
+                    .caseInsensitive(true)));
+        }
+    }
+
+    private String escapeEsWildcardKeyword(String keyword) {
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("*", "\\*")
+                .replace("?", "\\?");
     }
 
     @Override
