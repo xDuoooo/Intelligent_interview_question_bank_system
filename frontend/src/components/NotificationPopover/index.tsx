@@ -30,7 +30,7 @@ function NotificationListContent({
   onRead: (item: API.NotificationVO) => void;
 }) {
   return (
-    <div className="w-full max-w-[min(94vw,520px)]">
+    <div className="w-[min(94vw,640px)]">
       <div
         style={{
           display: "flex",
@@ -274,7 +274,8 @@ const NotificationPopover: React.FC = () => {
       placement="bottomRight"
       open={open}
       onOpenChange={handleOpenChange}
-      overlayStyle={{ paddingTop: 12, maxWidth: "min(94vw, 540px)" }}
+      overlayStyle={{ paddingTop: 12 }}
+      overlayInnerStyle={{ width: "min(94vw, 640px)" }}
       getPopupContainer={(triggerNode) => triggerNode.parentElement ?? document.body}
     >
       {triggerNode}
