@@ -223,6 +223,8 @@ declare namespace API {
 
   type SystemConfigUpdateRequest = {
     allowRegister?: boolean;
+    allowGuestViewPost?: boolean;
+    allowGuestViewQuestion?: boolean;
     announcement?: string;
     enableEmailNotification?: boolean;
     enableLearningGoalReminder?: boolean;
@@ -235,6 +237,8 @@ declare namespace API {
 
   type SystemConfigVO = {
     allowRegister?: boolean;
+    allowGuestViewPost?: boolean;
+    allowGuestViewQuestion?: boolean;
     announcement?: string;
     createTime?: string;
     enableEmailNotification?: boolean;
