@@ -234,7 +234,7 @@ public class PostController {
     @GetMapping("/hot/list")
     public BaseResponse<List<PostVO>> listHotPost(HttpServletRequest request) {
         systemAccessManager.ensureGuestPostAccessAllowed(request);
-        return ResultUtils.success(postService.listHotPostVO(6, request));
+        return ResultUtils.success(postService.listHotPostVO(4, request));
     }
 
     /**

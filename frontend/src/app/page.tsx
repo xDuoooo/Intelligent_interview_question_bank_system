@@ -31,7 +31,7 @@ export default async function HomePage() {
   const [questionBankResult, latestQuestionResult, leaderboardResult, featuredPostResult, hotPostResult] = await Promise.allSettled([
     listQuestionBankVoByPageUsingPost(
       {
-        pageSize: 8,
+        pageSize: 4,
         reviewStatus: QUESTION_REVIEW_STATUS_ENUM.APPROVED,
         sortField: "createTime",
         sortOrder: "descend",
@@ -40,7 +40,7 @@ export default async function HomePage() {
     ),
     listQuestionVoByPageUsingPost(
       {
-        pageSize: 12,
+        pageSize: 4,
         sortField: "createTime",
         sortOrder: "descend",
       },
